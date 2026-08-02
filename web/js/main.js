@@ -1,4 +1,4 @@
-import { App } from "./app.js";
+import { App } from "./app.js?v=nomusic1";
 
 const app = new App();
 app.start();

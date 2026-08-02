@@ -30,7 +30,7 @@ import { drawComposedTower } from "./view/towerPainter.js";
 import { VIEW25, setPitch } from "./view/view25.js";
 import { FxSystem } from "./view/fx.js";
 import { SynthBank } from "./audio/synthBank.js";
-import { ScoreEngine } from "./audio/scoreEngine.js";
+import { ScoreEngine } from "./audio/scoreEngine.js?v=nomusic1";
 import {
   loadMeta,
   saveMeta,
@@ -142,7 +142,7 @@ export class App {
 
   async unlockAudio() {
     await this.synth.ensure();
-    await this.score.start();
+    // Score/music intentionally not started — re-enable via ScoreEngine later.
   }
 
   showMain() {
