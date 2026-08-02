@@ -1,4 +1,4 @@
-import { SimWorld, TICK_HZ } from "./sim/simWorld.js?v=earlycoin1";
+import { SimWorld, TICK_HZ } from "./sim/simWorld.js";
 import {
   makeSlot,
   PARTS,
@@ -9,7 +9,7 @@ import {
   doctrineLabel,
   applyWaveUnlocks,
   WAVE_UNLOCKS,
-} from "./data/parts.js?v=earlycoin1";
+} from "./data/parts.js";
 import {
   TECH_TREES,
   BASE_START_CASH,
@@ -30,7 +30,7 @@ import { drawComposedTower } from "./view/towerPainter.js";
 import { VIEW25, setPitch } from "./view/view25.js";
 import { FxSystem } from "./view/fx.js";
 import { SynthBank } from "./audio/synthBank.js";
-import { ScoreEngine } from "./audio/scoreEngine.js?v=earlycoin1";
+import { ScoreEngine } from "./audio/scoreEngine.js";
 import {
   loadMeta,
   saveMeta,
@@ -67,6 +67,7 @@ export class App {
     this.forgeReturn = "main";
     this.forgeAim = -Math.PI / 2;
     this.selectedTowerId = -1;
+    this.techSelectedId = null;
     this.composeOpen = false;
     this.paused = false;
     this.speed = 1;
@@ -267,7 +268,7 @@ export class App {
   }
 
   _forgeCost(kind, id) {
-    return forgeBuyCost(kind, id, this.meta.forgeCostMult ?? 1);
+    return forgeBuyCost(kind, id);
   }
 
   paintForgePreview() {
@@ -312,7 +313,10 @@ export class App {
   }
 
   showUpgrade(returnTo) {
-    if (returnTo) this.upgradeReturn = returnTo;
+    if (returnTo) {
+      this.upgradeReturn = returnTo;
+      this.techSelectedId = null;
+    }
     if (!this.upgradeReturn) this.upgradeReturn = "forge";
     this.screen = "upgrade";
     const backAct =
@@ -324,135 +328,172 @@ export class App {
             ? "campaign"
             : "forge";
     const backLabel = backAct === "main" ? "Menu" : backAct === "forge" ? "Forge" : "Back";
-    const forest = TECH_TREES.map((tree) => this._techTreeHtml(tree)).join("");
+    const forest = TECH_TREES.map((tree) => this._vtreeRootHtml(tree)).join("");
     const nextGift = WAVE_UNLOCKS.find((w) => w.bestWave > (this.meta.bestWave | 0));
     const cash = BASE_START_CASH + (this.meta.startCashBonus | 0);
     const giftLine = nextGift
       ? `W${this.meta.bestWave || 0} · next gift W${nextGift.bestWave}: ${nextGift.label}`
       : `W${this.meta.bestWave || 0} · all wave gifts earned`;
+    const overlay = this.techSelectedId ? this._techOverlayHtml(this.techSelectedId) : "";
     this.ui.innerHTML = `
-      <div class="screen scroll tech-screen">
-        <div class="tech-top">
-          <div class="screen-header">
-            <h1>Tech Tree</h1>
+      <div class="screen tech-screen">
+        <header class="tech-hero">
+          <div class="tech-hero-row">
+            <div>
+              <p class="title-mark">Permanent</p>
+              <h1>Tech Tree</h1>
+            </div>
             <button class="btn secondary tech-back" data-act="${backAct}">${backLabel}</button>
           </div>
-          <p class="tech-bar">
-            <span><b>Æ</b>${this.meta.aether}</span>
-            <span><b>Parts</b>${this.meta.forge}</span>
-            <span>L${this.meta.levelCap}</span>
-            <span>S${this.meta.slotCount}</span>
-            <span>♥${this.meta.startLives || 3}</span>
-            <span>$${cash}</span>
-            <span>+${this.meta.waveCoinBonus | 0} clear</span>
-          </p>
+          <div class="title-stats tech-stats" aria-label="Currencies">
+            <span><i>Æ</i>${this.meta.aether}</span>
+            <span><i>Parts</i>${this.meta.forge}</span>
+            <span><i>Cap</i>L${this.meta.levelCap}</span>
+            <span><i>Slots</i>${this.meta.slotCount}</span>
+            <span><i>Lives</i>${this.meta.startLives || 3}</span>
+            <span><i>Start</i>${cash}</span>
+          </div>
           <div class="status tech-status" id="status">${this.status}</div>
-        </div>
-        <div class="tech-forest">${forest}</div>
-        <footer class="tech-foot">
+        </header>
+        <div class="tech-body">
+          <div class="vtree" role="tree">${forest}</div>
           <p class="tech-gift">${giftLine}</p>
-          <button class="btn secondary tech-foot-btn" data-act="main">Main Menu</button>
-        </footer>
+        </div>
+        ${overlay}
       </div>`;
     this.bindUi();
   }
 
-  _techTreeHtml(tree) {
+  /** Vertical root: Foundations / Arsenal growing downward. */
+  _vtreeRootHtml(tree) {
     const kids = tree.children || [];
-    const forkClass =
-      tree.id === "arsenal" ? "tree-fork tree-fork--grid" : "tree-fork tree-fork--branches";
-    return `<section class="tech-tree" data-tree="${tree.id}">
-      <header class="tree-root-label">
-        <h3>${tree.name}</h3>
+    return `<section class="tech-section" data-tree="${tree.id}">
+      <header class="tech-section-head">
+        <h2>${tree.name}</h2>
         <p>${tree.blurb}</p>
       </header>
-      <div class="${forkClass}">
-        ${kids.map((c) => this._techLimbHtml(c)).join("")}
+      <div class="vtree-children vtree-children--root">
+        ${kids.map((c) => this._vtreeNodeHtml(c)).join("")}
       </div>
     </section>`;
   }
 
-  /** Flatten a linear child chain into an ordered node list. */
-  _techChainList(node) {
-    const list = [node];
-    let cur = node;
-    while (cur.children?.length === 1 && cur.children[0].kind !== "group") {
-      cur = cur.children[0];
-      list.push(cur);
-    }
-    // If a node fans out (shouldn't for our tree), stop at the fork.
-    return list;
-  }
-
-  _techLimbHtml(node) {
+  _vtreeNodeHtml(node) {
     if (node.kind === "group" || node.kind === "root") {
-      return `<div class="tree-limb tree-limb--branch">
-        <div class="tree-hub">${node.name}</div>
-        <div class="tree-fork tree-fork--siblings">
-          ${(node.children || []).map((c) => this._techLimbHtml(c)).join("")}
+      const kids = node.children || [];
+      return `<div class="vtree-branch">
+        <div class="vtree-hub">${node.name}</div>
+        <div class="vtree-children">
+          ${kids.map((c) => this._vtreeNodeHtml(c)).join("")}
         </div>
       </div>`;
     }
+    const def = getTechNode(node.id) || node;
+    const rank = techRank(this.meta, def.id);
+    const maxed = rank >= def.maxRank;
+    const prereq = techRequiresMet(this.meta, def);
+    const partOk = techPartOwned(this.meta, def, ownsPart);
+    const selected = this.techSelectedId === def.id ? " selected" : "";
+    let state = "open";
+    if (maxed) state = "maxed";
+    else if (!partOk || !prereq) state = "locked";
+    else if (!canAffordTech(this.meta, techNextCost(def, rank))) state = "cant";
+    const rankLabel = def.maxRank > 1 ? `${rank}/${def.maxRank}` : rank ? "Owned" : "—";
     const kids = node.children || [];
-    if (!kids.length) {
-      return `<div class="tree-limb tree-limb--leaf">${this._techCardHtml(node)}</div>`;
-    }
-    // Linear unlock path → one horizontal row (Cap III › IV › V)
-    if (kids.length === 1) {
-      const chain = this._techChainList(node);
-      const cells = chain
-        .map(
-          (n, i) =>
-            `${i > 0 ? `<span class="tree-chevron" aria-hidden="true">›</span>` : ""}
-            <div class="tree-limb tree-limb--leaf">${this._techCardHtml(n)}</div>`
-        )
-        .join("");
-      return `<div class="tree-limb tree-limb--chain">
-        <div class="tree-fork tree-fork--chain">${cells}</div>
-      </div>`;
-    }
-    // Fan-out (unused today, kept safe)
-    return `<div class="tree-limb tree-limb--chain">
-      ${this._techCardHtml(node)}
-      <div class="tree-fork tree-fork--siblings">
-        ${kids.map((c) => this._techLimbHtml(c)).join("")}
-      </div>
+    const childHtml = kids.length
+      ? `<div class="vtree-children">${kids.map((c) => this._vtreeNodeHtml(c)).join("")}</div>`
+      : "";
+    return `<div class="vtree-node-wrap">
+      <button type="button" class="vtree-node ${state}${selected}" data-act="tech-select:${def.id}" role="treeitem" aria-selected="${selected ? "true" : "false"}">
+        <span class="vtree-node-text">
+          <span class="vtree-node-name">${def.name}</span>
+          <span class="vtree-node-blurb">${def.blurb || ""}</span>
+        </span>
+        <span class="vtree-node-rank">${rankLabel}</span>
+      </button>
+      ${childHtml}
     </div>`;
   }
 
-  _techCardHtml(node) {
-    const def = getTechNode(node.id) || node;
+  _techOverlayHtml(id) {
+    const def = getTechNode(id);
+    if (!def) return "";
     const rank = techRank(this.meta, def.id);
     const maxed = rank >= def.maxRank;
     const prereq = techRequiresMet(this.meta, def);
     const partOk = techPartOwned(this.meta, def, ownsPart);
     const cost = techNextCost(def, rank);
     const costLabel = formatTechCost(cost);
-    let state = "open";
+    const treeName =
+      TECH_TREES.find((t) => t.id === def.treeId)?.name || def.treeId || "Tech";
+
+    let reqBits = [];
+    if (def.requires?.length) {
+      for (const rid of def.requires) {
+        const rnode = getTechNode(rid);
+        const ok = techRank(this.meta, rid) >= 1;
+        reqBits.push(
+          `<span class="tech-req ${ok ? "ok" : "missing"}">${rnode?.name || rid}</span>`
+        );
+      }
+    }
+    if (def.requiresPart) {
+      const kind = def.requiresPart.kind || "part";
+      const ok = partOk;
+      reqBits.push(
+        `<span class="tech-req ${ok ? "ok" : "missing"}">Own ${partLabel(def.requiresPart.id)} (${kind})</span>`
+      );
+    }
+
     let action;
     if (maxed) {
-      state = "maxed";
-      action = `<span class="tree-action muted">Max</span>`;
+      action = `<button class="btn secondary" disabled>Maxed</button>`;
     } else if (!partOk) {
-      state = "locked";
-      action = `<span class="tree-action muted">Part</span>`;
+      action = `<button class="btn secondary" disabled>Unlock this part in the Forge first</button>`;
     } else if (!prereq) {
-      state = "locked";
-      action = `<span class="tree-action muted">Locked</span>`;
+      action = `<button class="btn secondary" disabled>Requires prior tech</button>`;
     } else if (!canAffordTech(this.meta, cost)) {
-      state = "cant";
-      action = `<button class="btn cant-afford tree-buy" data-act="tech:${def.id}" disabled>${costLabel}</button>`;
+      action = `<button class="btn cant-afford" disabled>Need ${costLabel}</button>`;
     } else {
-      action = `<button class="btn tree-buy" data-act="tech:${def.id}">${costLabel}</button>`;
+      action = `<button class="btn title-cta" data-act="tech-buy:${def.id}">Buy · ${costLabel}</button>`;
     }
-    const rankLabel = def.maxRank > 1 ? `${rank}/${def.maxRank}` : rank ? "●" : "○";
-    return `<div class="tree-card ${state}" title="${def.blurb}">
-      <div class="tree-card-top">
-        <strong>${def.name}</strong>
-        <span class="tree-rank">${rankLabel}</span>
+
+    const rankLine =
+      def.maxRank > 1
+        ? `Rank ${rank} / ${def.maxRank}${maxed ? " · complete" : cost ? ` · next ${costLabel}` : ""}`
+        : maxed
+          ? "Unlocked"
+          : cost
+            ? `Locked · ${costLabel}`
+            : "Locked";
+
+    return `<div class="tech-overlay">
+      <button type="button" class="tech-backdrop" data-act="tech-close" aria-label="Dismiss"></button>
+      <div class="tech-sheet" role="dialog" aria-modal="true" aria-labelledby="tech-sheet-title">
+        <button type="button" class="tech-sheet-x" data-act="tech-close" aria-label="Close">×</button>
+        <p class="tech-sheet-mark">${treeName}</p>
+        <h2 id="tech-sheet-title">${def.name}</h2>
+        <p class="tech-sheet-blurb">${def.blurb || ""}</p>
+        <p class="tech-sheet-rank">${rankLine}</p>
+        ${
+          reqBits.length
+            ? `<div class="tech-sheet-reqs"><span class="k">Requires</span>${reqBits.join("")}</div>`
+            : ""
+        }
+        <div class="tech-sheet-actions">${action}</div>
       </div>
-      ${action}
     </div>`;
+  }
+
+  selectTechNode(id) {
+    this.techSelectedId = id;
+    this.synth.play("ui");
+    this.showUpgrade();
+  }
+
+  closeTechOverlay() {
+    this.techSelectedId = null;
+    this.showUpgrade();
   }
 
   showEndlessHub() {
@@ -647,7 +688,10 @@ export class App {
                 ? "forge"
                 : this.forgeReturn || "forge";
           this.showUpgrade(from);
-        } else if (act?.startsWith("tech:")) this.buyTechNode(act.slice(5));
+        } else if (act === "tech-close") this.closeTechOverlay();
+        else if (act?.startsWith("tech-select:")) this.selectTechNode(act.slice(12));
+        else if (act?.startsWith("tech-buy:")) this.buyTechNode(act.slice(9));
+        else if (act?.startsWith("tech:")) this.buyTechNode(act.slice(5));
         else if (act === "settings") this.showSettings();
         else if (act === "newrun") this.newRun();
         else if (act === "continue") this.continueRun();
@@ -691,6 +735,7 @@ export class App {
     sim.economy.injectMeta(this.meta.forge, this.meta.aether);
     sim.economy.applyRunMods({
       wallCostMult: this.meta.wallCostMult ?? 1,
+      towerCostMult: this.meta.towerCostMult ?? 1,
       waveCoinBonus: this.meta.waveCoinBonus | 0,
     });
     if (battleBase != null) {
@@ -703,6 +748,11 @@ export class App {
     );
     sim.setRoster(structuredClone(this.meta.roster));
     sim.setPartUpgrades(this.meta.partUpgrades);
+    sim.setGlobalMods({
+      damage: this.meta.globalDamageMult ?? 1,
+      range: this.meta.globalRangeMult ?? 1,
+      rof: this.meta.globalRofMult ?? 1,
+    });
   }
 
   newRun() {
@@ -732,8 +782,14 @@ export class App {
     this.sim = new SimWorld();
     this.sim.loadCheckpoint(blob);
     this.sim.setPartUpgrades(this.meta.partUpgrades);
+    this.sim.setGlobalMods({
+      damage: this.meta.globalDamageMult ?? 1,
+      range: this.meta.globalRangeMult ?? 1,
+      rof: this.meta.globalRofMult ?? 1,
+    });
     this.sim.economy.applyRunMods({
       wallCostMult: this.meta.wallCostMult ?? 1,
+      towerCostMult: this.meta.towerCostMult ?? 1,
       waveCoinBonus: this.meta.waveCoinBonus | 0,
     });
     this.fx.clear();
@@ -800,10 +856,11 @@ export class App {
     const buildBtns = this.sim.roster
       .map((s, i) => {
         const active = this.tool === "tower" && i === this.slot ? "active" : "";
+        const base = s.complete ? this.sim.economy.towerCost(s.placeCost) : 0;
         const surcharge = s.complete
-          ? this.sim.economy.placeSurcharge(s.placeCost, this.sim.towers.length)
+          ? this.sim.economy.placeSurcharge(base, this.sim.towers.length)
           : 0;
-        const total = s.complete ? s.placeCost + surcharge : 0;
+        const total = s.complete ? base + surcharge : 0;
         const label = s.complete ? `S${i + 1} · ${total}` : `S${i + 1} · —`;
         return `<button class="btn ${active}" data-act="slot:${i}" title="${
           s.complete
@@ -883,8 +940,9 @@ export class App {
       } else {
         const slot = this.sim.roster[this.slot] || {};
         if (slot.complete) {
-          const tax = this.sim.economy.placeSurcharge(slot.placeCost, this.sim.towers.length);
-          const total = slot.placeCost + tax;
+          const base = this.sim.economy.towerCost(slot.placeCost);
+          const tax = this.sim.economy.placeSurcharge(base, this.sim.towers.length);
+          const total = base + tax;
           slotLine.textContent = `Slot ${this.slot + 1}: ${partLabel(slot.base)} / ${partLabel(slot.barrel)} / ${partLabel(slot.payload)} · ${total} Coin${
             tax ? ` (incl. ${tax} tax)` : ""
           }`;
@@ -1153,6 +1211,7 @@ export class App {
     this.persistMeta();
     this.synth.play("confirm");
     this.status = `${node.name} → ${rank + 1}/${node.maxRank}`;
+    this.techSelectedId = id;
     this.showUpgrade();
   }
 

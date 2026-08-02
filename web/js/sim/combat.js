@@ -22,14 +22,25 @@ export class CombatSystem {
     this._tickStatus();
   }
 
-  _planOpts(payloadId) {
+  _planOpts(t) {
     const up = this.world.partUpgrades || {};
-    const row = up[payloadId] || {};
-    return { chainRank: row.chain | 0, powerRank: row.power | 0 };
+    const g = this.world.globalMods || {};
+    const payload = up[t.payload] || {};
+    const base = up[t.base] || {};
+    const barrel = up[t.barrel] || {};
+    return {
+      chainRank: payload.chain | 0,
+      powerRank: payload.power | 0,
+      basePower: base.power | 0,
+      barrelPower: barrel.power | 0,
+      globalDamage: g.damage || 1,
+      globalRange: g.range || 1,
+      globalRof: g.rof || 1,
+    };
   }
 
   _tickTower(t) {
-    const plan = buildAttackPlan(t.base, t.barrel, t.payload, t.level, this._planOpts(t.payload));
+    const plan = buildAttackPlan(t.base, t.barrel, t.payload, t.level, this._planOpts(t));
     const g = this.world.grid;
     const i = g.idx(t.cell.x, t.cell.y);
     plan.fireInterval /= Math.max(0.05, this.auraRof[i] || 1);

@@ -51,9 +51,13 @@ export function normalizeMeta(m) {
   draft.levelCap = Math.max(2, Math.min(5, draft.levelCap | 0 || 2));
   draft.startLives = Math.max(3, Math.min(8, draft.startLives | 0 || 3));
   draft.startCashBonus = Math.max(0, draft.startCashBonus | 0);
-  draft.forgeCostMult = clampMult(draft.forgeCostMult, 1);
+  draft.forgeCostMult = 1;
+  draft.towerCostMult = clampMult(draft.towerCostMult, 1);
   draft.wallCostMult = clampMult(draft.wallCostMult, 1);
   draft.waveCoinBonus = Math.max(0, draft.waveCoinBonus | 0);
+  draft.globalDamageMult = clampBoost(draft.globalDamageMult, 1);
+  draft.globalRangeMult = clampBoost(draft.globalRangeMult, 1);
+  draft.globalRofMult = clampBoost(draft.globalRofMult, 1);
   draft.partUpgrades = normalizePartUpgrades(draft.partUpgrades);
   draft.roster = normalizeRoster(m.roster, draft.slotCount, draft.levelCap);
   return draft;
@@ -71,7 +75,13 @@ function clampMult(v, fallback) {
   return Math.max(0.5, Math.min(1, n));
 }
 
-/** Payload mastery ranks, e.g. `{ shock: { chain: 2 }, pyro: { power: 1 } }`. */
+function clampBoost(v, fallback) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.max(1, Math.min(2, n));
+}
+
+/** Part mastery ranks by part id, e.g. `{ shock: { chain: 2 }, sentry: { power: 1 } }`. */
 export function normalizePartUpgrades(raw) {
   const out = {};
   if (!raw || typeof raw !== "object") return out;

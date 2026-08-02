@@ -627,8 +627,16 @@ export class BoardView {
 
     if (selected) {
       const up = this.sim.partUpgrades || {};
-      const rank = up[t.payload]?.chain | 0;
-      const plan = buildAttackPlan(t.base, t.barrel, t.payload, t.level, { chainRank: rank });
+      const g = this.sim.globalMods || {};
+      const plan = buildAttackPlan(t.base, t.barrel, t.payload, t.level, {
+        chainRank: up[t.payload]?.chain | 0,
+        powerRank: up[t.payload]?.power | 0,
+        basePower: up[t.base]?.power | 0,
+        barrelPower: up[t.barrel]?.power | 0,
+        globalDamage: g.damage || 1,
+        globalRange: g.range || 1,
+        globalRof: g.rof || 1,
+      });
       // Range as perspective ellipse (circle in board space → oval on screen)
       const r = plan.rangeCells * this.cell;
       const steps = 48;

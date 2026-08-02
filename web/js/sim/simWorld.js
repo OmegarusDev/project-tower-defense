@@ -1,8 +1,8 @@
 import { BoardGrid } from "./boardGrid.js";
-import { Economy } from "./economy.js?v=earlycoin1";
+import { Economy } from "./economy.js";
 import { CombatSystem } from "./combat.js";
 import { WaveManager } from "./waves.js";
-import { defaultSlots, migratePartId, makeSlot } from "../data/parts.js?v=earlycoin1";
+import { defaultSlots, migratePartId, makeSlot } from "../data/parts.js";
 
 export const TICK_HZ = 60;
 export const TICK_DT = 1 / TICK_HZ;
@@ -20,6 +20,7 @@ export class SimWorld {
     this.projectiles = [];
     this.roster = [];
     this.partUpgrades = {};
+    this.globalMods = { damage: 1, range: 1, rof: 1 };
     this.tickIndex = 0;
     this.lives = 3;
     this.waveIndex = 0;
@@ -71,10 +72,19 @@ export class SimWorld {
     this._nextId = 1;
     this.roster = defaultSlots(3, 2);
     this.partUpgrades = {};
+    this.globalMods = { damage: 1, range: 1, rof: 1 };
   }
 
   setPartUpgrades(up) {
     this.partUpgrades = structuredClone(up || {});
+  }
+
+  setGlobalMods(mods = {}) {
+    this.globalMods = {
+      damage: mods.damage > 0 ? mods.damage : 1,
+      range: mods.range > 0 ? mods.range : 1,
+      rof: mods.rof > 0 ? mods.rof : 1,
+    };
   }
 
   /** Seeded map debris — unsellable, free. */
@@ -150,7 +160,7 @@ export class SimWorld {
     const loadout = this.roster[slotIndex];
     if (!loadout?.complete) return { ok: false, reason: "incomplete_triad" };
     if (!this.grid.isBuildable(x, y)) return { ok: false, reason: "blocked" };
-    const baseCost = loadout.placeCost;
+    const baseCost = this.economy.towerCost(loadout.placeCost);
     const surcharge = this.economy.placeSurcharge(baseCost, this.towers.length);
     const cost = baseCost + surcharge;
     if (this.economy.battle < cost) return { ok: false, reason: "need_battle", need: cost };

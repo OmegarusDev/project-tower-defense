@@ -88,6 +88,25 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
   const power = Math.max(0, opts.powerRank | 0);
   if (power > 0) applyPayloadPower(plan, payloadId, power);
 
+  const basePower = Math.max(0, opts.basePower | 0);
+  if (basePower > 0) {
+    plan.damage *= 1 + 0.08 * basePower;
+    plan.rangeCells *= 1 + 0.04 * basePower;
+  }
+
+  const barrelPower = Math.max(0, opts.barrelPower | 0);
+  if (barrelPower > 0) {
+    plan.damage *= 1 + 0.07 * barrelPower;
+    plan.fireInterval /= 1 + 0.04 * barrelPower;
+  }
+
+  const gDmg = opts.globalDamage > 0 ? opts.globalDamage : 1;
+  const gRange = opts.globalRange > 0 ? opts.globalRange : 1;
+  const gRof = opts.globalRof > 0 ? opts.globalRof : 1;
+  plan.damage *= gDmg;
+  plan.rangeCells *= gRange;
+  plan.fireInterval /= gRof;
+
   return plan;
 }
 

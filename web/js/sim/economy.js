@@ -20,6 +20,7 @@ export class Economy {
     this.wallBase = 12;
     this.wallStep = 5;
     this.wallCostMult = 1;
+    this.towerCostMult = 1;
     this.waveCoinBonus = 0;
     /** Meta currencies + clear-coin earned from wave clears this run. */
     this.runWaveGains = { coin: 0, parts: 0, aether: 0 };
@@ -31,9 +32,15 @@ export class Economy {
   }
 
   /** Permanent economy tech for this run. */
-  applyRunMods({ wallCostMult = 1, waveCoinBonus = 0 } = {}) {
+  applyRunMods({ wallCostMult = 1, towerCostMult = 1, waveCoinBonus = 0 } = {}) {
     this.wallCostMult = wallCostMult > 0 ? wallCostMult : 1;
+    this.towerCostMult = towerCostMult > 0 ? towerCostMult : 1;
     this.waveCoinBonus = waveCoinBonus | 0;
+  }
+
+  /** Bargainer applies here — Coin to place towers, not Forge unlocks. */
+  towerCost(baseCost) {
+    return Math.max(1, Math.round(baseCost * this.towerCostMult));
   }
 
   resetRunGains() {

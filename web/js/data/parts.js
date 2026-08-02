@@ -257,13 +257,13 @@ export function placeCost(base, barrel, payload) {
   return b + r + p;
 }
 
-export function forgeBuyCost(kind, id, forgeCostMult = 1) {
+/** Forge unlock price in Parts — never affected by Bargainer. */
+export function forgeBuyCost(kind, id, _ignoredMult = 1) {
   const table = kind === "base" ? PARTS.bases : kind === "barrel" ? PARTS.barrels : PARTS.payloads;
   const row = table[id];
   if (!row) return 0;
   const base = row.forgeCost != null ? row.forgeCost : row.cost ?? 0;
-  const mult = forgeCostMult > 0 ? forgeCostMult : 1;
-  return Math.max(0, Math.round(base * mult));
+  return Math.max(0, Math.round(base));
 }
 
 export function makeSlot(base = "", barrel = "", payload = "", levelCap = 1) {
