@@ -1,4 +1,4 @@
-import { App } from "./app.js?v=9c8b359";
+import { App } from "./app.js?v=earlycoin1";
 
 const app = new App();
 app.start();

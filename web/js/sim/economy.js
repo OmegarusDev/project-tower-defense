@@ -17,8 +17,8 @@ export class Economy {
     this.battle = 115;
     this.forge = 0;
     this.aether = 0;
-    this.wallBase = 22;
-    this.wallStep = 6;
+    this.wallBase = 12;
+    this.wallStep = 5;
     this.wallCostMult = 1;
     this.waveCoinBonus = 0;
     /** Meta currencies + clear-coin earned from wave clears this run. */
@@ -45,10 +45,10 @@ export class Economy {
     return Math.max(1, Math.round(raw * this.wallCostMult));
   }
 
-  /** Extra Coin when the board already has many towers. */
+  /** Extra Coin as the board fills — first two towers free of tax. */
   placeSurcharge(baseCost, towerCount) {
-    if (towerCount <= 1) return 0;
-    return Math.floor(baseCost * 0.12 * (towerCount - 1));
+    if (towerCount < 2) return 0;
+    return Math.floor(baseCost * 0.08 * (towerCount - 1));
   }
 
   spendBattle(n) {

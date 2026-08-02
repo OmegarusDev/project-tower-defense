@@ -1,4 +1,4 @@
-import { SimWorld, TICK_HZ } from "./sim/simWorld.js";
+import { SimWorld, TICK_HZ } from "./sim/simWorld.js?v=earlycoin1";
 import {
   makeSlot,
   PARTS,
@@ -9,7 +9,7 @@ import {
   doctrineLabel,
   applyWaveUnlocks,
   WAVE_UNLOCKS,
-} from "./data/parts.js";
+} from "./data/parts.js?v=earlycoin1";
 import {
   TECH_TREES,
   BASE_START_CASH,
@@ -30,7 +30,7 @@ import { drawComposedTower } from "./view/towerPainter.js";
 import { VIEW25, setPitch } from "./view/view25.js";
 import { FxSystem } from "./view/fx.js";
 import { SynthBank } from "./audio/synthBank.js";
-import { ScoreEngine } from "./audio/scoreEngine.js?v=9c8b359";
+import { ScoreEngine } from "./audio/scoreEngine.js?v=earlycoin1";
 import {
   loadMeta,
   saveMeta,

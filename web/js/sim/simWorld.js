@@ -1,8 +1,8 @@
 import { BoardGrid } from "./boardGrid.js";
-import { Economy } from "./economy.js";
+import { Economy } from "./economy.js?v=earlycoin1";
 import { CombatSystem } from "./combat.js";
 import { WaveManager } from "./waves.js";
-import { defaultSlots, migratePartId, makeSlot } from "../data/parts.js";
+import { defaultSlots, migratePartId, makeSlot } from "../data/parts.js?v=earlycoin1";
 
 export const TICK_HZ = 60;
 export const TICK_DT = 1 / TICK_HZ;
