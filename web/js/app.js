@@ -30,7 +30,7 @@ import { drawComposedTower } from "./view/towerPainter.js";
 import { VIEW25, setPitch } from "./view/view25.js";
 import { FxSystem } from "./view/fx.js";
 import { SynthBank } from "./audio/synthBank.js";
-import { ScoreEngine } from "./audio/scoreEngine.js?v=silent2";
+import { ScoreEngine } from "./audio/scoreEngine.js?v=9c8b359";
 import {
   loadMeta,
   saveMeta,
