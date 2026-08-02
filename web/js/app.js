@@ -582,6 +582,7 @@ export class App {
     const actions = endless
       ? `<div class="end-actions">
           <button class="btn title-cta" data-act="newrun">New Run</button>
+          <button class="btn" data-act="forge-from-hub">Forge</button>
           <button class="btn secondary" data-act="${backAct}">${backLabel}</button>
           <button class="btn secondary" data-act="main">Main Menu</button>
         </div>`
