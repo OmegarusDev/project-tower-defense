@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta http-equiv="refresh" content="0; url=https://omegarusdev.github.io/project-tower-defense/" />
+  <title>Play Project Tower Defense</title>
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --fg: #e8e4dc;
+      --muted: #8a929c;
+      --accent: #d4783a;
+      --accent-hover: #e08a4e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      color: var(--fg);
+      background:
+        radial-gradient(ellipse at 50% 18%, rgba(212, 120, 58, 0.16) 0%, transparent 50%),
+        linear-gradient(180deg, #12161c 0%, var(--bg) 55%, #14181e 100%);
+    }
+    main {
+      text-align: center;
+      padding: 2rem 1.25rem;
+      max-width: 28rem;
+    }
+    h1 {
+      margin: 0 0 0.4rem;
+      font-size: clamp(1.5rem, 5vw, 2rem);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    p {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    a.play {
+      display: inline-block;
+      padding: 0.95rem 2.4rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-decoration: none;
+      text-transform: uppercase;
+      color: #fff8ef;
+      background: linear-gradient(180deg, #e08a4e 0%, var(--accent) 55%, #a85a28 100%);
+      border: 1px solid #e8c4a0;
+      border-radius: 8px;
+      box-shadow: 0 1px 0 rgba(255,245,220,0.2) inset, 0 4px 14px rgba(0,0,0,0.35);
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    a.play:hover { background: linear-gradient(180deg, #eca05e 0%, var(--accent-hover) 55%, #b86630 100%); }
+    a.play:active { transform: translateY(1px); }
+    noscript p { margin-top: 1rem; }
+  </style>
+  <script>
+    location.replace("https://omegarusdev.github.io/project-tower-defense/");
+  </script>
+</head>
+<body>
+  <main>
+    <h1>Project Tower Defense</h1>
+    <p>Opening the live game… If nothing happens, use the button below.</p>
+    <a class="play" href="https://omegarusdev.github.io/project-tower-defense/">▶ Play Now</a>
+    <noscript>
+      <p><a href="https://omegarusdev.github.io/project-tower-defense/">Continue to the game</a></p>
+    </noscript>
+  </main>
+</body>
+</html>
