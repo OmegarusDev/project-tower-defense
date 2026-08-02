@@ -1,6 +1,6 @@
 # Play Project Tower Defense
 
-**Active prototype = web native** (no Godot required).
+Vanilla web — no engine, no npm, no install.
 
 ## Run
 
@@ -33,5 +33,3 @@ Details: [`web/README.md`](web/README.md)
 
 - [`docs/GDD.md`](docs/GDD.md)
 - [`docs/CURSOR_PROMPT.md`](docs/CURSOR_PROMPT.md)
-
-The Godot tree in this repo is leftover scaffolding; development continues in `web/`.

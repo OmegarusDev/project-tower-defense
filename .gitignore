@@ -1,8 +1,1 @@
-.godot/
-*.translation
-export_presets.cfg
 .DS_Store
-*.pck
-*.apk
-*.aab
-*.ipa

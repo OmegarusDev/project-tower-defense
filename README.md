@@ -42,3 +42,4 @@ More detail: [`PLAY.md`](PLAY.md) · [`web/README.md`](web/README.md)
 
 - [`docs/GDD.md`](docs/GDD.md)
 - [`docs/CURSOR_PROMPT.md`](docs/CURSOR_PROMPT.md)
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)

@@ -1,6 +1,6 @@
 # Project Tower Defense — Web Native
 
-Vanilla **HTML + CSS + ES modules**. No npm, no bundler, no frameworks, no image/audio asset packs.
+Vanilla **HTML + CSS + ES modules**. No npm, no bundler, no frameworks, no engines, no image/audio asset packs.
 
 ## Run
 
@@ -21,12 +21,13 @@ python3 -m http.server 8080 --directory web
 
 ## Play
 
-1. **Endless → New Run**
-2. Pick a **slot** or **Wall**, tap empty cells to place
-3. Tap a placed tower for Level Up / Target / Sell
-4. **Call Early** or **Space** to start a wave
-5. **Compose** to change slot loadouts (bottom sheet, forces 1x)
-6. **Continue** resumes the last wave-start checkpoint
+1. **Endless → New Run** (or **Campaign**)
+2. **Forge** to compose Base + Barrel + Payload and unlock parts
+3. **Tech Tree** for permanent Aether / Parts upgrades
+4. Pick a **slot** or **Wall**, tap empty cells to place
+5. Tap a placed tower for Level Up / Target / Sell
+6. **Call Wave** or **Space** to start a wave
+7. **Continue** resumes the last endless wave-start checkpoint
 
 ## Layout
 
@@ -36,14 +37,16 @@ web/
   css/style.css
   js/
     main.js app.js saveStore.js
-    data/parts.js
+    data/         # parts, techTree, campaign
     sim/          # BoardGrid, AttackPlan, combat, waves, economy
-    view/         # palette + canvas board
-    audio/        # Web Audio synth + score
+    view/         # palette, board, painters, title, fx
+    audio/        # Web Audio synth + score stub
+    tests/        # node smoke tests
 ```
 
-## Next stages (same design as GDD)
+## Tests
 
-Campaign Prep, Forge gating, Aether tech graph, richer enemies, level editor, PWA/mobile wrap.
-
-Godot project files remain in the parent folder as reference only — this web app is the active prototype.
+```bash
+node js/tests/boardGrid.test.mjs
+node js/tests/attackPlan.test.mjs
+```

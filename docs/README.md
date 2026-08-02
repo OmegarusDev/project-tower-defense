@@ -1,6 +1,6 @@
 # Project Tower Defense — Docs
 
-Final design brief for the Godot rebuild.
+Design brief for the **web-native** game (no engine, no npm).
 
 | File | Role |
 |------|------|
@@ -8,15 +8,12 @@ Final design brief for the Godot rebuild.
 | [CURSOR_PROMPT.md](CURSOR_PROMPT.md) | Imperative brief for Cursor / agents |
 | [DESIGN_HISTORY.md](DESIGN_HISTORY.md) | How decisions were reconciled |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Implemented pipelines (sim / paint / audio) |
+| [LEGACY_NOTES.md](LEGACY_NOTES.md) | Salvaged ideas from removed Godot scaffold |
 
-**Prototype (read-only):** `../Tower Defense/`  
-**This project:** repo root (parent of `docs/`)
-
-**Status:** Active prototype is **web native** — [`../web/README.md`](../web/README.md) / [`../PLAY.md`](../PLAY.md).
+**Pygame prototype (read-only, other folder):** `../Tower Defense/`  
+**This project:** `web/` is the entire product.
 
 ```bash
 cd web && python3 -m http.server 8080
 # open http://localhost:8080
 ```
-
-Godot files in the repo are archived scaffolding only.

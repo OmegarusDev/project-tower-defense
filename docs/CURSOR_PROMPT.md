@@ -2,20 +2,20 @@
 
 **Final implementation brief.** Obey this file and [`GDD.md`](GDD.md). If they conflict, stop and ask.
 
-You are building **Project Tower Defense** (web-native primary, Godot reference in-repo).
+You are building **Project Tower Defense** — vanilla web only (`web/`).
 
 ---
 
 ## Sacred rules
 
 1. Do **not** modify or delete `../Tower Defense/` (Pygame prototype — reference only).
-2. All game code stays in this repo.
-3. Zero external art/SFX packs. Code-generated graphics; bake SFX at boot; generative music (ambient + kick; endless kick tempo per wave; no inter-wave silence).
+2. All game code lives under `web/`. No Godot, no npm, no bundler, no frameworks.
+3. Zero external art/SFX packs. Code-generated graphics; bake SFX at boot. Music is stubbed until a later ambient pass.
 4. Portrait-first, adaptive UI. Offline. Local saves. English only.
-5. Develop on Apple Silicon; export Android then iOS.
+5. Develop on Apple Silicon; mobile via responsive web / later PWA wrap.
 6. Support-the-Dev IAP **last** (stub until then).
-7. Fixed 60 Hz `sim/`; `view`/`audio` consume commands/events only.
-8. Data-driven content; no god objects.
+7. Fixed-step `web/js/sim/`; `view`/`audio` consume state/events only.
+8. Data-driven content; avoid growing `app.js` into a god object — split screens when needed.
 9. Use data placeholders for unset numbers; do not invent new systems.
 
 ---
@@ -24,9 +24,10 @@ You are building **Project Tower Defense** (web-native primary, Godot reference 
 
 ```text
 Project Tower Defense/
+  web/           # entire product
   docs/
-  app/ sim/ view/ audio/ data/ tests/
-  project.godot
+  PLAY.html      # Pages launcher
+  .github/       # Pages deploy
 ```
 
 ---
@@ -93,7 +94,7 @@ basic, heavy, fast, flying, shielded, splitter, boss (+ data). Leak by type. For
 2. Wave checkpoint / Continue works  
 3. Campaign Prep → frozen level → Victory/GO → Prep  
 4. Currencies + starter triad behave per tables  
-5. Headless tests: path, sell refund, XP→point→level, mode gates  
-6. Procedural draw + stub kick + baked UI click  
+5. Node smoke tests under `web/js/tests/` stay green  
+6. Procedural draw + baked UI/SFX clicks (music optional later)  
 
 Re-read `GDD.md` before inventing behavior.

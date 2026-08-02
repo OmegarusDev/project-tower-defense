@@ -3,8 +3,8 @@
 **Status:** Final brief (systems locked). Balance numbers live in data as placeholders until playtest.  
 **Pair with:** [`CURSOR_PROMPT.md`](CURSOR_PROMPT.md) for implementation agents.  
 **History:** [`DESIGN_HISTORY.md`](DESIGN_HISTORY.md)  
-**Prototype:** `../Tower Defense/` — read-only. Do not modify or delete.  
-**Production:** this repo (`Project Tower Defense/`) — web native + Godot reference.
+**Pygame prototype:** `../Tower Defense/` — read-only. Do not modify or delete.  
+**Production:** this repo — vanilla web only (`web/`). No Godot, no npm, no asset packs.
 
 ---
 
