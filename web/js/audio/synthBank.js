@@ -1,10 +1,17 @@
-/** Boot-baked PCM via Web Audio — no audio files. */
+/** Boot-baked PCM via Web Audio — no audio files. SFX only; no music. */
 
 export class SynthBank {
   constructor() {
     this.ctx = null;
     this.buffers = {};
     this.ready = false;
+    this._onVisibility = () => {
+      if (!this.ctx) return;
+      if (document.hidden) {
+        if (this.ctx.state === "running") this.ctx.suspend().catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", this._onVisibility);
   }
 
   async ensure() {
@@ -24,12 +31,14 @@ export class SynthBank {
   }
 
   async play(name, rate = 1) {
+    if (document.hidden) return;
     await this.ensure();
     if (this.ctx.state === "suspended") await this.ctx.resume();
     const buf = this.buffers[name];
     if (!buf) return;
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
+    src.loop = false;
     src.playbackRate.value = rate;
     const g = this.ctx.createGain();
     g.gain.value = 0.35;
@@ -46,7 +55,7 @@ export class SynthBank {
       const env = (1 - i / n) ** 2;
       let s = 0;
       const phase = t * freq;
-      if (type === "square") s = (phase % 1 < 0.5) ? 1 : -1;
+      if (type === "square") s = phase % 1 < 0.5 ? 1 : -1;
       else if (type === "triangle") s = 4 * Math.abs((phase % 1) - 0.5) - 1;
       else if (type === "sawtooth") s = 2 * (phase % 1) - 1;
       else s = Math.sin(phase * Math.PI * 2);

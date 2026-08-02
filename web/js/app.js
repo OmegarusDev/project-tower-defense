@@ -30,7 +30,7 @@ import { drawComposedTower } from "./view/towerPainter.js";
 import { VIEW25, setPitch } from "./view/view25.js";
 import { FxSystem } from "./view/fx.js";
 import { SynthBank } from "./audio/synthBank.js";
-import { ScoreEngine } from "./audio/scoreEngine.js?v=nomusic1";
+import { ScoreEngine } from "./audio/scoreEngine.js?v=silent2";
 import {
   loadMeta,
   saveMeta,
@@ -141,8 +141,7 @@ export class App {
   }
 
   async unlockAudio() {
-    await this.synth.ensure();
-    // Score/music intentionally not started — re-enable via ScoreEngine later.
+    // SFX unlock lazily inside SynthBank.play — do not start music here.
   }
 
   showMain() {
@@ -629,8 +628,7 @@ export class App {
 
   bindUi() {
     this.ui.querySelectorAll("[data-act]").forEach((el) => {
-      el.addEventListener("click", async () => {
-        await this.unlockAudio();
+      el.addEventListener("click", () => {
         const act = el.getAttribute("data-act");
         if (act === "endless" || act === "hub") this.showEndlessHub();
         else if (act === "main") this.showMain();
