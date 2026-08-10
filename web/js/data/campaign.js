@@ -203,7 +203,7 @@ const LEVEL_DEFS = [
   {
     id: 7,
     name: "Ash Causeway",
-    blurb: "Ceramite fronts. Shock fails — Breach and pulse decide.";
+    blurb: "Ceramite fronts. Shock fails — Breach and pulse decide.",
     cols: 10,
     rows: 10,
     seed: 7070,
