@@ -243,8 +243,8 @@ function cyl25(ctx, cx, topY, rx, rise, topCol, sideCol, bottomCol) {
 function box25(ctx, cx, topY, w, d, h, m) {
   const hw = w / 2;
   const hd = d / 2;
-  // foreshortened top corners (slight iso skew)
-  const skew = d * 0.18;
+  // foreshortened top corners (pitch-linked iso skew)
+  const skew = d * VIEW25.boxSkew;
   const tl = { x: cx - hw + skew * 0.2, y: topY - hd * 0.35 };
   const tr = { x: cx + hw + skew * 0.2, y: topY - hd * 0.35 };
   const br = { x: cx + hw - skew * 0.15, y: topY + hd * 0.55 };

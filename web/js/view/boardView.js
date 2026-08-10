@@ -1,6 +1,6 @@
 import { buildAttackPlan } from "../sim/attackPlan.js";
 import { drawComposedTower } from "./towerPainter.js";
-import { VIEW25, deckRy, BoardCamera } from "./view25.js";
+import { VIEW25, setPitch, deckRy, BoardCamera } from "./view25.js";
 import { shade, withAlpha, hash21 } from "./drawUtil.js";
 
 /** Draw towers/enemies a bit larger than the cell footprint. */
@@ -24,8 +24,13 @@ export class BoardView {
     this.tool = "tower";
     this.selectedTowerId = -1;
     this.onTap = null;
+    /** Fired while live pitch changes: (deg, { final?: boolean }) => void */
+    this.onPitchChange = null;
     this._portalAcc = 0;
     this._drag = null;
+    this._pointers = new Map();
+    this._pitchGesture = null;
+    this._pitchHintUntil = 0;
 
     canvas.addEventListener("pointerdown", (e) => this._onPointerDown(e));
     canvas.addEventListener("pointermove", (e) => this._onPointerMove(e));
@@ -36,6 +41,11 @@ export class BoardView {
       (e) => {
         if (!this.sim) return;
         e.preventDefault();
+        // Ctrl / ⌘ + wheel → live pitch (desktop twin of two-finger tilt)
+        if (e.ctrlKey || e.metaKey) {
+          this._nudgePitch(-e.deltaY * 0.045, e.deltaY !== 0);
+          return;
+        }
         this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY - e.deltaY * 0.45));
         this._fit();
       },
@@ -104,8 +114,51 @@ export class BoardView {
     return this.cam.cellAtScreen(clientX - rect.left, clientY - rect.top);
   }
 
+  _pointerMid() {
+    let x = 0;
+    let y = 0;
+    let n = 0;
+    for (const p of this._pointers.values()) {
+      x += p.x;
+      y += p.y;
+      n += 1;
+    }
+    return n ? { x: x / n, y: y / n } : null;
+  }
+
+  _nudgePitch(deltaDeg, final = false) {
+    const next = Math.max(8, Math.min(58, VIEW25.pitchDeg + deltaDeg));
+    if (Math.abs(next - VIEW25.pitchDeg) < 0.01 && !final) return;
+    setPitch(next);
+    this._pitchHintUntil = performance.now() + 900;
+    this._fit();
+    if (this.onPitchChange) this.onPitchChange(VIEW25.pitchDeg, { final });
+  }
+
+  _beginPitchGesture() {
+    const mid = this._pointerMid();
+    if (!mid) return;
+    this._pitchGesture = {
+      pitch0: VIEW25.pitchDeg,
+      midY0: mid.y,
+    };
+    this._drag = null;
+  }
+
   _onPointerDown(e) {
     if (!this.sim) return;
+    this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try {
+      this.canvas.setPointerCapture(e.pointerId);
+    } catch (_) {
+      /* ignore */
+    }
+
+    if (this._pointers.size >= 2) {
+      this._beginPitchGesture();
+      return;
+    }
+
     this._drag = {
       id: e.pointerId,
       x0: e.clientX,
@@ -113,16 +166,30 @@ export class BoardView {
       panY0: this.panY,
       moved: false,
     };
-    try {
-      this.canvas.setPointerCapture(e.pointerId);
-    } catch (_) {
-      /* ignore */
-    }
     this.hover = this._cellAt(e.clientX, e.clientY);
   }
 
   _onPointerMove(e) {
     if (!this.sim) return;
+    if (this._pointers.has(e.pointerId)) {
+      this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    if (this._pitchGesture && this._pointers.size >= 2) {
+      const mid = this._pointerMid();
+      if (!mid) return;
+      // Drag both fingers down → look steeper (more foreshortening)
+      const dy = mid.y - this._pitchGesture.midY0;
+      const next = Math.max(8, Math.min(58, this._pitchGesture.pitch0 + dy * 0.085));
+      if (Math.abs(next - VIEW25.pitchDeg) >= 0.05) {
+        setPitch(next);
+        this._pitchHintUntil = performance.now() + 1100;
+        this._fit();
+        if (this.onPitchChange) this.onPitchChange(VIEW25.pitchDeg, { final: false });
+      }
+      return;
+    }
+
     this.hover = this._cellAt(e.clientX, e.clientY);
     const d = this._drag;
     if (!d || e.pointerId !== d.id) return;
@@ -137,14 +204,28 @@ export class BoardView {
 
   _onPointerUp(e) {
     if (!this.sim) return;
-    const d = this._drag;
-    if (!d || e.pointerId !== d.id) return;
-    this._drag = null;
+    this._pointers.delete(e.pointerId);
     try {
       this.canvas.releasePointerCapture(e.pointerId);
     } catch (_) {
       /* ignore */
     }
+
+    if (this._pitchGesture) {
+      if (this._pointers.size >= 2) {
+        this._beginPitchGesture();
+        return;
+      }
+      // Pitch gesture finished
+      this._pitchGesture = null;
+      this._drag = null;
+      if (this.onPitchChange) this.onPitchChange(VIEW25.pitchDeg, { final: true });
+      return;
+    }
+
+    const d = this._drag;
+    if (!d || e.pointerId !== d.id) return;
+    this._drag = null;
     if (d.moved) return;
     const c = this._cellAt(e.clientX, e.clientY);
     if (this.sim.grid.inBounds(c.x, c.y) && this.onTap) this.onTap(c);
@@ -187,11 +268,47 @@ export class BoardView {
     }
 
     this._drawAtmosphere(cssW, cssH);
+    this._drawPitchHint(cssW, cssH);
   }
 
   cellScreenCenter(x, y) {
     const p = this.cam.projectCell(x, y);
     return { x: p.x, y: p.y };
+  }
+
+  _drawPitchHint(cssW, cssH) {
+    if (performance.now() > this._pitchHintUntil) return;
+    const ctx = this.ctx;
+    const label = `Pitch ${Math.round(VIEW25.pitchDeg)}°`;
+    ctx.save();
+    ctx.font = "600 12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const tw = ctx.measureText(label).width;
+    const x = cssW * 0.5;
+    const y = 118;
+    const padX = 12;
+    const padY = 7;
+    ctx.fillStyle = "rgba(12,14,12,0.72)";
+    ctx.beginPath();
+    const w = tw + padX * 2;
+    const h = 14 + padY * 2;
+    const r = 10;
+    const left = x - w / 2;
+    const top = y - h / 2;
+    ctx.moveTo(left + r, top);
+    ctx.arcTo(left + w, top, left + w, top + h, r);
+    ctx.arcTo(left + w, top + h, left, top + h, r);
+    ctx.arcTo(left, top + h, left, top, r);
+    ctx.arcTo(left, top, left + w, top, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = withAlpha(this.palette.accent, 0.45);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = "#ebe6d8";
+    ctx.fillText(label, x, y + 0.5);
+    ctx.restore();
   }
 
   _fillQuad(pts, color) {
@@ -217,8 +334,26 @@ export class BoardView {
 
   _drawBoardShadow() {
     const corners = this.cam.boardCorners();
-    const shadow = corners.map((p) => ({ x: p.x + 3, y: p.y + 5 }));
-    this._fillQuad(shadow, "rgba(0,0,0,0.35)");
+    const shadow = corners.map((p) => ({ x: p.x + 4, y: p.y + 7 }));
+    this._fillQuad(shadow, "rgba(0,0,0,0.38)");
+
+    // Near-edge plate lip — reads as thickness under the bastion side
+    const bl = corners[3];
+    const br = corners[2];
+    const lip = Math.max(5, this.cell * 0.12 * (0.75 + 0.5 * VIEW25.depthFog));
+    const face = [
+      { x: bl.x, y: bl.y },
+      { x: br.x, y: br.y },
+      { x: br.x + 2, y: br.y + lip },
+      { x: bl.x - 2, y: bl.y + lip },
+    ];
+    this._fillQuad(face, shade(this.palette.bg, -0.22));
+    this.ctx.strokeStyle = withAlpha("#000000", 0.35);
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(bl.x, bl.y);
+    this.ctx.lineTo(br.x, br.y);
+    this.ctx.stroke();
   }
 
   _drawField(g) {
@@ -238,6 +373,37 @@ export class BoardView {
         this._drawDeckTile(x, y, g.isSpawn(x, y));
       }
     }
+
+    // Depth fog wash over the trapezoid (stronger toward spawn / far edge)
+    this._drawDepthFog(plate);
+  }
+
+  _drawDepthFog(plate) {
+    const ctx = this.ctx;
+    const fog = VIEW25.depthFog;
+    if (fog < 0.05) return;
+    const topY = (plate[0].y + plate[1].y) * 0.5;
+    const botY = (plate[2].y + plate[3].y) * 0.5;
+    const midX = (plate[0].x + plate[1].x + plate[2].x + plate[3].x) * 0.25;
+    const grad = ctx.createLinearGradient(midX, topY, midX, botY);
+    grad.addColorStop(0, `rgba(6, 8, 10, ${0.55 * fog})`);
+    grad.addColorStop(0.35, `rgba(8, 10, 12, ${0.22 * fog})`);
+    grad.addColorStop(0.7, `rgba(8, 10, 12, ${0.04 * fog})`);
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(plate[0].x, plate[0].y);
+    for (let i = 1; i < plate.length; i++) ctx.lineTo(plate[i].x, plate[i].y);
+    ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle = grad;
+    ctx.fillRect(
+      Math.min(plate[0].x, plate[3].x) - 8,
+      topY - 4,
+      Math.max(plate[1].x, plate[2].x) - Math.min(plate[0].x, plate[3].x) + 16,
+      botY - topY + 8
+    );
+    ctx.restore();
   }
 
   /** Future-industrial deck plate — uniform tone, structural detail. */
@@ -246,11 +412,14 @@ export class BoardView {
     const p = this.palette;
     const q = this.cam.cellQuad(x, y);
     const n = hash21(x, y);
+    const depthV = this.cam.projectCell(x, y).v;
     // Minimal checker — just enough to read the grid
     const checker = (x + y) & 1;
     let base = checker ? p.tileA : p.tileB;
     if (isSpawn) base = shade("#1a2430", 0.02);
-    this._fillQuad(q, shade(base, n * 0.012));
+    // Far rows sink into atmosphere a touch
+    const depthShade = -VIEW25.depthFog * 0.1 * (1 - Math.max(0, Math.min(1, depthV)));
+    this._fillQuad(q, shade(base, n * 0.012 + depthShade));
 
     // Inner panel inset (machined plate)
     const inner = this.cam.cellQuad(x, y, Math.max(2.5, this.cell * 0.08));
@@ -908,10 +1077,24 @@ export class BoardView {
 
   _drawAtmosphere(cssW, cssH) {
     const ctx = this.ctx;
-    const vg = ctx.createRadialGradient(cssW * 0.5, cssH * 0.42, cssH * 0.2, cssW * 0.5, cssH * 0.5, cssH * 0.78);
+    const vg = ctx.createRadialGradient(
+      cssW * 0.5,
+      cssH * 0.38,
+      cssH * 0.18,
+      cssW * 0.5,
+      cssH * 0.5,
+      cssH * (0.74 + 0.08 * VIEW25.depthFog)
+    );
     vg.addColorStop(0, "transparent");
     vg.addColorStop(1, this.palette.fog);
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, cssW, cssH);
+
+    // Soft top horizon (void above the far edge) — deepens with pitch
+    const bloom = ctx.createLinearGradient(0, 0, 0, cssH * 0.28);
+    bloom.addColorStop(0, `rgba(4, 6, 8, ${0.35 + 0.25 * VIEW25.depthFog})`);
+    bloom.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = bloom;
+    ctx.fillRect(0, 0, cssW, cssH * 0.3);
   }
 }

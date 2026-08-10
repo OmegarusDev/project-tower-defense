@@ -1,13 +1,16 @@
 /**
  * Unified faux-3D camera — one pitch drives trapezoid taper + depth squash.
  * Board local: x right, y down toward exit (spawn = far / top).
+ *
+ * Width tapers with depth; row spacing uses the integrated width-scale so far
+ * cells read shorter than near ones (same model as the title backdrop).
  */
 
 export const VIEW25 = {
   /** Camera tilt from top-down, degrees. 0 = flat, ~50 = steep. Slider-ready. */
   pitchDeg: 24,
   /** How strongly pitch narrows the far edge (0–1). */
-  trap: 0.4,
+  trap: 0.42,
   /** Derived — refreshed by setPitch / syncCamera. */
   yScale: 0.79,
   farScale: 0.62,
@@ -20,6 +23,8 @@ export const VIEW25 = {
    * Base pad stays on the cell; barrel hub sits this far above it.
    */
   rise: 0.22,
+  /** Soft depth fog strength (0–1), rises with pitch. */
+  depthFog: 0.22,
 };
 
 export function setPitch(deg) {
@@ -37,6 +42,9 @@ export function syncCamera() {
   VIEW25.nearScale = 1;
   // More pitch → deck ellipses read taller; keep the hub a bit higher
   VIEW25.rise = 0.18 + 0.12 * sin;
+  VIEW25.boxSkew = 0.1 + 0.14 * sin;
+  VIEW25.shadowSkew = 0.012 + 0.05 * sin;
+  VIEW25.depthFog = 0.12 + 0.38 * sin;
 }
 
 syncCamera();
@@ -83,6 +91,34 @@ export class BoardCamera {
     return VIEW25.farScale + (VIEW25.nearScale - VIEW25.farScale) * t;
   }
 
+  /** ∫₀ᵗ widthScale(s) ds — used so equal board rows foreshorten on screen. */
+  _depthIntegral(t) {
+    const a = VIEW25.farScale;
+    const b = VIEW25.nearScale - VIEW25.farScale;
+    const u = Math.max(0, Math.min(1, t));
+    return a * u + (b * u * u) / 2;
+  }
+
+  /** Board depth fraction v ∈ [0,1] → screen depth fraction along the board. */
+  depthScreenT(v) {
+    const denom = this._depthIntegral(1);
+    return denom > 1e-6 ? this._depthIntegral(v) / denom : v;
+  }
+
+  /** Inverse of depthScreenT. */
+  depthBoardV(screenT) {
+    const t = Math.max(0, Math.min(1, screenT));
+    const a = VIEW25.farScale;
+    const b = VIEW25.nearScale - VIEW25.farScale;
+    const I1 = this._depthIntegral(1);
+    const target = t * I1;
+    if (Math.abs(b) < 1e-8) return I1 > 1e-6 ? target / a : t;
+    // a·v + (b/2)·v² = target
+    const disc = a * a + 2 * b * target;
+    if (disc < 0) return 0;
+    return Math.max(0, Math.min(1, (-a + Math.sqrt(disc)) / b));
+  }
+
   /** Board-local (bx, by) → screen {x,y,s} where s is sprite scale. */
   project(bx, by) {
     const W = this.W;
@@ -90,9 +126,10 @@ export class BoardCamera {
     const v = H > 0 ? by / H : 0;
     const ws = this.widthScaleAt(v);
     const u = W > 0 ? bx / W - 0.5 : 0;
+    const screenH = H * VIEW25.yScale;
     return {
       x: this.originX + W * 0.5 + u * W * ws,
-      y: this.originY + by * VIEW25.yScale,
+      y: this.originY + this.depthScreenT(v) * screenH,
       s: ws,
       v,
     };
@@ -120,8 +157,10 @@ export class BoardCamera {
 
   /** Screen → board-local. */
   unproject(sx, sy) {
-    const by = (sy - this.originY) / VIEW25.yScale;
-    const v = this.H > 0 ? by / this.H : 0;
+    const screenH = this.H * VIEW25.yScale;
+    const screenT = screenH > 1e-6 ? (sy - this.originY) / screenH : 0;
+    const v = this.depthBoardV(screenT);
+    const by = v * this.H;
     const ws = this.widthScaleAt(v);
     const u = ws > 1e-6 ? (sx - (this.originX + this.W * 0.5)) / (this.W * ws) : 0;
     const bx = (u + 0.5) * this.W;

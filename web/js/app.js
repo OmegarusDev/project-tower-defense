@@ -81,6 +81,17 @@ export class App {
     this._last = 0;
 
     this.board.onTap = (cell) => this.onCellTap(cell);
+    this.board.onPitchChange = (deg, opts = {}) => {
+      this.meta.settings = this.meta.settings || {};
+      this.meta.settings.cameraPitch = Math.round(deg);
+      if (opts.final) {
+        clearTimeout(this._pitchSaveT);
+        saveMeta(this.meta);
+      } else {
+        clearTimeout(this._pitchSaveT);
+        this._pitchSaveT = setTimeout(() => saveMeta(this.meta), 280);
+      }
+    };
     window.addEventListener("resize", () => this.board._fit());
     window.addEventListener("keydown", (e) => this.onKeyDown(e));
   }
@@ -661,7 +672,7 @@ export class App {
         }/> Colorblind palette</label>
         <div class="end-card" style="margin-top:8px">
           <h3>Camera angle</h3>
-          <p class="end-note">Pitch ${Math.round(pitch)}° — steeper = more trapezoid foreshortening</p>
+          <p class="end-note">Pitch ${Math.round(pitch)}° — steeper = more trapezoid foreshortening. In-game: two-finger drag (or ⌘/Ctrl+scroll) tilts live.</p>
           <input id="pitch" type="range" min="8" max="58" step="1" value="${pitch}" style="width:100%;margin-top:8px" />
         </div>
       </div>`;
@@ -680,7 +691,7 @@ export class App {
       setPitch(v);
       this.board.refreshCamera();
       const note = this.ui.querySelector(".end-note");
-      if (note) note.textContent = `Pitch ${Math.round(v)}° — steeper = more trapezoid foreshortening`;
+      if (note) note.textContent = `Pitch ${Math.round(v)}° — steeper = more trapezoid foreshortening. In-game: two-finger drag (or ⌘/Ctrl+scroll) tilts live.`;
       saveMeta(this.meta);
     });
   }
@@ -972,7 +983,7 @@ export class App {
     this.clearPlaceConfirm();
     this.renderGameChrome();
     if (this.sim?.modeEndless) {
-      this.toast("Place towers/walls, then Call Wave. Drag the map to pan.");
+      this.toast("Place towers/walls, then Call Wave. Drag to pan · two fingers to tilt.");
     }
   }
 

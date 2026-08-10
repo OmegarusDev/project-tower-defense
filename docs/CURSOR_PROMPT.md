@@ -34,7 +34,7 @@ Project Tower Defense/
 
 ## Modes
 
-**Endless:** infinite waves; live compose **without** pausing; wave-start checkpoint + Continue; starts 9×8 and grows south every 5 waves (cap 22 rows); pan/scroll the board on phone; no pre-walls; Forge/Aether meta not mid-run.
+**Endless:** infinite waves; live compose **without** pausing; wave-start checkpoint + Continue; starts 9×8 and grows south every 5 waves (cap 22 rows); pan/scroll the board on phone; two-finger drag (or ⌘/Ctrl+scroll) tilts camera pitch live; no pre-walls; Forge/Aether meta not mid-run.
 
 **Campaign:** 5/10/25 levels across 3 campaigns (linear unlock); Prep = compose+Forge+Aether (untimed); in-level roster frozen (no compose/meta); predefined map seeds + valid pre-walls; victory per level data (waves and/or boss).
 
