@@ -18,9 +18,9 @@ const aerie = buildAttackPlan("aerie", "single", "kinetic", 1);
 assert(aerie.airCapable, "aerie grants air");
 assert(aerie.doctrine === "flying", "aerie doctrine");
 
-const beacon = buildAttackPlan("beacon", "twin", "shock", 1);
-assert(beacon.providesAura, "beacon aura");
-assert(beacon.chainJumps === 1, "shock chain nerfed to 1");
+const shock = buildAttackPlan("warden", "twin", "shock", 1);
+assert(shock.chainJumps === 1, "shock chain nerfed to 1");
+assert(shock.doctrine === "last", "warden doctrine");
 
 const scatter = buildAttackPlan("sentry", "scatter", "kinetic", 1);
 assert(scatter.projectileCount === 3, "scatter shotgun count");

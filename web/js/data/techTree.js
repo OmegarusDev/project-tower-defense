@@ -101,21 +101,21 @@ export const TECH_TREES = [
         children: [
           {
             id: "cap3",
-            name: "Cap III",
+            name: "Level Cap III",
             blurb: "Towers reach level 3",
             maxRank: 1,
             costs: [{ aether: 20 }],
             children: [
               {
                 id: "cap4",
-                name: "Cap IV",
+                name: "Level Cap IV",
                 blurb: "Towers reach level 4",
                 maxRank: 1,
                 costs: [{ aether: 40 }],
                 children: [
                   {
                     id: "cap5",
-                    name: "Cap V",
+                    name: "Level Cap V",
                     blurb: "Maximum tower growth",
                     maxRank: 1,
                     costs: [{ aether: 70 }],
@@ -369,13 +369,15 @@ export function migrateTechRanks(rawMeta) {
     else if (NODE_BY_ID.has(`barrel_${pid}_m`)) bump(`barrel_${pid}_m`, Math.min(3, power));
   }
 
-  for (const node of allTechNodes()) {
-    const r = tech[node.id] | 0;
-    if (r <= 0) {
-      delete tech[node.id];
+  for (const id of Object.keys(tech)) {
+    const node = NODE_BY_ID.get(id);
+    if (!node) {
+      delete tech[id];
       continue;
     }
-    tech[node.id] = Math.min(node.maxRank, r);
+    const r = tech[id] | 0;
+    if (r <= 0) delete tech[id];
+    else tech[id] = Math.min(node.maxRank, r);
   }
   return tech;
 }
@@ -481,4 +483,4 @@ export function spendTechCost(meta, cost) {
 }
 
 /** Default endless / campaign base Coin before War Chest bonus. */
-export const BASE_START_CASH = 115;
+export const BASE_START_CASH = 100;

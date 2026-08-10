@@ -14,7 +14,7 @@ export function waveClearRewards(wave, coinBonus = 0) {
 
 export class Economy {
   constructor() {
-    this.battle = 115;
+    this.battle = 100;
     this.forge = 0;
     this.aether = 0;
     this.wallBase = 12;
@@ -56,6 +56,16 @@ export class Economy {
   placeSurcharge(baseCost, towerCount) {
     if (towerCount < 2) return 0;
     return Math.floor(baseCost * 0.08 * (towerCount - 1));
+  }
+
+  /**
+   * Single quote for placing a tower at the current board density.
+   * `towerCount` = towers already on the board (before this place).
+   */
+  quoteTowerPlace(placeCost, towerCount) {
+    const base = this.towerCost(placeCost);
+    const surcharge = this.placeSurcharge(base, towerCount);
+    return { base, surcharge, total: base + surcharge };
   }
 
   spendBattle(n) {

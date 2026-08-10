@@ -1,4 +1,5 @@
 import {
+  PARTS,
   defaultOwned,
   normalizeOwned,
   normalizeRoster,
@@ -47,7 +48,7 @@ export function normalizeMeta(m) {
   // Carry legacy fields into migrateTechRanks via `m`; sync writes derived.
   syncTechDerived(draft);
 
-  draft.slotCount = Math.max(3, Math.min(12, draft.slotCount | 0 || 3));
+  draft.slotCount = Math.max(3, Math.min(6, draft.slotCount | 0 || 3));
   draft.levelCap = Math.max(2, Math.min(5, draft.levelCap | 0 || 2));
   draft.startLives = Math.max(3, Math.min(8, draft.startLives | 0 || 3));
   draft.startCashBonus = Math.max(0, draft.startCashBonus | 0);
@@ -83,10 +84,11 @@ function clampBoost(v, fallback) {
 
 /** Part mastery ranks by part id, e.g. `{ shock: { chain: 2 }, sentry: { power: 1 } }`. */
 export function normalizePartUpgrades(raw) {
+  const live = { ...PARTS.bases, ...PARTS.barrels, ...PARTS.payloads };
   const out = {};
   if (!raw || typeof raw !== "object") return out;
   for (const [id, row] of Object.entries(raw)) {
-    if (!row || typeof row !== "object") continue;
+    if (!live[id] || !row || typeof row !== "object") continue;
     const entry = {};
     const chain = Math.max(0, Math.min(8, row.chain | 0));
     const power = Math.max(0, Math.min(8, row.power | 0));

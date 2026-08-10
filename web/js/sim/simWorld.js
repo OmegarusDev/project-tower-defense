@@ -160,9 +160,9 @@ export class SimWorld {
     const loadout = this.roster[slotIndex];
     if (!loadout?.complete) return { ok: false, reason: "incomplete_triad" };
     if (!this.grid.isBuildable(x, y)) return { ok: false, reason: "blocked" };
-    const baseCost = this.economy.towerCost(loadout.placeCost);
-    const surcharge = this.economy.placeSurcharge(baseCost, this.towers.length);
-    const cost = baseCost + surcharge;
+    const quote = this.economy.quoteTowerPlace(loadout.placeCost, this.towers.length);
+    const cost = quote.total;
+    const surcharge = quote.surcharge;
     if (this.economy.battle < cost) return { ok: false, reason: "need_battle", need: cost };
     this.grid.setBlocked(x, y, true);
     if (!this.grid.hasGroundPath()) {

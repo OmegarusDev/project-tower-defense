@@ -49,19 +49,6 @@ export const PARTS = {
       forgeCost: 22,
       blurb: "Air wing — flying first, then path tip",
     },
-    beacon: {
-      range: 3.0,
-      fireInterval: 1.15,
-      doctrine: "first",
-      aura: true,
-      auraRadius: 2.5,
-      auraDamageMult: 1.12,
-      auraRofMult: 1.12,
-      levelBias: "aura",
-      cost: 32,
-      forgeCost: 36,
-      blurb: "Command — ally aura, still fires",
-    },
     warden: {
       range: 3.5,
       fireInterval: 1.05,
@@ -221,6 +208,10 @@ export const WAVE_UNLOCKS = [
   { bestWave: 20, payloads: ["acid"], label: "Acid payload" },
 ];
 
+/** Soft roster size — matches slot4→slot6 tech. */
+export const MIN_ROSTER_SLOTS = 3;
+export const MAX_ROSTER_SLOTS = 6;
+
 /** Old save ids → current ids (dropped parts omitted). */
 const PART_MIGRATE = {
   base: {
@@ -228,7 +219,8 @@ const PART_MIGRATE = {
     bunker: "bulwark",
     sniper: "spire",
     trap: "bulwark",
-    commander: "beacon",
+    commander: "sentry",
+    beacon: "sentry",
   },
   barrel: {
     long: "rail",
@@ -307,7 +299,10 @@ export function ownsPart(owned, kind, id) {
 }
 
 export function normalizeRoster(roster, slotCount, levelCap) {
-  const count = Math.max(3, Math.min(12, slotCount | 0 || 3));
+  const count = Math.max(
+    MIN_ROSTER_SLOTS,
+    Math.min(MAX_ROSTER_SLOTS, slotCount | 0 || MIN_ROSTER_SLOTS)
+  );
   const cap = levelCap | 0 || 1;
   const src = Array.isArray(roster) ? roster : [];
   const out = [];

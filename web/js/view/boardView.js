@@ -17,6 +17,7 @@ export class BoardView {
     this.origin = { x: 16, y: 200 };
     this.cell = 40;
     this.hover = null;
+    this.pendingPlace = null;
     this.tool = "tower";
     this.selectedTowerId = -1;
     this.onTap = null;
@@ -102,7 +103,9 @@ export class BoardView {
       this.fx.drawProjected(ctx, this.cam, (type) => this.palette.dmg(type));
     }
 
-    if (this.hover && g.inBounds(this.hover.x, this.hover.y) && this.selectedTowerId < 0) {
+    if (this.pendingPlace && g.inBounds(this.pendingPlace.x, this.pendingPlace.y)) {
+      this._drawPendingPlace(this.pendingPlace);
+    } else if (this.hover && g.inBounds(this.hover.x, this.hover.y) && this.selectedTowerId < 0) {
       this._drawHover(this.hover.x, this.hover.y, g.isBuildable(this.hover.x, this.hover.y));
     }
 
@@ -787,6 +790,43 @@ export class BoardView {
     const q = this.cam.cellQuad(x, y, 2);
     this._fillQuad(q, ok ? "rgba(111,175,122,0.28)" : "rgba(196,90,74,0.28)");
     this._strokeQuad(q, ok ? withAlpha(this.palette.spawn, 0.7) : withAlpha(this.palette.exit, 0.7), 1.5);
+  }
+
+  /** Armed place — pulse the cell and ghost the loadout; second tap confirms. */
+  _drawPendingPlace(pending) {
+    const { x, y } = pending;
+    const t = performance.now() / 1000;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 7.2);
+    const accent = this.palette.accent || "#e8c56a";
+
+    const pad = this.cam.cellQuad(x, y, 2);
+    this._fillQuad(pad, `rgba(232, 197, 106, ${0.16 + pulse * 0.14})`);
+    this._strokeQuad(pad, withAlpha(accent, 0.55 + pulse * 0.4), 2.4);
+    this._strokeQuad(this.cam.cellQuad(x, y, 5), withAlpha(accent, 0.18 + pulse * 0.22), 1.2);
+
+    if (pending.base && pending.barrel && pending.payload) {
+      const ctx = this.ctx;
+      const p = this.cam.projectCell(x, y);
+      const s = this.cell * p.s * UNIT_SCALE;
+      ctx.save();
+      ctx.globalAlpha = 0.38 + pulse * 0.18;
+      drawComposedTower(
+        ctx,
+        this.palette,
+        {
+          base: pending.base,
+          barrel: pending.barrel,
+          payload: pending.payload,
+          level: 1,
+          aimAngle: -Math.PI / 2,
+        },
+        p.x - s / 2,
+        p.y - s / 2,
+        s,
+        false
+      );
+      ctx.restore();
+    }
   }
 
   _drawAtmosphere(cssW, cssH) {

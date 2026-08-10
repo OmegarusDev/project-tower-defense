@@ -62,7 +62,7 @@ Sell tower/wall = 50% of **recorded** Battle paid for that instance.
 - **Base** = envelope + targeting doctrine (+ light innate). No per-tower Target menu.
 - **Barrel** = delivery (Single/Twin/Scatter/Rail/Pulse/Launcher). Explosion = Launcher.
 - **Payload** = element only (Kinetic/Pyro/Shock/Frost/Poison/Acid)
-- Bases: Sentry(first), Bulwark(closest), Spire(strongest), Aerie(air→first), Beacon(aura), Warden(last), Talon(weakest)
+- Bases: Sentry(first), Bulwark(closest), Spire(strongest), Aerie(air→first), Warden(last), Talon(weakest)
 - XP bar → level-up **point** → spend for +1 level; buffs by tower type
 - Damage types; armor flat+%+immunity; crits; DoT; slow cap; freeze at 100%
 - AoE falloff; no FF on towers; chain/motion upgrade paths

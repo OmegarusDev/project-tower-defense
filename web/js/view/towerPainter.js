@@ -79,9 +79,6 @@ function drawBase(ctx, palette, base, cx, groundY, s) {
     case "aerie":
       drawBaseAerie(ctx, cx, deckY, s, mats);
       break;
-    case "beacon":
-      drawBaseBeacon(ctx, cx, deckY, s, mats, col);
-      break;
     case "warden":
       drawBaseWarden(ctx, cx, deckY, s, mats);
       break;
@@ -169,28 +166,6 @@ function drawBaseAerie(ctx, cx, deckY, s, m) {
   ctx.fillStyle = m.topHi;
   ctx.beginPath();
   ctx.ellipse(cx, deckY - s * 0.12, s * 0.11, deckRy(s * 0.11), 0, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-/** Crystal pedestal with soft aura ring. */
-function drawBaseBeacon(ctx, cx, deckY, s, m, col) {
-  ctx.strokeStyle = withAlpha(col, 0.35);
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.ellipse(cx, deckY, s * 0.28, deckRy(s * 0.28), 0, 0, Math.PI * 2);
-  ctx.stroke();
-  cyl25(ctx, cx, deckY - s * 0.02, s * 0.24, s * 0.04, m.sideDark, m.sideDeep, m.rim);
-  hexPrism25(ctx, cx, deckY - s * 0.18, s * 0.15, s * 0.14, m);
-  ctx.fillStyle = m.topHi;
-  ctx.beginPath();
-  ctx.moveTo(cx, deckY - s * 0.3);
-  ctx.lineTo(cx + s * 0.06, deckY - s * 0.22);
-  ctx.lineTo(cx - s * 0.06, deckY - s * 0.22);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = withAlpha(m.topHi, 0.35);
-  ctx.beginPath();
-  ctx.ellipse(cx, deckY - s * 0.18, s * 0.09, deckRy(s * 0.09), 0, 0, Math.PI * 2);
   ctx.fill();
 }
 
@@ -337,29 +312,6 @@ function frustum25(ctx, cx, topY, rxBot, rxTop, rise, m) {
   ctx.stroke();
 }
 
-function hexPrism25(ctx, cx, topY, rx, rise, m) {
-  const ry = deckRy(rx);
-  const top = hexPts(cx, topY, rx, ry);
-  const bot = hexPts(cx, topY + rise, rx, ry);
-  // visible side faces (bottom-right bias)
-  ctx.fillStyle = m.sideDark;
-  facePoly(ctx, [top[1], top[2], bot[2], bot[1]]);
-  ctx.fillStyle = m.side;
-  facePoly(ctx, [top[2], top[3], bot[3], bot[2]]);
-  ctx.fillStyle = m.sideDark;
-  facePoly(ctx, [top[3], top[4], bot[4], bot[3]]);
-  // top
-  ctx.fillStyle = m.top;
-  facePoly(ctx, top);
-  ctx.strokeStyle = withAlpha("#fff8e0", 0.14);
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(top[5].x, top[5].y);
-  ctx.lineTo(top[0].x, top[0].y);
-  ctx.lineTo(top[1].x, top[1].y);
-  ctx.stroke();
-}
-
 function diamondPrism25(ctx, cx, topY, rx, rise, m) {
   const ry = deckRy(rx);
   const top = [
@@ -382,15 +334,6 @@ function diamondPrism25(ctx, cx, topY, rx, rise, m) {
   ctx.lineTo(top[0].x, top[0].y);
   ctx.lineTo(top[1].x, top[1].y);
   ctx.stroke();
-}
-
-function hexPts(cx, cy, rx, ry) {
-  const pts = [];
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 3) * i - Math.PI / 6;
-    pts.push({ x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry });
-  }
-  return pts;
 }
 
 function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {

@@ -39,7 +39,6 @@ export class ProcPalette {
       bulwark: "#6d746c",
       spire: "#c4783a",
       aerie: "#7a5a9a",
-      beacon: "#8b6eb0",
       warden: "#3d9a8e",
       talon: "#b86448",
     };

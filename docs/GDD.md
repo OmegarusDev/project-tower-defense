@@ -128,7 +128,6 @@ Starter free parts: **Sentry + Single + Kinetic**.
 | Bulwark | Closest | Point defense; short/fast; point-blank amp |
 | Spire | Strongest | Elite / boss hunter; long/slow |
 | Aerie | Flying → First | Air wing; can engage air layer |
-| Beacon | First | Ally aura (damage + ROF); still fires |
 | Warden | Last | Exit / leak watch |
 | Talon | Weakest | Finisher; execute amp on wounded |
 
