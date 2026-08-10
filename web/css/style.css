@@ -2541,19 +2541,45 @@ html, body {
   filter: drop-shadow(0 1px 0 #1a3e28) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
-.call-btn:disabled,
-.call-btn.busy:disabled {
+.call-btn:disabled {
   background: linear-gradient(180deg, #2c3648, #1c2430);
   border-color: #4a5a72;
   border-bottom-color: #1a2230;
   color: var(--muted);
   opacity: 0.72;
   box-shadow: var(--shadow-btn);
+  filter: none;
   transform: none;
 }
 
 .call-btn:disabled .call-kicker {
   opacity: 0.55;
+}
+
+.call-btn.busy:not(.hot):not(:disabled) {
+  background:
+    linear-gradient(180deg, rgba(200, 220, 240, 0.12) 0%, transparent 42%),
+    linear-gradient(180deg, #4a5a68 0%, #343e4c 48%, #242c38 100%);
+  border-color: #8aa0b8;
+  color: #e8f0f8;
+  filter: drop-shadow(0 4px 0 #141c28) drop-shadow(0 7px 10px rgba(0, 0, 0, 0.35));
+}
+
+.call-btn.hot:not(:disabled) {
+  background:
+    linear-gradient(180deg, rgba(220, 255, 230, 0.4) 0%, transparent 42%),
+    linear-gradient(180deg, #68c880 0%, #3e9054 48%, #2a6840 100%);
+  border-color: #c8ffe0;
+  color: #f4fff8;
+  filter:
+    brightness(1.06)
+    drop-shadow(0 5px 0 #1a3e28)
+    drop-shadow(0 0 12px rgba(100, 220, 140, 0.45));
+}
+
+.call-btn.hot .call-kicker,
+.call-btn.hot .call-label {
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 0 10px rgba(160, 255, 190, 0.35);
 }
 
 .tower-overlay {
@@ -3562,7 +3588,7 @@ label.btn input {
   filter: drop-shadow(0 3px 0 #1a1008) drop-shadow(0 5px 10px rgba(0, 0, 0, 0.35));
 }
 
-.ff-fab.hot {
+.call-btn.hot {
   animation: ember-pulse 0.9s ease-in-out infinite;
 }
 
@@ -3614,7 +3640,7 @@ label.btn input {
 @media (prefers-reduced-motion: reduce) {
   .status-toast:not(.empty),
   .end-best-tag,
-  .ff-fab.hot {
+  .call-btn.hot {
     animation: none;
   }
 }

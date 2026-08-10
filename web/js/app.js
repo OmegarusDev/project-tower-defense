@@ -175,7 +175,7 @@ export class App {
     this._speedBeforeFf = this.speed || 1;
     this.speed = 5;
     this.score.setSpeed(5);
-    this.ui.querySelector("#ffBtn")?.classList.add("hot");
+    this.refreshHud();
   }
 
   _endFastForward() {
@@ -183,13 +183,20 @@ export class App {
     this._ffHeld = false;
     this.speed = this._speedBeforeFf || 1;
     this.score.setSpeed(this.speed);
-    this.ui.querySelector("#ffBtn")?.classList.remove("hot");
+    this.refreshHud();
   }
 
-  _bindFastForward(btn) {
+  /** Deploy on short tap; hold for 5× (replaces the old FF fab). */
+  _bindCallButton(btn) {
     if (!btn) return;
+    const HOLD_MS = 260;
+    let armed = false;
+    let t0 = 0;
     const start = (e) => {
+      if (btn.disabled || this.paused) return;
       e.preventDefault();
+      armed = true;
+      t0 = performance.now();
       try {
         btn.setPointerCapture(e.pointerId);
       } catch (_) {
@@ -197,12 +204,26 @@ export class App {
       }
       this._beginFastForward();
     };
-    const end = () => this._endFastForward();
+    const end = () => {
+      if (!armed) return;
+      armed = false;
+      const held = performance.now() - t0;
+      this._endFastForward();
+      if (held < HOLD_MS && !this.waveBusy() && !this.paused) {
+        this.unlockAudio().then(() => this.callEarly());
+      }
+    };
     btn.addEventListener("pointerdown", start);
     btn.addEventListener("pointerup", end);
     btn.addEventListener("pointercancel", end);
     btn.addEventListener("lostpointercapture", end);
     btn.addEventListener("contextmenu", (e) => e.preventDefault());
+    btn.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      if (btn.disabled || this.paused || this.waveBusy()) return;
+      e.preventDefault();
+      this.unlockAudio().then(() => this.callEarly());
+    });
   }
 
   quitToMenu() {
@@ -247,7 +268,7 @@ export class App {
               ? "Checkpoint saved at wave start."
               : `Campaign level ${this.sim.campaignLevelId}`
         }</p>
-        <p class="pause-hint">Hold <b>≫</b> for 5× · Endless: forge button for live compose · Seed ${this.sim.runSeed >>> 0}</p>
+        <p class="pause-hint">Hold <b>Deploy</b> for 5× · Endless: forge button for live compose · Seed ${this.sim.runSeed >>> 0}</p>
         <button type="button" class="btn title-cta" data-act="resume">Resume</button>
         <button type="button" class="btn secondary" data-act="quit-run">${
           this.playtestFromEditor ? "Editor" : quitLabel
@@ -1052,7 +1073,6 @@ export class App {
         else if (act === "settings") this.showSettings();
         else if (act === "newrun") this.newRun();
         else if (act === "continue") this.continueRun();
-        else if (act === "call") this.callEarly();
         else if (act === "pause") this.openPause();
         else if (act === "resume") this.resumeGame();
         else if (act === "quit-run") this.quitToMenu();
@@ -1273,7 +1293,7 @@ export class App {
     this.score.start();
     this.renderGameChrome();
     if (this.sim?.modeEndless) {
-      this.toast("Place towers/walls, then Call Wave. Hold ≫ to speed up.");
+      this.toast("Place towers/walls, then Deploy. Hold Deploy for 5×.");
     }
   }
 
@@ -1384,12 +1404,6 @@ export class App {
             <button type="button" class="hud-pause plate" data-act="pause" title="Pause" aria-label="Pause">
               <span></span><span></span>
             </button>
-            <button type="button" class="chrome-fab ff-fab" id="ffBtn" title="Hold for 5× speed" aria-label="Hold for 5x speed">
-              <svg class="fab-ico ff-ico" viewBox="0 0 24 24" aria-hidden="true">
-                <path class="fab-ico-body" d="M4.2 6.2v11.6L12.4 12 4.2 6.2zm8.2 0v11.6L20.6 12 12.4 6.2z"/>
-                <path class="fab-ico-edge" d="M4.2 6.2L12.4 12 4.2 17.8M12.4 6.2L20.6 12 12.4 17.8" fill="none"/>
-              </svg>
-            </button>
           </div>
         </header>
         <aside class="cam-rail plate" title="Camera pitch">
@@ -1416,7 +1430,7 @@ export class App {
               <span class="wall-tile-cost" id="wallCost">—</span>
             </button>
           </div>
-          <button type="button" class="call-btn" data-act="call" id="callBtn">
+          <button type="button" class="call-btn" id="callBtn" title="Tap to deploy · hold for 5× speed" aria-label="Deploy wave, hold for fast forward">
             <span class="call-kicker">Deploy</span>
             <span class="call-label" id="callLabel">Wave 1</span>
             <span class="call-bolts" aria-hidden="true"></span>
@@ -1424,7 +1438,7 @@ export class App {
         </footer>
       </div>`;
     this.bindUi();
-    this._bindFastForward(this.ui.querySelector("#ffBtn"));
+    this._bindCallButton(this.ui.querySelector("#callBtn"));
     this.ui.querySelector("#pitchLive")?.addEventListener("input", (e) => {
       this.applyPitch(+e.target.value);
     });
@@ -1604,17 +1618,32 @@ export class App {
         !this.sim.modeEndless &&
         this.sim.wavesToWin > 0 &&
         this.sim.waveIndex >= this.sim.wavesToWin;
-      callBtn.disabled = busy || done;
-      callBtn.classList.toggle("busy", busy);
+      // Stay clickable while busy so hold-to-5× works; only lock when level is done.
+      callBtn.disabled = done;
+      callBtn.classList.toggle("busy", busy && !this._ffHeld);
+      callBtn.classList.toggle("hot", !!this._ffHeld);
+      callBtn.title = done
+        ? "Level complete"
+        : busy
+          ? "Hold for 5× speed"
+          : "Tap to deploy · hold for 5× speed";
       if (callKicker) {
-        callKicker.textContent = busy ? "Engaged" : done ? "Clear" : "Deploy";
+        callKicker.textContent = this._ffHeld
+          ? "5×"
+          : busy
+            ? "Hold"
+            : done
+              ? "Clear"
+              : "Deploy";
       }
       if (callLabel) {
-        callLabel.textContent = busy
-          ? "Wave live"
-          : done
-            ? "Complete"
-            : `Wave ${this.sim.waveIndex + 1}`;
+        callLabel.textContent = this._ffHeld
+          ? "Fast forward"
+          : busy
+            ? "Wave live"
+            : done
+              ? "Complete"
+              : `Wave ${this.sim.waveIndex + 1}`;
       }
     }
     this.syncTowerOverlay();
