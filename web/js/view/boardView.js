@@ -180,7 +180,7 @@ export class BoardView {
     const bottomPad = 162;
     const viewH = Math.max(120, cssH - topPad - bottomPad);
     const leftPad = 52;
-    const rightPad = 58;
+    const rightPad = 16;
 
     const baseCell = Math.max(28, Math.min(46, (cssW - leftPad - rightPad) / g.cols));
     this.cell = baseCell * this.zoom;

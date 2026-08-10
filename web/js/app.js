@@ -1223,7 +1223,7 @@ export class App {
     const pitch = Math.round(this.meta.settings?.cameraPitch ?? VIEW25.pitchDeg);
     const endless = !!this.sim.modeEndless;
     const composeBtn = endless
-      ? `<button type="button" class="chrome-fab compose-fab" data-act="compose-toggle" title="Live compose" aria-label="Live compose">
+      ? `<button type="button" class="chrome-fab compose-fab plate" data-act="compose-toggle" title="Live compose" aria-label="Live compose">
           <svg class="fab-ico" viewBox="0 0 24 24" aria-hidden="true">
             <path class="fab-ico-body" d="M5 7.5h5.2l1.3-2.2h1l1.3 2.2H19v2.2h-1.6l-2.2 7.1H8.8L6.6 9.7H5V7.5z"/>
             <path class="fab-ico-accent" d="M9.2 11.2h5.6l-.7 2.4H9.9l-.7-2.4z"/>
@@ -1236,28 +1236,30 @@ export class App {
     this.ui.innerHTML = `
       <div class="game-chrome">
         <header class="hud-bar">
-          <div class="wave-badge" id="waveBadge">
+          <div class="wave-badge plate" id="waveBadge">
             <span class="wave-badge-k">Wave</span>
             <span class="wave-badge-n" id="waveNum">0</span>
             <span class="wave-badge-sub hidden" id="waveSub"></span>
           </div>
-          <div class="telemetry" id="statChips"></div>
-          <button type="button" class="hud-pause" data-act="pause" title="Pause" aria-label="Pause">
-            <span></span><span></span>
-          </button>
+          <div class="telemetry plate" id="statChips"></div>
+          <div class="hud-ops">
+            <button type="button" class="hud-pause plate" data-act="pause" title="Pause" aria-label="Pause">
+              <span></span><span></span>
+            </button>
+            <button type="button" class="chrome-fab ff-fab" id="ffBtn" title="Hold for 5× speed" aria-label="Hold for 5x speed">
+              <svg class="fab-ico ff-ico" viewBox="0 0 24 24" aria-hidden="true">
+                <path class="fab-ico-body" d="M4.2 6.2v11.6L12.4 12 4.2 6.2zm8.2 0v11.6L20.6 12 12.4 6.2z"/>
+                <path class="fab-ico-edge" d="M4.2 6.2L12.4 12 4.2 17.8M12.4 6.2L20.6 12 12.4 17.8" fill="none"/>
+              </svg>
+            </button>
+          </div>
         </header>
-        <aside class="cam-rail" title="Camera pitch">
+        <aside class="cam-rail plate" title="Camera pitch">
           <span class="cam-rail-label">Ang</span>
           <input id="pitchLive" class="cam-pitch" type="range" min="8" max="58" step="1" value="${pitch}" orient="vertical" aria-label="Camera angle" />
           <span class="cam-rail-val" id="pitchLiveVal">${pitch}°</span>
         </aside>
         ${composeBtn}
-        <button type="button" class="chrome-fab ff-fab" id="ffBtn" title="Hold for 5× speed" aria-label="Hold for 5x speed">
-          <svg class="fab-ico ff-ico" viewBox="0 0 24 24" aria-hidden="true">
-            <path class="fab-ico-body" d="M4.2 6.2v11.6L12.4 12 4.2 6.2zm8.2 0v11.6L20.6 12 12.4 6.2z"/>
-            <path class="fab-ico-edge" d="M4.2 6.2L12.4 12 4.2 17.8M12.4 6.2L20.6 12 12.4 17.8" fill="none"/>
-          </svg>
-        </button>
         ${composeSheet}
         <div class="status-toast ${this.status ? "" : "empty"}" id="status">${this.status}</div>
         <div class="tower-overlay hidden" id="towerOverlay">
