@@ -50,7 +50,11 @@ export function drawComposedTower(ctx, palette, t, px, py, s, selected) {
 }
 
 function drawGroundShadow(ctx, cx, groundY, s) {
-  const rx = s * 0.36;
+  const rx = s * 0.38;
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.beginPath();
+  ctx.ellipse(cx + s * VIEW25.shadowSkew * 1.4, groundY + s * 0.08, rx * 1.15, deckRy(rx) * 1.1, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.fillStyle = "rgba(0,0,0,0.34)";
   ctx.beginPath();
   // Stay on the cell footprint (caller passes cell center as groundY)

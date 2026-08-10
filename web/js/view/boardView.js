@@ -31,6 +31,14 @@ export class BoardView {
     this._pointers = new Map();
     this._pitchGesture = null;
     this._pitchHintUntil = 0;
+    this._motes = Array.from({ length: 18 }, () => ({
+      u: Math.random(),
+      v: Math.random(),
+      r: 0.5 + Math.random() * 1.4,
+      sp: 0.012 + Math.random() * 0.03,
+      ph: Math.random() * Math.PI * 2,
+      warm: Math.random() > 0.4,
+    }));
 
     canvas.addEventListener("pointerdown", (e) => this._onPointerDown(e));
     canvas.addEventListener("pointermove", (e) => this._onPointerMove(e));
@@ -43,7 +51,7 @@ export class BoardView {
         e.preventDefault();
         // Ctrl / ⌘ + wheel → live pitch (desktop twin of two-finger tilt)
         if (e.ctrlKey || e.metaKey) {
-          this._nudgePitch(-e.deltaY * 0.045, e.deltaY !== 0);
+          this._nudgePitch(e.deltaY * 0.045, false);
           return;
         }
         this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY - e.deltaY * 0.45));
@@ -178,9 +186,9 @@ export class BoardView {
     if (this._pitchGesture && this._pointers.size >= 2) {
       const mid = this._pointerMid();
       if (!mid) return;
-      // Drag both fingers down → look steeper (more foreshortening)
+      // Drag both fingers up → steeper (pull the far edge toward you)
       const dy = mid.y - this._pitchGesture.midY0;
-      const next = Math.max(8, Math.min(58, this._pitchGesture.pitch0 + dy * 0.085));
+      const next = Math.max(8, Math.min(58, this._pitchGesture.pitch0 - dy * 0.085));
       if (Math.abs(next - VIEW25.pitchDeg) >= 0.05) {
         setPitch(next);
         this._pitchHintUntil = performance.now() + 1100;
@@ -334,20 +342,46 @@ export class BoardView {
 
   _drawBoardShadow() {
     const corners = this.cam.boardCorners();
-    const shadow = corners.map((p) => ({ x: p.x + 4, y: p.y + 7 }));
-    this._fillQuad(shadow, "rgba(0,0,0,0.38)");
+    const soft = corners.map((p) => ({ x: p.x + 6, y: p.y + 10 }));
+    this._fillQuad(soft, "rgba(0,0,0,0.22)");
+    const shadow = corners.map((p) => ({ x: p.x + 3, y: p.y + 5 }));
+    this._fillQuad(shadow, "rgba(0,0,0,0.4)");
 
-    // Near-edge plate lip — reads as thickness under the bastion side
-    const bl = corners[3];
+    const tl = corners[0];
+    const tr = corners[1];
     const br = corners[2];
+    const bl = corners[3];
     const lip = Math.max(5, this.cell * 0.12 * (0.75 + 0.5 * VIEW25.depthFog));
-    const face = [
-      { x: bl.x, y: bl.y },
-      { x: br.x, y: br.y },
-      { x: br.x + 2, y: br.y + lip },
-      { x: bl.x - 2, y: bl.y + lip },
-    ];
-    this._fillQuad(face, shade(this.palette.bg, -0.22));
+    const sideDrop = lip * 0.72;
+
+    this._fillQuad(
+      [
+        { x: bl.x, y: bl.y },
+        { x: br.x, y: br.y },
+        { x: br.x + 2, y: br.y + lip },
+        { x: bl.x - 2, y: bl.y + lip },
+      ],
+      shade(this.palette.bg, -0.24)
+    );
+    this._fillQuad(
+      [
+        { x: tl.x, y: tl.y },
+        { x: bl.x, y: bl.y },
+        { x: bl.x - 3, y: bl.y + sideDrop },
+        { x: tl.x - 2, y: tl.y + sideDrop * 0.45 },
+      ],
+      shade(this.palette.bg, -0.32)
+    );
+    this._fillQuad(
+      [
+        { x: tr.x, y: tr.y },
+        { x: br.x, y: br.y },
+        { x: br.x + 3, y: br.y + sideDrop },
+        { x: tr.x + 2, y: tr.y + sideDrop * 0.45 },
+      ],
+      shade(this.palette.bg, -0.18)
+    );
+
     this.ctx.strokeStyle = withAlpha("#000000", 0.35);
     this.ctx.lineWidth = 1;
     this.ctx.beginPath();
@@ -357,10 +391,10 @@ export class BoardView {
   }
 
   _drawField(g) {
-    const ctx = this.ctx;
     const p = this.palette;
     const plate = this.cam.boardCorners();
     this._fillQuad(plate, p.bg);
+    this._drawPlateLight(plate);
 
     this._drawBracketAt(plate[0], 1, 1);
     this._drawBracketAt(plate[1], -1, 1);
@@ -374,8 +408,63 @@ export class BoardView {
       }
     }
 
-    // Depth fog wash over the trapezoid (stronger toward spawn / far edge)
+    this._drawPlateRim(plate);
     this._drawDepthFog(plate);
+  }
+
+  /** Warm key from the far-left, cool fill — sells the metal deck. */
+  _drawPlateLight(plate) {
+    const ctx = this.ctx;
+    const topY = (plate[0].y + plate[1].y) * 0.5;
+    const botY = (plate[2].y + plate[3].y) * 0.5;
+    const leftX = Math.min(plate[0].x, plate[3].x);
+    const rightX = Math.max(plate[1].x, plate[2].x);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(plate[0].x, plate[0].y);
+    for (let i = 1; i < plate.length; i++) ctx.lineTo(plate[i].x, plate[i].y);
+    ctx.closePath();
+    ctx.clip();
+
+    const key = ctx.createRadialGradient(
+      leftX + (rightX - leftX) * 0.28,
+      topY + (botY - topY) * 0.18,
+      8,
+      leftX + (rightX - leftX) * 0.35,
+      topY + (botY - topY) * 0.35,
+      (rightX - leftX) * 0.85
+    );
+    key.addColorStop(0, withAlpha("#d4a574", 0.07));
+    key.addColorStop(0.45, withAlpha("#6a8a9a", 0.03));
+    key.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = key;
+    ctx.fillRect(leftX - 10, topY - 10, rightX - leftX + 20, botY - topY + 20);
+
+    const cool = ctx.createLinearGradient(leftX, topY, rightX, botY);
+    cool.addColorStop(0, "rgba(0,0,0,0)");
+    cool.addColorStop(0.7, "rgba(0,0,0,0)");
+    cool.addColorStop(1, "rgba(4, 10, 18, 0.14)");
+    ctx.fillStyle = cool;
+    ctx.fillRect(leftX - 10, topY - 10, rightX - leftX + 20, botY - topY + 20);
+    ctx.restore();
+  }
+
+  _drawPlateRim(plate) {
+    const ctx = this.ctx;
+    const accent = this.palette.accent;
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = withAlpha("#e8eef6", 0.14);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(plate[0].x, plate[0].y);
+    for (let i = 1; i < plate.length; i++) ctx.lineTo(plate[i].x, plate[i].y);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.strokeStyle = withAlpha(accent, 0.22);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
   }
 
   _drawDepthFog(plate) {
@@ -470,13 +559,27 @@ export class BoardView {
       ctx.fill();
     }
 
-    // Far-edge bevel
-    ctx.strokeStyle = withAlpha("#c8d0d8", 0.08);
-    ctx.lineWidth = 1.1;
+    // Far-edge bevel + near-edge thickness cue
+    ctx.strokeStyle = withAlpha("#c8d0d8", 0.14 + 0.06 * depthV);
+    ctx.lineWidth = 1.15;
     ctx.beginPath();
     ctx.moveTo(q[0].x, q[0].y);
     ctx.lineTo(q[1].x, q[1].y);
     ctx.stroke();
+    ctx.strokeStyle = withAlpha("#000000", 0.16);
+    ctx.beginPath();
+    ctx.moveTo(q[3].x, q[3].y);
+    ctx.lineTo(q[2].x, q[2].y);
+    ctx.stroke();
+
+    // Occasional specular fleck on the far lip
+    if (n > 0.55 && n < 0.62) {
+      const gl = this.cam.projectCell(x, y, 0.35 + n * 0.2, 0.12);
+      ctx.fillStyle = withAlpha("#f0f4f8", 0.12);
+      ctx.beginPath();
+      ctx.ellipse(gl.x, gl.y, 2.8 * gl.s, 0.9 * gl.s, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     this._strokeQuad(q, withAlpha(p.tileEdge, 0.65), 1);
   }
@@ -522,23 +625,28 @@ export class BoardView {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    ctx.strokeStyle = "rgba(170, 205, 225, 0.07)";
+    // Soft under-bloom
+    ctx.strokeStyle = "rgba(120, 190, 220, 0.06)";
+    ctx.lineWidth = w * 1.85;
+    this._strokePts(pts);
+
+    ctx.strokeStyle = "rgba(170, 205, 225, 0.08)";
     ctx.lineWidth = w;
     this._strokePts(pts);
 
-    ctx.strokeStyle = "rgba(190, 220, 240, 0.1)";
+    ctx.strokeStyle = "rgba(190, 220, 240, 0.12)";
     ctx.lineWidth = w * 0.55;
     this._strokePts(pts);
 
-    ctx.strokeStyle = "rgba(210, 230, 245, 0.2)";
+    ctx.strokeStyle = "rgba(210, 230, 245, 0.26)";
     ctx.lineWidth = w * 0.65;
     ctx.setLineDash([c * 0.32, c * 0.9]);
     ctx.lineDashOffset = travel;
     this._strokePts(pts);
 
-    ctx.strokeStyle = "rgba(230, 242, 255, 0.14)";
-    ctx.lineWidth = w * 0.32;
-    ctx.setLineDash([c * 0.14, c * 1.08]);
+    ctx.strokeStyle = "rgba(240, 250, 255, 0.2)";
+    ctx.lineWidth = w * 0.28;
+    ctx.setLineDash([c * 0.12, c * 1.1]);
     ctx.lineDashOffset = travel - c * 0.28;
     this._strokePts(pts);
 
@@ -588,14 +696,22 @@ export class BoardView {
     ctx.stroke();
 
     // Outer halo
-    const halo = ctx.createRadialGradient(c.x, c.y, rx * 0.2, c.x, c.y, rx * 1.35);
-    halo.addColorStop(0, withAlpha("#6b3fa0", 0.15 + 0.1 * pulse));
-    halo.addColorStop(0.55, withAlpha("#3d6a8a", 0.12));
+    const halo = ctx.createRadialGradient(c.x, c.y, rx * 0.2, c.x, c.y, rx * 1.55);
+    halo.addColorStop(0, withAlpha("#6b3fa0", 0.18 + 0.12 * pulse));
+    halo.addColorStop(0.45, withAlpha("#3d6a8a", 0.14));
+    halo.addColorStop(0.75, withAlpha("#7ec8a0", 0.05));
     halo.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = halo;
     ctx.beginPath();
-    ctx.ellipse(c.x, c.y, rx * 1.35, ry * 1.35, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.x, c.y, rx * 1.55, ry * 1.55, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // Breathing energy ring
+    ctx.strokeStyle = withAlpha("#c9a0e8", 0.22 + 0.18 * pulse);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, rx * (1.22 + 0.06 * pulse), ry * (1.22 + 0.06 * pulse), 0, 0, Math.PI * 2);
+    ctx.stroke();
 
     // Inner void
     const voidGrad = ctx.createRadialGradient(c.x, c.y - ry * 0.15, 0, c.x, c.y, rx);
@@ -612,22 +728,22 @@ export class BoardView {
     ctx.save();
     ctx.translate(c.x, c.y);
     ctx.scale(1, VIEW25.deckRatio);
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       const a0 = t * (1.4 + i * 0.4) * (i % 2 ? -1 : 1) + i * 1.7;
-      ctx.strokeStyle = withAlpha(i % 2 ? "#b08ad4" : "#7ec8a0", 0.62 - i * 0.08);
-      ctx.lineWidth = 2.2 - i * 0.3;
+      ctx.strokeStyle = withAlpha(i % 2 ? "#b08ad4" : "#7ec8a0", 0.66 - i * 0.08);
+      ctx.lineWidth = 2.2 - i * 0.28;
       ctx.beginPath();
-      ctx.arc(0, 0, rx * (0.42 + i * 0.13), a0, a0 + 1.35 + i * 0.15);
+      ctx.arc(0, 0, rx * (0.38 + i * 0.12), a0, a0 + 1.35 + i * 0.12);
       ctx.stroke();
     }
-    ctx.strokeStyle = withAlpha("#e8d5ff", 0.35 + 0.2 * pulse);
+    ctx.strokeStyle = withAlpha("#e8d5ff", 0.4 + 0.25 * pulse);
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(0, 0, rx * 0.28, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = withAlpha("#f2e8ff", 0.4 + 0.25 * pulse);
+    ctx.fillStyle = withAlpha("#f2e8ff", 0.45 + 0.28 * pulse);
     ctx.beginPath();
-    ctx.arc(0, 0, rx * (0.1 + 0.03 * pulse), 0, Math.PI * 2);
+    ctx.arc(0, 0, rx * (0.1 + 0.035 * pulse), 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
     ctx.lineWidth = 1;
@@ -661,6 +777,20 @@ export class BoardView {
     this._fillQuad(face, "#2a2e28");
     this._fillQuad(body, "#3f463c");
 
+    // Soft warm underglow along the rampart
+    const glowGrad = ctx.createLinearGradient(left.x, left.y - 8, left.x, leftB.y + rise + 6);
+    glowGrad.addColorStop(0, withAlpha(accent, 0.1 + 0.05 * Math.sin(t * 2.1)));
+    glowGrad.addColorStop(0.55, withAlpha("#ff6b6b", 0.05));
+    glowGrad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = glowGrad;
+    ctx.beginPath();
+    ctx.moveTo(left.x, left.y - 6);
+    ctx.lineTo(right.x, right.y - 6);
+    ctx.lineTo(rightB.x, rightB.y + rise + 4);
+    ctx.lineTo(leftB.x, leftB.y + rise + 4);
+    ctx.closePath();
+    ctx.fill();
+
     // Polished brass crown
     ctx.fillStyle = withAlpha(accent, 0.62);
     ctx.beginPath();
@@ -670,11 +800,17 @@ export class BoardView {
     ctx.lineTo(left.x, left.y + (leftB.y - left.y) * 0.32);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = withAlpha("#fff4c8", 0.28);
-    ctx.lineWidth = 1.25;
+    ctx.strokeStyle = withAlpha("#fff4c8", 0.36);
+    ctx.lineWidth = 1.35;
     ctx.beginPath();
     ctx.moveTo(left.x, left.y + 1);
     ctx.lineTo(right.x, right.y + 1);
+    ctx.stroke();
+    ctx.strokeStyle = withAlpha("#fff8e0", 0.14);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(left.x, left.y + (leftB.y - left.y) * 0.28);
+    ctx.lineTo(right.x, right.y + (rightB.y - right.y) * 0.28);
     ctx.stroke();
 
     // Living ward glow
@@ -1026,16 +1162,49 @@ export class BoardView {
     ctx.beginPath();
     ctx.ellipse(sp.x + 1, sp.y + 3, 4 * sp.s, 1.8 * sp.s, 0, 0, Math.PI * 2);
     ctx.fill();
+    const glow = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, r * 2.4);
+    glow.addColorStop(0, withAlpha(col, 0.45));
+    glow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(sp.x, sp.y, r * 2.4, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = col;
     ctx.beginPath();
     ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = withAlpha("#ffffff", 0.45);
+    ctx.beginPath();
+    ctx.arc(sp.x - r * 0.25, sp.y - r * 0.25, r * 0.35, 0, Math.PI * 2);
     ctx.fill();
   }
 
   _drawHover(x, y, ok) {
     const q = this.cam.cellQuad(x, y, 2);
-    this._fillQuad(q, ok ? "rgba(111,175,122,0.28)" : "rgba(196,90,74,0.28)");
-    this._strokeQuad(q, ok ? withAlpha(this.palette.spawn, 0.7) : withAlpha(this.palette.exit, 0.7), 1.5);
+    const col = ok ? this.palette.spawn : this.palette.exit;
+    this._fillQuad(q, ok ? "rgba(111,175,122,0.22)" : "rgba(196,90,74,0.22)");
+    this._strokeQuad(q, withAlpha(col, 0.55), 1.5);
+    const inner = this.cam.cellQuad(x, y, Math.max(4, this.cell * 0.14));
+    this._strokeQuad(inner, withAlpha(col, 0.28), 1);
+    // Soft corner ticks
+    const ctx = this.ctx;
+    ctx.strokeStyle = withAlpha(col, 0.7);
+    ctx.lineWidth = 1.5;
+    const L = Math.max(4, this.cell * 0.1);
+    const ticks = [
+      [q[0], 1, 1],
+      [q[1], -1, 1],
+      [q[2], -1, -1],
+      [q[3], 1, -1],
+    ];
+    for (const [p, sx, sy] of ticks) {
+      ctx.beginPath();
+      ctx.moveTo(p.x + sx * L, p.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.lineTo(p.x, p.y + sy * L);
+      ctx.stroke();
+    }
+    ctx.lineWidth = 1;
   }
 
   /** Armed place — pulse the cell and ghost the loadout; second tap confirms. */
@@ -1077,6 +1246,8 @@ export class BoardView {
 
   _drawAtmosphere(cssW, cssH) {
     const ctx = this.ctx;
+    const t = performance.now() * 0.001;
+
     const vg = ctx.createRadialGradient(
       cssW * 0.5,
       cssH * 0.38,
@@ -1096,5 +1267,36 @@ export class BoardView {
     bloom.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = bloom;
     ctx.fillRect(0, 0, cssW, cssH * 0.3);
+
+    // Ember / steel motes drifting above the deck
+    const plate = this.sim ? this.cam.boardCorners() : null;
+    if (plate) {
+      const left = Math.min(plate[0].x, plate[3].x);
+      const right = Math.max(plate[1].x, plate[2].x);
+      const top = Math.min(plate[0].y, plate[1].y);
+      const bot = Math.max(plate[2].y, plate[3].y);
+      for (const m of this._motes) {
+        m.v -= m.sp * 0.016;
+        if (m.v < -0.05) {
+          m.v = 1.05;
+          m.u = Math.random();
+        }
+        const x = left + (right - left) * m.u + Math.sin(t * 0.7 + m.ph) * 6;
+        const y = top + (bot - top) * m.v;
+        const a = 0.1 + 0.12 * (0.5 + 0.5 * Math.sin(t * 2 + m.ph));
+        ctx.fillStyle = m.warm ? withAlpha(this.palette.accent, a) : withAlpha("#9eb0c0", a * 0.85);
+        ctx.beginPath();
+        ctx.arc(x, y, m.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Tiny film grain
+    ctx.fillStyle = "rgba(255,245,220,0.018)";
+    for (let i = 0; i < 28; i++) {
+      const x = ((i * 97 + t * 55) | 0) % cssW;
+      const y = ((i * 53 + t * 23) | 0) % cssH;
+      ctx.fillRect(x, y, 1.4, 1.4);
+    }
   }
 }
