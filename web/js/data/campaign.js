@@ -35,7 +35,7 @@ const LEVEL_DEFS = [
   {
     id: 1,
     name: "Outskirts Seal",
-    blurb: "Rivet Mites test the outer plates. Stamp a path and hold the still.",
+    blurb: "Mites test the outer plates. Stamp a path.",
     cols: 8,
     rows: 8,
     seed: 1001,
@@ -65,7 +65,7 @@ const LEVEL_DEFS = [
   {
     id: 2,
     name: "Choke Ducts",
-    blurb: "Lash Couriers punish loose lanes. Duct Hovers skim the grate mid-fight.",
+    blurb: "Couriers punish loose lanes. Watch the ducts.",
     cols: 8,
     rows: 8,
     seed: 2048,
@@ -96,7 +96,7 @@ const LEVEL_DEFS = [
   {
     id: 3,
     name: "Plate Gauntlet",
-    blurb: "Ward Shells and Nest Casks — shred plate, watch overkill on the split.",
+    blurb: "Wards and casks. Shred plate; mind the split.",
     cols: 8,
     rows: 8,
     seed: 3333,
@@ -120,7 +120,7 @@ const LEVEL_DEFS = [
   {
     id: 4,
     name: "Rivet Yard",
-    blurb: "Kiln Walkers shrug flame. Siphon Ticks knit meat — frost the rush, shred the slab.",
+    blurb: "Kilns shrug flame. Frost the rush; shred the slab.",
     cols: 9,
     rows: 9,
     seed: 4400,
@@ -145,7 +145,7 @@ const LEVEL_DEFS = [
   {
     id: 5,
     name: "Crown Breach",
-    blurb: "Hold the Bastion still. Claim Engines walk the crown to unmake the Yard.",
+    blurb: "Claim Engines walk the crown. Hold the still.",
     cols: 9,
     rows: 10,
     seed: 5555,
@@ -170,7 +170,7 @@ const LEVEL_DEFS = [
   {
     id: 6,
     name: "Sky Vein",
-    blurb: "Act II — the Claim takes the ducts. Flak and Aerie earn their stamps.",
+    blurb: "The Claim takes the ducts. Flak earns its keep.",
     cols: 9,
     rows: 10,
     seed: 6060,
@@ -203,7 +203,7 @@ const LEVEL_DEFS = [
   {
     id: 7,
     name: "Ash Causeway",
-    blurb: "Kiln heat and Siphon meat. Ceramite fronts arrive — shock fails; Breach and pulse decide.",
+    blurb: "Ceramite fronts. Shock fails — Breach and pulse decide.";
     cols: 10,
     rows: 10,
     seed: 7070,

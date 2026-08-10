@@ -31,14 +31,14 @@ export function renderMain(app) {
           <span class="title-brand-line accent">Defense</span>
         </h1>
         <div class="title-rule" aria-hidden="true"></div>
-        <p class="title-tag">Stamp the Yard. Shape the path. Hold the still.</p>
+        <p class="title-tag">Shape the path. Hold the Yard.</p>
       </header>
       <nav class="title-actions plate-frame" aria-label="Main menu">
         <button class="btn title-cta" data-act="endless">Endless</button>
         <button class="btn" data-act="campaign">Campaign</button>
         <button class="btn" data-act="forge-from-main">Forge</button>
         <button class="btn" data-act="upgrade">Tech Tree</button>
-        <button class="btn secondary" data-act="editor">Level Editor</button>
+        <button class="btn secondary" data-act="editor">Editor</button>
         <button class="btn secondary" data-act="settings">Settings</button>
       </nav>
       <footer class="title-foot">
@@ -47,7 +47,7 @@ export function renderMain(app) {
           <span><i>Parts</i>${app.meta.forge}</span>
           <span><i>Best</i>W${app.meta.bestWave}</span>
         </div>
-        <p class="title-credit"><span class="credit-gem" aria-hidden="true"></span>Crown Bastion · Slag Host · zero asset packs<span class="credit-gem" aria-hidden="true"></span></p>
+        <p class="title-credit">Bastion vs Slag Host</p>
       </footer>
     </div>`;
 }
@@ -61,7 +61,6 @@ export function renderSettings(app) {
       <header class="meta-hero">
         <div class="meta-hero-row">
           <div>
-            <p class="title-mark">Console</p>
             <h1>Settings</h1>
           </div>
           <button class="btn secondary tech-back" data-act="main">Back</button>
@@ -73,26 +72,25 @@ export function renderSettings(app) {
           <input type="checkbox" id="cb" ${app.meta.settings?.colorblind ? "checked" : ""}/>
         </label>
         <label class="set-row">
-          <span>Particles & juice</span>
+          <span>Particles</span>
           <input type="checkbox" id="particles" ${app.meta.settings?.particles !== false ? "checked" : ""}/>
         </label>
         <label class="set-row">
-          <span>Pressure kick bed</span>
+          <span>Ambience</span>
           <input type="checkbox" id="music" ${app.meta.settings?.music !== false ? "checked" : ""}/>
         </label>
         <div class="set-block">
           <div class="set-head">
-            <h3>SFX volume</h3>
+            <h3>SFX</h3>
             <span id="sfxVolLabel">${vol}%</span>
           </div>
           <input id="sfxVol" type="range" min="0" max="100" step="1" value="${vol}" />
         </div>
         <div class="set-block">
           <div class="set-head">
-            <h3>Camera angle</h3>
+            <h3>Camera</h3>
             <span id="pitchLabel">${Math.round(pitch)}°</span>
           </div>
-          <p class="end-note">Steeper = more foreshortening.</p>
           <input id="pitch" type="range" min="8" max="58" step="1" value="${pitch}" />
         </div>
       </div>
@@ -163,12 +161,11 @@ export function renderCampaign(app) {
       <header class="meta-hero">
         <div class="meta-hero-row">
           <div>
-            <p class="title-mark">Operations</p>
             <h1>Campaign</h1>
           </div>
           <button class="btn secondary tech-back" data-act="main">Back</button>
         </div>
-        <p class="meta-blurb">Vein Claim ops · prep the Yard before each seal</p>
+        <p class="meta-blurb">Seal each Yard before the Claim walks it.</p>
         <div class="title-stats tech-stats">
           <span><i>Æ</i>${app.meta.aether}</span>
           <span><i>Parts</i>${app.meta.forge}</span>
@@ -210,7 +207,6 @@ export function renderPrep(app, levelId) {
       <header class="meta-hero">
         <div class="meta-hero-row">
           <div>
-            <p class="title-mark">Briefing</p>
             <h1>${lv.name}</h1>
           </div>
           <button class="btn secondary tech-back" data-act="campaign">Back</button>
@@ -221,15 +217,14 @@ export function renderPrep(app, levelId) {
         <canvas class="prep-thumb level-thumb" data-level="${lv.id}" width="120" height="120" aria-hidden="true"></canvas>
         <div class="end-card prep-card plate">
           <h3>Mission</h3>
-          <p>${lv.wavesToWin} waves · start ${lv.coinGrant} Coin · ${lv.preWalls.length} pre-walls</p>
+          <p>${lv.wavesToWin} waves · ${lv.coinGrant} Coin · ${lv.preWalls.length} walls</p>
           <div class="threat-row" style="margin-top:10px;justify-content:flex-start">${tags}</div>
         </div>
       </div>
       <div class="end-card prep-card plate">
         <h3>Loadout</h3>
         ${rosterPeekHtml(app.meta)}
-        <p class="end-note" style="margin-top:8px;text-align:left">Active · ${planLine}</p>
-        <p class="end-note" style="margin-top:4px;text-align:left">Tap a slot to highlight for deploy priority.</p>
+        <p class="end-note" style="margin-top:8px;text-align:left">${planLine}</p>
         ${prepSlotButtonsHtml(app.meta, app.prepSlot)}
       </div>
       <button class="btn title-cta" data-act="start-level:${lv.id}">Start Level</button>
@@ -267,8 +262,7 @@ export function renderEditor(app) {
       <header class="meta-hero">
         <div class="meta-hero-row">
           <div>
-            <p class="title-mark">Yard</p>
-            <h1>Level Editor</h1>
+            <h1>Editor</h1>
           </div>
           <button class="btn secondary tech-back" data-act="main">Back</button>
         </div>
@@ -299,13 +293,13 @@ export function renderEditor(app) {
 }
 
 export function forgePlanSummary(slot) {
-  if (!slot?.complete) return "Base = brain · Barrel = delivery · Payload = element";
+  if (!slot?.complete) return "Base · Barrel · Payload";
   const plan = buildAttackPlan(slot.base, slot.barrel, slot.payload, 1, {});
   return `${partLabel(slot.base)} · ${doctrineLabel(PARTS.bases[slot.base]?.doctrine)}<br/>${partLabel(
     slot.barrel
-  )} + ${partLabel(slot.payload)} · ${slot.placeCost} Coin<br/><span style="color:#9aacbe">${
+  )} + ${partLabel(slot.payload)} · ${slot.placeCost} Coin<br/><span style="color:var(--muted)">${
     plan.damageType
-  } · r${plan.rangeCells.toFixed(1)} · dmg ${plan.damage.toFixed(0)}${
+  } · r${plan.rangeCells.toFixed(1)} · ${plan.damage.toFixed(0)} dmg${
     plan.chainJumps ? ` · chain ${plan.chainJumps}` : ""
   }${plan.pulseRadius ? ` · pulse ${plan.pulseRadius.toFixed(1)}` : ""}</span>`;
 }

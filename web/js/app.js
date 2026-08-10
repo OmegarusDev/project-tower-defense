@@ -268,7 +268,7 @@ export class App {
               ? "Checkpoint saved at wave start."
               : `Campaign level ${this.sim.campaignLevelId}`
         }</p>
-        <p class="pause-hint">Hold <b>Deploy</b> for 5× · Endless: forge button for live compose · Seed ${this.sim.runSeed >>> 0}</p>
+        <p class="pause-hint">Hold Deploy for 5× · seed ${this.sim.runSeed >>> 0}</p>
         <button type="button" class="btn title-cta" data-act="resume">Resume</button>
         <button type="button" class="btn secondary" data-act="quit-run">${
           this.playtestFromEditor ? "Editor" : quitLabel
@@ -431,7 +431,6 @@ export class App {
         <header class="meta-hero">
           <div class="meta-hero-row">
             <div>
-              <p class="title-mark">Compose</p>
               <h1>Forge</h1>
             </div>
             <button class="btn secondary tech-back" data-act="${backAct}">Back</button>
@@ -473,7 +472,7 @@ export class App {
           </div>
         </div>
         <button class="btn warn" data-act="upgrade">Tech Tree</button>
-        <p class="end-note">Locked chips spend Forge parts. Wave gifts unlock free. Permanent power lives in the Tech Tree.</p>
+        <p class="end-note">Locked parts cost Parts. Wave gifts are free. Tech Tree is permanent.</p>
       </div>`;
     this.bindUi();
     this.paintForgePreview();
@@ -556,7 +555,6 @@ export class App {
         <header class="tech-hero">
           <div class="tech-hero-row">
             <div>
-              <p class="title-mark">Permanent</p>
               <h1>Tech Tree</h1>
             </div>
             <button class="btn secondary tech-back" data-act="${backAct}">${backLabel}</button>
@@ -791,18 +789,17 @@ export class App {
         <header class="meta-hero">
           <div class="meta-hero-row">
             <div>
-              <p class="title-mark">Vein Claim</p>
               <h1>Endless</h1>
             </div>
             <button class="btn secondary tech-back" data-act="main">Menu</button>
           </div>
-          <p class="meta-blurb">Pressure from the Vein — seeded claim patterns · growing deck</p>
+          <p class="meta-blurb">How far can the Bastion hold the Vein?</p>
         </header>
         <div class="hub-console">
           <div class="hub-card plate">
-            <h3>Deepest hold</h3>
+            <h3>Best wave</h3>
             <div class="hub-wave">${best || "—"}</div>
-            <p class="end-note" style="text-align:left;margin-top:6px">Claim themes unlock as you climb: ${themes}</p>
+            <p class="end-note" style="text-align:left;margin-top:6px">${themes}</p>
             <div class="hub-stat-row title-stats">
               <span><i>Æ</i>${this.meta.aether}</span>
               <span><i>Parts</i>${this.meta.forge}</span>
@@ -813,15 +810,10 @@ export class App {
             <p style="text-align:left;color:var(--text);margin:0">
               ${
                 canContinue
-                  ? `Resume at wave <strong>${blob.wave}</strong> · seed ${blob.seed >>> 0}`
-                  : "No checkpoint yet. Call a new run when your loadout is ready."
+                  ? `Wave <strong>${blob.wave}</strong> · seed ${blob.seed >>> 0}`
+                  : "No checkpoint. Start a run when your Forge is set."
               }
             </p>
-            ${
-              canContinue
-                ? `<p class="end-note" style="text-align:left;margin-top:8px">Ghost replay unlocks after a run ends.</p>`
-                : ""
-            }
           </div>
           <div class="hub-actions">
             <button class="btn title-cta" data-act="newrun">New Run</button>
@@ -888,23 +880,21 @@ export class App {
     this.ui.innerHTML = `
       <div class="screen end-screen meta-enter">
         <header class="end-hero">
-          <p class="end-mark">Bastion Op</p>
-          <h1 class="end-title">Still Held</h1>
-          <p class="end-sub">${lv ? lv.name : "Level"} sealed</p>
+          <h1 class="end-title">Clear</h1>
+          <p class="end-sub">${lv ? lv.name : "Level"}</p>
           ${opts.firstClear ? `<span class="end-best-tag">First clear</span>` : ""}
         </header>
         <div class="end-card">
-          <h3>This run</h3>
+          <h3>Gains</h3>
           <div class="end-gains">
             <span class="gain-pill parts">+${gains.parts} Parts</span>
             <span class="gain-pill aether">+${gains.aether + firstBonus} Aether${
-              firstBonus ? " · first clear" : ""
+              firstBonus ? " · first" : ""
             }</span>
           </div>
-          <p class="end-note">Wave clears paid <strong>+${gains.coin}</strong> Coin in-run</p>
         </div>
         <div class="end-card end-card-totals">
-          <h3>Vault</h3>
+          <h3>Totals</h3>
           <div class="end-totals">
             <span class="chip parts"><span class="k">Parts</span>${this.meta.forge}</span>
             <span class="chip aether"><span class="k">Aether</span>${this.meta.aether}</span>
@@ -957,26 +947,24 @@ export class App {
     this.ui.innerHTML = `
       <div class="screen end-screen meta-enter${endless ? " end-endless" : ""}">
         <header class="end-hero">
-          <p class="end-mark">${endless ? "Vein Claim" : "Bastion Op"}</p>
-          <h1 class="end-title">Run Over</h1>
-          <p class="end-sub">${lv ? `${lv.name} · ` : ""}Reached wave</p>
+          <h1 class="end-title">Fallen</h1>
+          <p class="end-sub">${lv ? `${lv.name} · ` : ""}Wave</p>
           <div class="end-wave${isBest ? " is-best" : ""}">
             <span class="end-wave-num">${wave}</span>
             ${isBest ? `<span class="end-best-tag">Best</span>` : ""}
           </div>
           ${
             endless && best > 0 && !isBest
-              ? `<p class="end-best-line">Personal best · wave ${best}</p>`
+              ? `<p class="end-best-line">Best ${best}</p>`
               : ""
           }
         </header>
         <div class="end-card">
-          <h3>Salvaged this run</h3>
+          <h3>Gains</h3>
           <div class="end-gains">
             ${gainLine(gains.parts, "Parts", "parts")}
             ${gainLine(gains.aether, "Aether", "aether")}
           </div>
-          <p class="end-note">Wave clears also paid <strong>+${gains.coin}</strong> Coin in-run</p>
         </div>
         <div class="end-card end-card-totals">
           <h3>Vault</h3>
@@ -1293,7 +1281,7 @@ export class App {
     this.score.start();
     this.renderGameChrome();
     if (this.sim?.modeEndless) {
-      this.toast("Place towers/walls, then Deploy. Hold Deploy for 5×.");
+      this.toast("Build, then Deploy. Hold for 5×.");
     }
   }
 
@@ -1430,7 +1418,7 @@ export class App {
               <span class="wall-tile-cost" id="wallCost">—</span>
             </button>
           </div>
-          <button type="button" class="call-btn" id="callBtn" title="Tap to deploy · hold for 5× speed" aria-label="Deploy wave, hold for fast forward">
+          <button type="button" class="call-btn" id="callBtn" title="Tap to deploy · hold for 5×" aria-label="Deploy wave, hold for fast forward">
             <span class="call-kicker">Deploy</span>
             <span class="call-label" id="callLabel">Wave 1</span>
             <span class="call-bolts" aria-hidden="true"></span>
@@ -1499,7 +1487,7 @@ export class App {
     // Ghost owns the action log — clear live log so we don't double-record
     this.sim.actionLog = [];
     this._ghost = { log: blob.actionLog, i: 0, wait: 0.45 };
-    this.toast("Ghost replay · watching seed actions");
+    this.toast("Ghost replay");
   }
 
   _tickGhost(dt) {
@@ -1623,26 +1611,20 @@ export class App {
       callBtn.classList.toggle("busy", busy && !this._ffHeld);
       callBtn.classList.toggle("hot", !!this._ffHeld);
       callBtn.title = done
-        ? "Level complete"
-        : busy
-          ? "Hold for 5× speed"
-          : "Tap to deploy · hold for 5× speed";
+        ? "Complete"
+        : busy || this._ffHeld
+          ? "Hold for 5×"
+          : "Tap to deploy · hold for 5×";
       if (callKicker) {
-        callKicker.textContent = this._ffHeld
-          ? "5×"
-          : busy
-            ? "Hold"
-            : done
-              ? "Clear"
-              : "Deploy";
+        callKicker.textContent = this._ffHeld ? "5×" : done ? "Done" : busy ? "Hold" : "Deploy";
       }
       if (callLabel) {
         callLabel.textContent = this._ffHeld
-          ? "Fast forward"
+          ? "Speed"
           : busy
-            ? "Wave live"
+            ? "Live"
             : done
-              ? "Complete"
+              ? "Clear"
               : `Wave ${this.sim.waveIndex + 1}`;
       }
     }
