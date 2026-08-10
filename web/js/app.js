@@ -112,15 +112,96 @@ export class App {
 
   onKeyDown(e) {
     if (this.screen !== "game" || !this.sim) return;
-    if ((e.code === "Escape" || e.key === "Escape") && this.placeConfirm) {
+    if (e.code === "Escape" || e.key === "Escape") {
       e.preventDefault();
-      this.cancelPlaceConfirm();
+      if (this.placeConfirm) {
+        this.cancelPlaceConfirm();
+        return;
+      }
+      if (this.paused) this.resumeGame();
+      else this.openPause();
       return;
     }
+    if (this.paused) return;
     if (e.code !== "Space" && e.key !== " ") return;
     e.preventDefault();
     if (e.repeat) return;
     this.unlockAudio().then(() => this.callEarly());
+  }
+
+  openPause() {
+    if (this.screen !== "game" || !this.sim) return;
+    this.paused = true;
+    this.clearPlaceConfirm();
+    this._renderPauseSheet();
+  }
+
+  resumeGame() {
+    this.paused = false;
+    this.ui.querySelector("#pauseSheet")?.remove();
+  }
+
+  quitToMenu() {
+    if (!this.sim) return;
+    const campaign = !this.sim.modeEndless;
+    const msg = campaign
+      ? "Abandon this campaign run and return to the Campaign menu?"
+      : "Return to the Endless menu? Your checkpoint is saved.";
+    if (!confirm(msg)) return;
+    this.paused = false;
+    this.selectedTowerId = -1;
+    this.selectedWallId = -1;
+    this.sim = null;
+    if (campaign) this.showCampaign();
+    else this.showEndlessHub();
+  }
+
+  _renderPauseSheet() {
+    if (!this.sim || this.screen !== "game") return;
+    this.ui.querySelector("#pauseSheet")?.remove();
+    const endless = !!this.sim.modeEndless;
+    const wave = this.sim.waveIndex | 0;
+    const quitLabel = endless ? "Endless Menu" : "Campaign Menu";
+    const sheet = document.createElement("div");
+    sheet.id = "pauseSheet";
+    sheet.className = "pause-sheet";
+    sheet.innerHTML = `
+      <button type="button" class="pause-backdrop" data-act="resume" aria-label="Resume"></button>
+      <div class="pause-card" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+        <p class="pause-mark">Paused</p>
+        <h2 id="pauseTitle">Wave ${wave}</h2>
+        <p class="pause-note">${endless ? "Checkpoint saved at wave start." : `Campaign level ${this.sim.campaignLevelId}`}</p>
+        <div class="pause-speed" title="Game speed" role="group" aria-label="Speed">
+          <span class="pause-speed-k">Speed</span>
+          <button type="button" class="speed-btn ${this.speed === 1 ? "active" : ""}" data-act="spd:1"><span class="speed-bars" data-n="1"><i></i></span>1×</button>
+          <button type="button" class="speed-btn ${this.speed === 2 ? "active" : ""}" data-act="spd:2"><span class="speed-bars" data-n="2"><i></i><i></i></span>2×</button>
+          <button type="button" class="speed-btn ${this.speed === 3 ? "active" : ""}" data-act="spd:3"><span class="speed-bars" data-n="3"><i></i><i></i><i></i></span>3×</button>
+        </div>
+        <button type="button" class="btn title-cta" data-act="resume">Resume</button>
+        <button type="button" class="btn secondary" data-act="quit-run">${quitLabel}</button>
+      </div>`;
+    this.ui.appendChild(sheet);
+    sheet.querySelectorAll("[data-act]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const act = el.getAttribute("data-act");
+        if (act === "resume") this.resumeGame();
+        else if (act === "quit-run") this.quitToMenu();
+        else if (act?.startsWith("spd:")) {
+          this.speed = +act.slice(4);
+          this.score.setSpeed(this.speed);
+          this._syncSpeedButtons();
+        }
+      });
+    });
+  }
+
+  _syncSpeedButtons() {
+    this.ui.querySelectorAll("[data-act^='spd:']").forEach((el) => {
+      const n = +el.getAttribute("data-act").slice(4);
+      el.classList.toggle("active", n === this.speed);
+    });
+    const rack = this.ui.querySelector(".speed-rack");
+    if (rack) rack.dataset.spd = String(this.speed);
   }
 
   start() {
@@ -794,19 +875,10 @@ export class App {
         else if (act === "newrun") this.newRun();
         else if (act === "continue") this.continueRun();
         else if (act === "call") this.callEarly();
-        else if (act === "menu") {
-          this.paused = true;
-          if (this.sim && !this.sim.modeEndless) {
-            if (!confirm("Abandon this campaign run?")) {
-              this.paused = false;
-              return;
-            }
-            this.sim = null;
-            this.selectedTowerId = -1;
-            this.selectedWallId = -1;
-            this.showCampaign();
-          } else this.showEndlessHub();
-        } else if (act === "sell") this.sellSelected();
+        else if (act === "pause") this.openPause();
+        else if (act === "resume") this.resumeGame();
+        else if (act === "quit-run") this.quitToMenu();
+        else if (act === "sell") this.sellSelected();
         else if (act === "tool:wall") {
           this.tool = "wall";
           this.clearPlaceConfirm();
@@ -849,7 +921,7 @@ export class App {
         } else if (act?.startsWith("spd:")) {
           this.speed = +act.slice(4);
           this.score.setSpeed(this.speed);
-          this.renderGameChrome();
+          this._syncSpeedButtons();
         }
       });
     });
@@ -1076,14 +1148,31 @@ export class App {
     this.ui.innerHTML = `
       <div class="game-chrome">
         <header class="hud-bar">
-          <div class="speed-seg" title="Game speed" role="group" aria-label="Speed">
-            <button type="button" class="speed-btn ${this.speed === 1 ? "active" : ""}" data-act="spd:1">1</button>
-            <button type="button" class="speed-btn ${this.speed === 2 ? "active" : ""}" data-act="spd:2">2</button>
-            <button type="button" class="speed-btn ${this.speed === 3 ? "active" : ""}" data-act="spd:3">3</button>
+          <div class="speed-rack" data-spd="${this.speed}" title="Game speed" role="group" aria-label="Speed">
+            <span class="speed-rack-k">SPD</span>
+            <div class="speed-seg">
+              <button type="button" class="speed-btn ${this.speed === 1 ? "active" : ""}" data-act="spd:1" aria-label="1x speed">
+                <span class="speed-bars" data-n="1"><i></i></span>
+                <span class="speed-n">1×</span>
+              </button>
+              <button type="button" class="speed-btn ${this.speed === 2 ? "active" : ""}" data-act="spd:2" aria-label="2x speed">
+                <span class="speed-bars" data-n="2"><i></i><i></i></span>
+                <span class="speed-n">2×</span>
+              </button>
+              <button type="button" class="speed-btn ${this.speed === 3 ? "active" : ""}" data-act="spd:3" aria-label="3x speed">
+                <span class="speed-bars" data-n="3"><i></i><i></i><i></i></span>
+                <span class="speed-n">3×</span>
+              </button>
+            </div>
+          </div>
+          <div class="wave-badge" id="waveBadge">
+            <span class="wave-badge-k">Wave</span>
+            <span class="wave-badge-n" id="waveNum">0</span>
+            <span class="wave-badge-sub hidden" id="waveSub"></span>
           </div>
           <div class="telemetry" id="statChips"></div>
-          <button type="button" class="hud-menu" data-act="menu" title="Menu" aria-label="Menu">
-            <span></span><span></span><span></span>
+          <button type="button" class="hud-pause" data-act="pause" title="Pause" aria-label="Pause">
+            <span></span><span></span>
           </button>
         </header>
         <div class="status-toast ${this.status ? "" : "empty"}" id="status">${this.status}</div>
@@ -1120,6 +1209,7 @@ export class App {
     });
     this.refreshHud();
     this.paintSlotPreviews();
+    if (this.paused) this._renderPauseSheet();
   }
 
   /** Tiny rotating loadout previews inside arsenal slot tiles. */
@@ -1178,25 +1268,33 @@ export class App {
     const callBtn = this.ui.querySelector("#callBtn");
     const callLabel = this.ui.querySelector("#callLabel");
     const callKicker = this.ui.querySelector(".call-kicker");
+    const waveNum = this.ui.querySelector("#waveNum");
+    const waveSub = this.ui.querySelector("#waveSub");
     if (!chips) return;
 
     const waveLabel = !this.sim.modeEndless && this.sim.wavesToWin
       ? `${this.sim.waveIndex}/${this.sim.wavesToWin}`
       : `${this.sim.waveIndex}`;
-    const lvlBit = !this.sim.modeEndless
-      ? `<span class="tel"><i>Lv</i>${this.sim.campaignLevelId}</span><span class="tel-sep"></span>`
-      : "";
+    if (waveNum) waveNum.textContent = waveLabel;
+    if (waveSub) {
+      if (!this.sim.modeEndless) {
+        waveSub.textContent = `Lv ${this.sim.campaignLevelId}`;
+        waveSub.classList.remove("hidden");
+      } else {
+        waveSub.textContent = "";
+        waveSub.classList.add("hidden");
+      }
+    }
+
+    const gear = `<svg class="tel-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.4.9h3.2l.25 1.45c.45.12.87.32 1.25.58l1.3-.7 1.6 1.6-.7 1.3c.26.38.46.8.58 1.25L15.1 6.4v3.2l-1.45.25a4.6 4.6 0 0 1-.58 1.25l.7 1.3-1.6 1.6-1.3-.7a4.6 4.6 0 0 1-1.25.58L9.6 15.1H6.4l-.25-1.45a4.6 4.6 0 0 1-1.25-.58l-1.3.7-1.6-1.6.7-1.3a4.6 4.6 0 0 1-.58-1.25L.9 9.6V6.4l1.45-.25c.12-.45.32-.87.58-1.25l-.7-1.3 1.6-1.6 1.3.7c.38-.26.8-.46 1.25-.58L6.4.9zm1.6 4.3a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z"/></svg>`;
     chips.innerHTML = `
-      ${lvlBit}
-      <span class="tel tel-wave"><i>Wave</i>${waveLabel}</span>
+      <span class="tel tel-lives" title="Lives"><i>HP</i>${this.sim.lives}</span>
       <span class="tel-sep"></span>
-      <span class="tel tel-lives"><i>HP</i>${this.sim.lives}</span>
+      <span class="tel tel-coin" title="Coin"><i class="tel-curr">₡</i>${this.sim.economy.battle}</span>
       <span class="tel-sep"></span>
-      <span class="tel tel-coin"><i>Coin</i>${this.sim.economy.battle}</span>
+      <span class="tel tel-parts" title="Parts"><i class="tel-gear">${gear}</i>${this.sim.economy.forge}</span>
       <span class="tel-sep"></span>
-      <span class="tel tel-parts"><i>Parts</i>${this.sim.economy.forge}</span>
-      <span class="tel-sep"></span>
-      <span class="tel tel-aether"><i>Æ</i>${this.sim.economy.aether}</span>`;
+      <span class="tel tel-aether" title="Aether"><i>Æ</i>${this.sim.economy.aether}</span>`;
     if (st) {
       st.textContent = this.status;
       st.classList.toggle("empty", !this.status);
@@ -1560,7 +1658,7 @@ export class App {
   }
 
   callEarly() {
-    if (!this.sim) return;
+    if (!this.sim || this.paused) return;
     if (this.waveBusy()) {
       this.toast("Finish the current wave first");
       return;
