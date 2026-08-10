@@ -1259,18 +1259,24 @@ html, body {
 }
 
 .build-strip {
+  display: flex;
+  flex-wrap: wrap;
   margin-bottom: 8px;
 }
 
 .build-strip .btn {
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 1 1 calc(25% - 6px);
+  min-width: 3.4rem;
   padding: 12px 4px;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.build-strip #wallBtn {
+  flex: 1 1 calc(50% - 6px);
 }
 
 .build-strip .btn.slot-locked {

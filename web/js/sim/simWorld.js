@@ -19,6 +19,7 @@ export class SimWorld {
     this.enemies = [];
     this.projectiles = [];
     this.roster = [];
+    this.runLevelCap = 2;
     this.partUpgrades = {};
     this.globalMods = { damage: 1, range: 1, rof: 1 };
     this.tickIndex = 0;
@@ -110,9 +111,10 @@ export class SimWorld {
     return this.walls.filter((w) => !w.preplaced).length;
   }
 
-  setStartLives(n) {
+  /** Update the run's life budget. Only refill current lives when `resetCurrent`. */
+  setStartLives(n, { resetCurrent = true } = {}) {
     this.startLives = Math.max(1, n | 0 || 3);
-    this.lives = this.startLives;
+    if (resetCurrent) this.lives = this.startLives;
   }
 
   setRoster(slots) {
@@ -183,7 +185,7 @@ export class SimWorld {
       xp: 0,
       xpToPoint: 55,
       levelPoints: 0,
-      levelCap: loadout.levelCap || 1,
+      levelCap: Math.max(loadout.levelCap | 0, this.runLevelCap | 0, 1),
       cooldown: 0,
       targetId: -1,
       aimAngle: -Math.PI / 2,
@@ -221,18 +223,6 @@ export class SimWorld {
     this.grid.recompute();
     this.emit("wall_sold", { id, refund });
     return { ok: true, refund };
-  }
-
-  spendLevelPoint(id) {
-    const t = this.towers.find((x) => x.id === id);
-    if (!t) return { ok: false, reason: "missing" };
-    if ((t.levelPoints || 0) <= 0) return { ok: false, reason: "no_level_up_point" };
-    if (t.level >= t.levelCap) return { ok: false, reason: "at_cap" };
-    t.levelPoints -= 1;
-    t.level += 1;
-    this.combat.dirtyAuras();
-    this.emit("tower_leveled", { tower: t });
-    return { ok: true, tower: t };
   }
 
   checkpoint() {

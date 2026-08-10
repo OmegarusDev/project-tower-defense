@@ -68,6 +68,7 @@ export class App {
     this.forgeReturn = "main";
     this.forgeAim = -Math.PI / 2;
     this.selectedTowerId = -1;
+    this.selectedWallId = -1;
     this.techSelectedId = null;
     this.techTreeTab = "foundations";
     this.paused = false;
@@ -587,7 +588,10 @@ export class App {
 
   showCampaign() {
     this.screen = "campaign";
+    // Campaign list is hub-only — never keep a live run here.
     this.sim = null;
+    this.selectedTowerId = -1;
+    this.selectedWallId = -1;
     const cleared = this.meta.campaign?.cleared || [];
     const levelBtns = CAMPAIGN_LEVELS.map((lv) => {
       const open = isLevelUnlocked(lv.id, cleared);
@@ -775,13 +779,22 @@ export class App {
         else if (act === "call") this.callEarly();
         else if (act === "menu") {
           this.paused = true;
-          if (this.sim && !this.sim.modeEndless) this.showCampaign();
-          else this.showEndlessHub();
+          if (this.sim && !this.sim.modeEndless) {
+            if (!confirm("Abandon this campaign run?")) {
+              this.paused = false;
+              return;
+            }
+            this.sim = null;
+            this.selectedTowerId = -1;
+            this.selectedWallId = -1;
+            this.showCampaign();
+          } else this.showEndlessHub();
         } else if (act === "sell") this.sellSelected();
         else if (act === "tool:wall") {
           this.tool = "wall";
           this.clearPlaceConfirm();
           this.selectedTowerId = -1;
+          this.selectedWallId = -1;
           this.renderGameChrome();
         } else if (act === "forge-clear") this.clearForgeSlot();
         else if (act?.startsWith("forge-slot:")) {
@@ -803,14 +816,18 @@ export class App {
           this.toast(`Unlock Slot ${n} in Tech Tree → Roster`);
         } else if (act?.startsWith("slot:")) {
           const i = +act.slice(5);
-          if (!this.sim || i < 0 || i >= this.sim.roster.length) {
+          const unlocked = this.meta.slotCount | 0;
+          if (!this.sim || i < 0 || i >= unlocked) {
             this.toast(`Unlock Slot ${i + 1} in Tech Tree → Roster`);
             return;
           }
+          // Keep sim loadouts aligned with Forge before selecting/placing.
+          if ((this.sim.roster?.length | 0) < unlocked) this._syncSimFromMeta(this.sim);
           this.slot = i;
           this.tool = "tower";
           this.clearPlaceConfirm();
           this.selectedTowerId = -1;
+          this.selectedWallId = -1;
           this.renderGameChrome();
         } else if (act?.startsWith("spd:")) {
           this.speed = +act.slice(4);
@@ -821,23 +838,44 @@ export class App {
     });
   }
 
+  /**
+   * Apply permanent tech + Forge loadouts to a live sim.
+   * `battleBase` only for fresh runs — continue keeps checkpoint Coin.
+   */
   _applyRunTech(sim, { battleBase } = {}) {
-    sim.setStartLives(this.meta.startLives || 3);
-    sim.economy.injectMeta(this.meta.forge, this.meta.aether);
-    sim.economy.applyRunMods({
-      wallCostMult: this.meta.wallCostMult ?? 1,
-      towerCostMult: this.meta.towerCostMult ?? 1,
-      waveCoinBonus: this.meta.waveCoinBonus | 0,
-    });
     if (battleBase != null) {
       sim.economy.battle = (battleBase | 0) + (this.meta.startCashBonus | 0);
     }
+    // Fresh run: seed vault currencies + refill lives from tech.
+    this._syncSimFromMeta(sim, { seedVault: true, resetLives: true });
+  }
+
+  /**
+   * Push Forge loadouts + derived combat/economy mods into the sim.
+   * Does NOT touch Coin/lives unless explicitly asked — those belong to the run/checkpoint.
+   */
+  _syncSimFromMeta(sim, { seedVault = false, resetLives = false } = {}) {
+    if (!sim) return;
+    syncTechDerived(this.meta);
     this.meta.roster = normalizeRoster(
       this.meta.roster,
       this.meta.slotCount,
       this.meta.levelCap
     );
+    sim.setStartLives(this.meta.startLives || 3, { resetCurrent: resetLives });
+    if (seedVault) {
+      sim.economy.injectMeta(this.meta.forge, this.meta.aether);
+    }
+    sim.economy.applyRunMods({
+      wallCostMult: this.meta.wallCostMult ?? 1,
+      towerCostMult: this.meta.towerCostMult ?? 1,
+      waveCoinBonus: this.meta.waveCoinBonus | 0,
+    });
     sim.setRoster(structuredClone(this.meta.roster));
+    sim.runLevelCap = this.meta.levelCap | 0 || 2;
+    for (const t of sim.towers || []) {
+      t.levelCap = Math.max(t.levelCap | 0, sim.runLevelCap);
+    }
     sim.setPartUpgrades(this.meta.partUpgrades);
     sim.setGlobalMods({
       damage: this.meta.globalDamageMult ?? 1,
@@ -859,6 +897,7 @@ export class App {
     this.tool = "tower";
     this.slot = 0;
     this.selectedTowerId = -1;
+    this.selectedWallId = -1;
     this.paused = false;
     this.speed = 1;
     this.accum = 0;
@@ -871,21 +910,24 @@ export class App {
     if (!blob) return this.showEndlessHub();
     this.sim = new SimWorld();
     this.sim.loadCheckpoint(blob);
-    this.sim.setPartUpgrades(this.meta.partUpgrades);
-    this.sim.setGlobalMods({
-      damage: this.meta.globalDamageMult ?? 1,
-      range: this.meta.globalRangeMult ?? 1,
-      rof: this.meta.globalRofMult ?? 1,
-    });
-    this.sim.economy.applyRunMods({
-      wallCostMult: this.meta.wallCostMult ?? 1,
-      towerCostMult: this.meta.towerCostMult ?? 1,
-      waveCoinBonus: this.meta.waveCoinBonus | 0,
-    });
+    // Checkpoint is written at wave *start* after waveIndex increments.
+    // Roll back one so Call Wave starts that same wave again (mid-wave progress is lost).
+    const savedWave = blob.wave | 0;
+    if (savedWave > 0) this.sim.waveIndex = savedWave - 1;
+    // Loadouts/caps/mods from meta; keep checkpoint Coin + lives.
+    this._syncSimFromMeta(this.sim);
     this.fx.clear();
     this.wireSim();
+    this.tool = "tower";
+    this.slot = 0;
+    this.selectedTowerId = -1;
+    this.selectedWallId = -1;
+    this.paused = false;
+    this.speed = 1;
+    this.accum = 0;
+    this.placeConfirm = null;
     this.enterGame();
-    this.toast(`Checkpoint loaded — Call Early for wave ${this.sim.waveIndex}`);
+    this.toast(`Checkpoint loaded — Call Wave ${savedWave || 1}`);
   }
 
   startCampaignLevel(levelId) {
@@ -906,6 +948,7 @@ export class App {
     this.tool = "tower";
     this.slot = 0;
     this.selectedTowerId = -1;
+    this.selectedWallId = -1;
     this.paused = false;
     this.speed = 1;
     this.accum = 0;
@@ -1113,32 +1156,51 @@ export class App {
     const meta = this.ui.querySelector("#towerMeta");
     const xpEl = this.ui.querySelector("#towerXp");
     if (!overlay || !this.sim) return;
+
     const t = this.sim.towers.find((x) => x.id === this.selectedTowerId);
-    if (!t) {
+    const wall =
+      this.selectedWallId >= 0
+        ? this.sim.walls.find((w) => w.id === this.selectedWallId)
+        : null;
+
+    if (!t && !wall) {
       overlay.classList.add("hidden");
       return;
     }
+
     overlay.classList.remove("hidden");
-    const cap = t.levelCap || 1;
-    const need = t.xpToPoint || 55;
-    const atCap = (t.level || 1) >= cap;
-    if (meta) {
-      const doc = doctrineLabel(PARTS.bases[t.base]?.doctrine);
-      meta.textContent = `${partLabel(t.base)} · ${doc} · L${t.level}/${cap}`;
+    const cell = t ? t.cell : wall.cell;
+    if (t) {
+      const cap = t.levelCap || 1;
+      const need = t.xpToPoint || 55;
+      const atCap = (t.level || 1) >= cap;
+      if (meta) {
+        const doc = doctrineLabel(PARTS.bases[t.base]?.doctrine);
+        meta.textContent = `${partLabel(t.base)} · ${doc} · L${t.level}/${cap}`;
+      }
+      if (xpEl) {
+        xpEl.textContent = atCap
+          ? "Max level"
+          : `XP ${t.xp | 0}/${need} · auto levels`;
+      }
+    } else {
+      const refund = (wall.paid * 0.5) | 0;
+      if (meta) meta.textContent = "Wall";
+      if (xpEl) xpEl.textContent = `Sell for ${refund} Coin`;
     }
-    if (xpEl) {
-      xpEl.textContent = atCap
-        ? "Max level"
-        : `XP ${t.xp | 0}/${need} · auto levels`;
-    }
-    const c = this.board.cellScreenCenter(t.cell.x, t.cell.y);
+
+    const c = this.board.cellScreenCenter(cell.x, cell.y);
     const pad = 8;
     const w = overlay.offsetWidth || 148;
+    const h = overlay.offsetHeight || 96;
     const appW = this.ui.clientWidth || 360;
+    const appH = this.ui.clientHeight || 640;
     let left = c.x;
     left = Math.max(pad + w / 2, Math.min(appW - pad - w / 2, left));
+    let top = c.y - this.board.cell * 0.55;
+    top = Math.max(pad + h, Math.min(appH - pad, top));
     overlay.style.left = `${left}px`;
-    overlay.style.top = `${c.y - this.board.cell * 0.55}px`;
+    overlay.style.top = `${top}px`;
   }
 
   toast(msg) {
@@ -1154,10 +1216,22 @@ export class App {
     if (tower) {
       this.clearPlaceConfirm();
       this.selectedTowerId = tower.id;
+      this.selectedWallId = -1;
+      this.renderGameChrome();
+      return;
+    }
+    const wall = this.sim.walls.find(
+      (w) => !w.preplaced && w.cell.x === cell.x && w.cell.y === cell.y
+    );
+    if (wall) {
+      this.clearPlaceConfirm();
+      this.selectedTowerId = -1;
+      this.selectedWallId = wall.id;
       this.renderGameChrome();
       return;
     }
     this.selectedTowerId = -1;
+    this.selectedWallId = -1;
     this.syncTowerOverlay();
     if (this.tool === "wall") {
       this.clearPlaceConfirm();
@@ -1178,6 +1252,24 @@ export class App {
   }
 
   beginPlaceConfirm(x, y) {
+    if (!this.sim) return;
+    // Forge edits live in meta — keep the placing loadout current.
+    if ((this.sim.roster?.length | 0) !== (this.meta.slotCount | 0)) {
+      this._syncSimFromMeta(this.sim);
+    } else {
+      const metaSlot = this.meta.roster?.[this.slot];
+      const simSlot = this.sim.roster?.[this.slot];
+      if (
+        metaSlot &&
+        simSlot &&
+        (metaSlot.base !== simSlot.base ||
+          metaSlot.barrel !== simSlot.barrel ||
+          metaSlot.payload !== simSlot.payload ||
+          (metaSlot.levelCap | 0) !== (simSlot.levelCap | 0))
+      ) {
+        this._syncSimFromMeta(this.sim);
+      }
+    }
     const loadout = this.sim.roster[this.slot];
     if (!loadout?.complete) return this.toast("Compose a full triad in Forge first");
     if (!this.sim.grid.isBuildable(x, y)) return this.toast("Cell blocked");
@@ -1249,10 +1341,12 @@ export class App {
   }
 
   syncMetaProgress() {
-    const prevBest = this.meta.bestWave | 0;
     this.meta.aether = this.sim.economy.aether;
     this.meta.forge = this.sim.economy.forge;
-    this.meta.bestWave = Math.max(prevBest, this.sim.waveIndex);
+    // Endless progress only — campaign clears must not unlock endless wave gifts.
+    if (this.sim.modeEndless) {
+      this.meta.bestWave = Math.max(this.meta.bestWave | 0, this.sim.waveIndex);
+    }
     const { owned, gained } = applyWaveUnlocks(this.meta.owned, this.meta.bestWave);
     this.meta.owned = owned;
     this.persistMeta();
@@ -1379,6 +1473,7 @@ export class App {
     s[kind] = id;
     this.meta.roster[this.forgeSlot] = makeSlot(s.base, s.barrel, s.payload, this.meta.levelCap);
     this.persistMeta();
+    if (this.sim) this._syncSimFromMeta(this.sim);
     this.synth.play("ui");
     this.status = `Slot ${this.forgeSlot + 1}: set ${kind}`;
     this.showForge();
@@ -1387,6 +1482,7 @@ export class App {
   clearForgeSlot() {
     this.meta.roster[this.forgeSlot] = makeSlot("", "", "", this.meta.levelCap);
     this.persistMeta();
+    if (this.sim) this._syncSimFromMeta(this.sim);
     this.status = `Slot ${this.forgeSlot + 1} cleared`;
     this.showForge();
   }
@@ -1418,6 +1514,10 @@ export class App {
       this.meta.levelCap
     );
     this.persistMeta();
+    if (this.sim && (this.screen === "game" || this.screen === "hub" || this.screen === "upgrade")) {
+      // Mid-meta upgrades must raise caps/slots on a continued run too.
+      this._syncSimFromMeta(this.sim);
+    }
     this.synth.play("confirm");
     this.status = `${node.name} → ${rank + 1}/${node.maxRank}`;
     this.techSelectedId = id;
@@ -1472,14 +1572,28 @@ export class App {
   }
 
   sellSelected() {
-    if (this.selectedTowerId < 0) return this.toast("Tap a tower first");
-    const res = this.sim.trySellTower(this.selectedTowerId);
-    if (res.ok) {
-      this.selectedTowerId = -1;
-      this.synth.play("sell");
-      this.toast(`Sold (+${res.refund} Coin)`);
-      // Coins / place prices refresh via tower_sold → refreshHud
+    if (!this.sim) return;
+    if (this.selectedTowerId >= 0) {
+      const res = this.sim.trySellTower(this.selectedTowerId);
+      if (res.ok) {
+        this.selectedTowerId = -1;
+        this.synth.play("sell");
+        this.toast(`Sold (+${res.refund} Coin)`);
+      }
+      return;
     }
+    if (this.selectedWallId >= 0) {
+      const res = this.sim.trySellWall(this.selectedWallId);
+      if (res.ok) {
+        this.selectedWallId = -1;
+        this.synth.play("sell");
+        this.toast(`Wall sold (+${res.refund} Coin)`);
+      } else if (res.reason === "preplaced") {
+        this.toast("Fixed walls can't be sold");
+      }
+      return;
+    }
+    this.toast("Tap a tower or wall first");
   }
 
 }
