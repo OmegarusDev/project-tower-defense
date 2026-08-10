@@ -22,15 +22,18 @@ export function renderMain(app) {
   app.screen = "main";
   app.ui.innerHTML = `
     <div class="screen title-screen meta-enter">
+      <div class="frame-bolts" aria-hidden="true"></div>
       <header class="title-hero">
+        <div class="title-crest" aria-hidden="true"><span></span><i></i><span></span></div>
         <p class="title-mark">Project</p>
         <h1 class="title-brand">
           <span class="title-brand-line">Tower</span>
           <span class="title-brand-line accent">Defense</span>
         </h1>
+        <div class="title-rule" aria-hidden="true"></div>
         <p class="title-tag">Stamp the Yard. Shape the path. Hold the still.</p>
       </header>
-      <nav class="title-actions" aria-label="Main menu">
+      <nav class="title-actions plate-frame" aria-label="Main menu">
         <button class="btn title-cta" data-act="endless">Endless</button>
         <button class="btn" data-act="campaign">Campaign</button>
         <button class="btn" data-act="forge-from-main">Forge</button>
@@ -44,7 +47,7 @@ export function renderMain(app) {
           <span><i>Parts</i>${app.meta.forge}</span>
           <span><i>Best</i>W${app.meta.bestWave}</span>
         </div>
-        <p class="title-credit">Crown Bastion · Slag Host · zero asset packs</p>
+        <p class="title-credit"><span class="credit-gem" aria-hidden="true"></span>Crown Bastion · Slag Host · zero asset packs<span class="credit-gem" aria-hidden="true"></span></p>
       </footer>
     </div>`;
 }

@@ -1419,6 +1419,7 @@ export class App {
           <button type="button" class="call-btn" data-act="call" id="callBtn">
             <span class="call-kicker">Deploy</span>
             <span class="call-label" id="callLabel">Wave 1</span>
+            <span class="call-bolts" aria-hidden="true"></span>
           </button>
         </footer>
       </div>`;
