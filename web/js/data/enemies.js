@@ -1,136 +1,218 @@
 /**
- * Enemy archetypes — industrial invaders.
- * Stats are base values; WaveManager scales HP by wave.
+ * Slag Host archetypes — Vein Claim reclaimers.
+ * Stats are base values; WaveManager scales HP (and endless speed) by wave.
+ *
+ * armorKind: none | plate | insulated | energy
+ * ballast: low | mid | high — frost vs pressure coupling
  */
 
 export const ENEMY_KINDS = {
-  grub: {
-    label: "Grub",
-    hp: 28,
-    speed: 0.88,
+  mite: {
+    label: "Rivet Mite",
+    hp: 26,
+    speed: 0.62,
     leakDamage: 1,
     battleDrop: 2,
-    silhouette: "grub",
+    armorKind: "none",
+    ballast: "mid",
+    silhouette: "mite",
   },
-  runner: {
-    label: "Runner",
-    hp: 15,
-    speed: 1.62,
+  courier: {
+    label: "Lash Courier",
+    hp: 12,
+    speed: 1.95,
     leakDamage: 1,
     battleDrop: 2,
-    silhouette: "runner",
+    armorKind: "none",
+    ballast: "low",
+    silhouette: "courier",
   },
-  plate: {
-    label: "Plate",
-    hp: 78,
-    speed: 0.4,
+  hauler: {
+    label: "Slab Hauler",
+    hp: 88,
+    speed: 0.32,
     leakDamage: 2,
     battleDrop: 3,
-    armorFlat: 3,
-    silhouette: "plate",
-  },
-  skiff: {
-    label: "Skiff",
-    hp: 22,
-    speed: 1.05,
-    flying: true,
-    leakDamage: 1,
-    battleDrop: 2,
-    silhouette: "skiff",
-  },
-  aegis: {
-    label: "Aegis",
-    hp: 36,
-    speed: 0.66,
-    shieldHp: 26,
-    armorFlat: 1,
-    resist: { kinetic: 0.3 },
-    leakDamage: 2,
-    battleDrop: 3,
-    silhouette: "aegis",
-  },
-  cluster: {
-    label: "Cluster",
-    hp: 46,
-    speed: 0.7,
-    splitsInto: 2,
-    splitKind: "grub",
-    leakDamage: 2,
-    battleDrop: 3,
-    silhouette: "cluster",
-  },
-  wraith: {
-    label: "Wraith",
-    hp: 13,
-    speed: 1.28,
-    flying: true,
-    resist: { frost: 0.45 },
-    leakDamage: 1,
-    battleDrop: 2,
-    silhouette: "wraith",
-  },
-  furnace: {
-    label: "Furnace",
-    hp: 55,
-    speed: 0.52,
+    armorFlat: 4,
+    armorKind: "plate",
+    ballast: "high",
     resist: { fire: 0.55 },
-    armorFlat: 1,
+    silhouette: "hauler",
+  },
+  hauler_ceramite: {
+    label: "Ceramite Hauler",
+    hp: 92,
+    speed: 0.3,
     leakDamage: 2,
     battleDrop: 4,
-    silhouette: "furnace",
+    armorFlat: 4,
+    armorKind: "insulated",
+    ballast: "high",
+    resist: { fire: 0.55, shock: 0.65 },
+    silhouette: "hauler",
   },
-  leech: {
-    label: "Leech",
-    hp: 40,
-    speed: 0.68,
-    regen: 2.4,
+  duct: {
+    label: "Duct Hover",
+    hp: 20,
+    speed: 1.15,
+    flying: true,
+    leakDamage: 1,
+    battleDrop: 2,
+    armorKind: "none",
+    ballast: "low",
+    silhouette: "duct",
+  },
+  ward: {
+    label: "Ward Shell",
+    hp: 38,
+    speed: 0.52,
+    shieldHp: 28,
+    armorFlat: 2,
+    armorKind: "plate",
+    ballast: "high",
+    resist: { kinetic: 0.25, fire: 0.4 },
     leakDamage: 2,
     battleDrop: 3,
-    silhouette: "leech",
+    silhouette: "ward",
   },
-  overlord: {
-    label: "Overlord",
-    hp: 260,
-    speed: 0.34,
-    armorFlat: 5,
-    resist: { fire: 0.15, poison: 0.3 },
+  ward_volt: {
+    label: "Volt Ward",
+    hp: 42,
+    speed: 0.5,
+    shieldHp: 36,
+    armorFlat: 1,
+    armorKind: "energy",
+    energyBlock: true,
+    ballast: "high",
+    resist: { fire: 0.7, shock: 0.7 },
+    leakDamage: 2,
+    battleDrop: 4,
+    silhouette: "ward",
+  },
+  cask: {
+    label: "Nest Cask",
+    hp: 48,
+    speed: 0.58,
+    splitsInto: 2,
+    splitKind: "mite",
+    leakDamage: 2,
+    battleDrop: 3,
+    armorKind: "none",
+    ballast: "mid",
+    silhouette: "cask",
+  },
+  phantom: {
+    label: "Ash Phantom",
+    hp: 11,
+    speed: 1.42,
+    flying: true,
+    resist: { frost: 0.4 },
+    leakDamage: 1,
+    battleDrop: 2,
+    armorKind: "none",
+    ballast: "low",
+    silhouette: "phantom",
+  },
+  kiln: {
+    label: "Kiln Walker",
+    hp: 70,
+    speed: 0.38,
+    resist: { fire: 0.7 },
+    armorFlat: 2,
+    armorKind: "plate",
+    ballast: "high",
+    leakDamage: 2,
+    battleDrop: 4,
+    silhouette: "kiln",
+  },
+  siphon: {
+    label: "Siphon Tick",
+    hp: 72,
+    speed: 0.55,
+    regen: 2.8,
+    leakDamage: 2,
+    battleDrop: 3,
+    armorKind: "none",
+    ballast: "mid",
+    silhouette: "siphon",
+  },
+  claim: {
+    label: "Claim Engine",
+    hp: 300,
+    speed: 0.28,
+    armorFlat: 6,
+    armorKind: "plate",
+    ballast: "high",
+    resist: { fire: 0.35, poison: 0.3 },
     leakDamage: 5,
-    battleDrop: 14,
+    battleDrop: 16,
     boss: true,
-    silhouette: "overlord",
+    silhouette: "claim",
   },
 };
 
-/** Legacy ids → current kinds (saves / old scripts). */
+/** Legacy + paper-TD ids → Slag Host kinds. */
 export const ENEMY_ALIASES = {
-  basic: "grub",
-  heavy: "plate",
-  fast: "runner",
-  flying: "skiff",
-  shielded: "aegis",
-  splitter: "cluster",
-  boss: "overlord",
+  // paper / early web
+  basic: "mite",
+  grub: "mite",
+  heavy: "hauler",
+  plate: "hauler",
+  fast: "courier",
+  runner: "courier",
+  flying: "duct",
+  skiff: "duct",
+  shielded: "ward",
+  aegis: "ward",
+  splitter: "cask",
+  cluster: "cask",
+  boss: "claim",
+  overlord: "claim",
+  wraith: "phantom",
+  furnace: "kiln",
+  leech: "siphon",
 };
 
 export function resolveEnemyKind(id) {
   const k = ENEMY_ALIASES[id] || id;
-  return ENEMY_KINDS[k] ? k : "grub";
+  return ENEMY_KINDS[k] ? k : "mite";
 }
 
 export function enemyDef(id) {
-  return ENEMY_KINDS[resolveEnemyKind(id)] || ENEMY_KINDS.grub;
+  return ENEMY_KINDS[resolveEnemyKind(id)] || ENEMY_KINDS.mite;
 }
 
 /** Relative budget cost for endless pack building. */
 export const ENEMY_COST = {
-  grub: 1,
-  runner: 1.1,
-  plate: 2.4,
-  skiff: 1.4,
-  aegis: 2.2,
-  cluster: 2.0,
-  wraith: 1.5,
-  furnace: 2.3,
-  leech: 2.1,
-  overlord: 8,
+  mite: 1,
+  courier: 1.05,
+  hauler: 2.5,
+  hauler_ceramite: 2.9,
+  duct: 1.35,
+  ward: 2.3,
+  ward_volt: 2.8,
+  cask: 2.0,
+  phantom: 1.45,
+  kiln: 2.4,
+  siphon: 2.15,
+  claim: 8.5,
 };
+
+/** Frost potency multiplier by ballast (applied when moving). */
+export function ballastSlowFactor(ballast) {
+  if (ballast === "low") return 1.2;
+  if (ballast === "high") return 0.5;
+  return 1;
+}
+
+/** Pulse / launcher pressure multiplier by ballast. */
+export function ballastPressureFactor(ballast) {
+  if (ballast === "low") return 0.72;
+  if (ballast === "high") return 1.28;
+  return 1;
+}
+
+export function isConductive(e) {
+  const kind = e?.armorKind || "none";
+  return kind === "plate";
+}

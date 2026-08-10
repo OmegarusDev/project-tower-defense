@@ -60,8 +60,22 @@ export class ProcPalette {
       poison: "#9a6bb8",
       acid: "#7aad5c",
       breach: "#c8b090",
+      emp: "#7ec8e8",
     };
     this.enemy = {
+      mite: "#b84a55",
+      courier: "#d4892a",
+      hauler: "#6a7480",
+      hauler_ceramite: "#8a9088",
+      duct: "#6b5a9a",
+      ward: "#5a8ab0",
+      ward_volt: "#6ab0c8",
+      cask: "#a06070",
+      phantom: "#8a7ab8",
+      kiln: "#c4683a",
+      siphon: "#8a4060",
+      claim: "#c4305a",
+      // legacy aliases
       grub: "#b84a55",
       runner: "#d4892a",
       plate: "#6a7480",
@@ -72,7 +86,6 @@ export class ProcPalette {
       furnace: "#c4683a",
       leech: "#8a4060",
       overlord: "#c4305a",
-      // legacy aliases
       basic: "#b84a55",
       heavy: "#6a7480",
       fast: "#d4892a",
@@ -156,7 +169,7 @@ export class ProcPalette {
         bloom: 0.28,
         pulse: "#c4305a",
       },
-      fodder: {
+      mites: {
         fog: "rgba(8, 10, 14, 0.55)",
         moteWarm: "#b84a55",
         moteCool: "#9eb0c0",
@@ -170,14 +183,14 @@ export class ProcPalette {
         bloom: 0.3,
         pulse: "#d4892a",
       },
-      armor: {
+      haulers: {
         fog: "rgba(10, 12, 16, 0.6)",
         moteWarm: "#8a96a0",
         moteCool: "#6a7480",
         bloom: 0.36,
         pulse: "#8a96a0",
       },
-      sky: {
+      ducts: {
         fog: "rgba(12, 10, 22, 0.55)",
         moteWarm: "#8a7ab8",
         moteCool: "#6b5a9a",
@@ -197,6 +210,20 @@ export class ProcPalette {
         moteCool: "#a07050",
         bloom: 0.26,
         pulse: "#e07a3a",
+      },
+      ceramite: {
+        fog: "rgba(12, 14, 16, 0.62)",
+        moteWarm: "#9aa898",
+        moteCool: "#6a7480",
+        bloom: 0.34,
+        pulse: "#9aa898",
+      },
+      volt: {
+        fog: "rgba(10, 14, 22, 0.6)",
+        moteWarm: "#6ab0c8",
+        moteCool: "#5a8ab0",
+        bloom: 0.4,
+        pulse: "#6ab0c8",
       },
       chaos: {
         fog: "rgba(14, 8, 16, 0.62)",
@@ -218,6 +245,13 @@ export class ProcPalette {
         moteCool: "#805040",
         bloom: 0.22,
         pulse: "#ff8a40",
+      },
+      ceramite_front: {
+        fog: "rgba(12, 14, 16, 0.64)",
+        moteWarm: "#a8b0a0",
+        moteCool: "#708078",
+        bloom: 0.32,
+        pulse: "#a8b0a0",
       },
     };
     this.atmosphere = table[key] || table[key.replace(/^event_/, "")] || table.default;
@@ -247,6 +281,6 @@ export class ProcPalette {
   }
 
   enemyColor(kind) {
-    return this.c(this.enemy[kind] || this.enemy.basic);
+    return this.c(this.enemy[kind] || this.enemy.mite || this.enemy.basic);
   }
 }

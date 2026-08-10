@@ -1,4 +1,5 @@
 import { PARTS } from "../data/parts.js";
+import { ballastPressureFactor, isConductive } from "../data/enemies.js";
 import { buildAttackPlan, Pattern } from "./attackPlan.js";
 import { INF } from "./boardGrid.js";
 
@@ -91,7 +92,7 @@ export class CombatSystem {
       if (dist > plan.pulseRadius) continue;
       let dmg = plan.damage;
       if (plan.aoeFalloff && plan.pulseRadius > 0) dmg *= 1 - 0.5 * (dist / plan.pulseRadius);
-      this._applyHit(e, dmg, plan, t);
+      this._applyHit(e, dmg, plan, t, { pressure: true });
       hit.add(e.id);
       if (dist < closestD) {
         closestD = dist;
@@ -138,6 +139,8 @@ export class CombatSystem {
         chainFalloff: plan.chainFalloff,
         chainRange: plan.chainRange,
         airCapable: plan.airCapable,
+        armorPierce: plan.armorPierce || 0,
+        emp: !!plan.emp,
         towerId: t.id,
         traveled: 0,
         maxRange: plan.rangeCells * 1.15,
@@ -231,9 +234,11 @@ export class CombatSystem {
       chainFalloff: p.chainFalloff,
       chainRange: p.chainRange || 2.5,
       airCapable: p.airCapable,
+      armorPierce: p.armorPierce || 0,
+      emp: !!p.emp,
     };
     const tower = this.world.towers.find((t) => t.id === p.towerId);
-    this._applyHit(target, p.damage, plan, tower);
+    this._applyHit(target, p.damage, plan, tower, { pressure: false });
 
     if (plan.aoeRadius > 0) {
       for (const e of this.world.enemies) {
@@ -243,7 +248,7 @@ export class CombatSystem {
         if (d <= plan.aoeRadius) {
           let dmg = p.damage;
           if (plan.aoeFalloff) dmg *= 1 - 0.5 * (d / plan.aoeRadius);
-          this._applyHit(e, dmg, plan, tower);
+          this._applyHit(e, dmg, plan, tower, { pressure: true });
         }
       }
     }
@@ -261,13 +266,18 @@ export class CombatSystem {
     while (left-- > 0) {
       dmg *= plan.chainFalloff;
       let best = null;
-      let bestD = maxChain;
+      let bestScore = -1e9;
       for (const e of this.world.enemies) {
         if (hit.has(e.id)) continue;
         if (e.flying && !plan.airCapable) continue;
+        if (e.armorKind === "insulated") continue;
         const d = Math.hypot(e.pos.x - from.x, e.pos.y - from.y);
-        if (d <= bestD) {
-          bestD = d;
+        if (d > maxChain) continue;
+        // Prefer conductive plate for shock chains
+        let score = maxChain - d;
+        if (isConductive(e)) score += 1.5;
+        if (score > bestScore) {
+          bestScore = score;
           best = e;
         }
       }
@@ -284,12 +294,49 @@ export class CombatSystem {
     }
   }
 
-  _applyHit(e, damage, plan, tower) {
+  _applyHit(e, damage, plan, tower, opts = {}) {
     if ((e.immune || []).includes(plan.damageType)) {
       this.world.emit("hit_immune", { enemyId: e.id });
       return;
     }
+
+    const dtype = plan.damageType || "kinetic";
+    const armorKind = e.armorKind || "none";
+
+    // EMP: strip energy block / melt shields
+    if (plan.emp) {
+      if (armorKind === "energy") {
+        e.energyBlock = false;
+        e._empT = Math.max(e._empT || 0, 4);
+        e.resist = { ...(e.resist || {}), fire: Math.min(e.resist?.fire || 0, 0.25), shock: Math.min(e.resist?.shock || 0, 0.25) };
+      }
+      if ((e.shieldHp || 0) > 0) {
+        e.shieldHp = Math.max(0, e.shieldHp - Math.max(18, damage * 2.2));
+      }
+    }
+
+    // Energy full-block vs fire/shock until EMP strips the veil
+    if (e.energyBlock && (dtype === "fire" || dtype === "shock") && !plan.emp) {
+      this.world.emit("hit_immune", { enemyId: e.id, reason: "energy_block" });
+      e._hitFlash = 0.4;
+      return;
+    }
+
     let raw = damage;
+    if (opts.pressure) raw *= ballastPressureFactor(e.ballast || "mid");
+
+    // Pyro bonus vs soft (no armor)
+    if (dtype === "fire" && armorKind === "none") raw *= 1.35;
+
+    // Plate / insulated heat block (extra on top of resist map)
+    if (dtype === "fire" && (armorKind === "plate" || armorKind === "insulated")) {
+      raw *= 0.55;
+    }
+    // Insulated shock dampen
+    if (dtype === "shock" && armorKind === "insulated" && !plan.emp) {
+      raw *= 0.35;
+    }
+
     if (tower) {
       const ox = tower.cell.x + 0.5;
       const oy = tower.cell.y + 0.5;
@@ -308,7 +355,7 @@ export class CombatSystem {
       raw *= plan.airDamageMult;
     }
     const armor = Math.max(0, (e.armorFlat || 0) - (e.shred || 0) - (plan.armorPierce || 0));
-    const resist = (e.resist && e.resist[plan.damageType]) || 0;
+    const resist = (e.resist && e.resist[dtype]) || 0;
     let dmg = Math.max(0, raw - armor) * (1 - Math.min(0.95, resist));
     if ((e.shieldHp || 0) > 0) {
       const absorbed = Math.min(e.shieldHp, dmg);
@@ -322,7 +369,7 @@ export class CombatSystem {
     this.world.emit("hit", {
       enemyId: e.id,
       damage: dmg,
-      type: plan.damageType,
+      type: plan.emp ? "shock" : dtype,
       x: e.pos.x,
       y: e.pos.y,
     });
@@ -383,7 +430,10 @@ export class CombatSystem {
         e.burnAcc = (e.burnAcc || 0) + dt;
         if (e.burnAcc >= (e.burnEvery || 0.5)) {
           e.burnAcc -= e.burnEvery || 0.5;
-          e.hp -= e.burnDps || 1;
+          let tick = e.burnDps || 1;
+          if ((e.armorKind || "none") === "none") tick *= 1.35;
+          if (e.armorKind === "plate" || e.armorKind === "insulated") tick *= 0.55;
+          e.hp -= tick;
         }
         e._fxBurn = (e._fxBurn || 0) + dt;
         if (e._fxBurn > 0.12) {

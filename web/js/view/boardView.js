@@ -1297,6 +1297,8 @@ export class BoardView {
       t,
       phase: (e.id || 0) * 0.7,
       flying: !!e.flying,
+      armorKind: e.armorKind,
+      energyBlock: !!e.energyBlock,
     });
 
     if ((e.shieldHp || 0) > 0) {

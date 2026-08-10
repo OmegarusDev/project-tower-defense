@@ -11,6 +11,7 @@ export class WaveManager {
     this.waveActive = false;
     this._queue = [];
     this._spawnGap = 0.4;
+    this._waveSpeedMult = 1;
     this._rand = null;
     this.lastTheme = "";
     this.lastEvent = "";
@@ -23,6 +24,7 @@ export class WaveManager {
     const plan = this._planWave(w);
     this._queue = plan.queue.slice();
     this._spawnGap = plan.spawnGap;
+    this._waveSpeedMult = plan.speedMult != null ? plan.speedMult : 1;
     this.lastTheme = plan.theme || "";
     this.lastEvent = plan.event || "";
     this.toSpawn = this._queue.length;
@@ -44,7 +46,6 @@ export class WaveManager {
       if (this.spawnTimer <= 0) {
         this._spawnOne();
         this.toSpawn -= 1;
-        // Slight jitter on endless spawn cadence
         const jitter =
           this.world.modeEndless && this._rand ? 0.85 + this._rand() * 0.35 : 1;
         this.spawnTimer = this._spawnGap * jitter;
@@ -86,17 +87,26 @@ export class WaveManager {
 
   _spawnOne() {
     const w = this.world.waveIndex;
-    const kind = this._queue.shift() || "grub";
-    const e = this.makeEnemy(kind, w);
+    const kind = this._queue.shift() || "mite";
+    const e = this.makeEnemy(kind, w, { speedMult: this._waveSpeedMult });
     this.world.enemies.push(e);
     this.world.emit("enemy_spawned", { enemy: e });
   }
 
-  /** Public factory — also used for cluster children. */
+  /** Public factory — also used for nest-cask children. */
   makeEnemy(kind, wave, opts = {}) {
     const id = resolveEnemyKind(kind);
     const def = enemyDef(id);
-    const scale = Math.pow(1.05, (wave || 1) - 1) * (opts.scale || 1);
+    const w = Math.max(1, wave || 1);
+    const scale = Math.pow(1.05, w - 1) * (opts.scale || 1);
+    // Endless: mild speed ramp; heavies take less of it. Campaign: authored speedMult.
+    let speedMult = opts.speedMult != null ? opts.speedMult : this._waveSpeedMult || 1;
+    if (this.world.modeEndless) {
+      const ramp = Math.min(0.45, (w - 1) * 0.015);
+      const ballast = def.ballast || "mid";
+      const share = ballast === "high" ? 0.45 : ballast === "low" ? 1.15 : 1;
+      speedMult = 1 + ramp * share;
+    }
     const spawn = opts.pos || {
       x: this.world.grid.spawn.x + 0.5,
       y: this.world.grid.spawn.y + 0.5,
@@ -109,22 +119,26 @@ export class WaveManager {
       pos: { x: spawn.x, y: spawn.y },
       hp: def.hp * scale,
       maxHp: def.hp * scale,
-      speed: def.speed,
+      speed: def.speed * speedMult,
       flying: !!def.flying,
       leakDamage: def.leakDamage ?? 1,
       battleDrop: def.battleDrop ?? 2,
       armorFlat: def.armorFlat || 0,
+      armorKind: def.armorKind || "none",
+      energyBlock: !!def.energyBlock,
+      ballast: def.ballast || "mid",
       resist: { ...(def.resist || {}) },
       immune: [...(def.immune || [])],
       shieldHp: (def.shieldHp || 0) * scale,
       splitsInto: def.splitsInto || 0,
-      splitKind: def.splitKind || "grub",
+      splitKind: def.splitKind || "mite",
       regen: def.regen || 0,
       boss: !!def.boss,
       silhouette: def.silhouette || id,
       reachedExit: false,
       _hitFlash: 0,
       _regenAcc: 0,
+      _empT: 0,
     };
     return e;
   }

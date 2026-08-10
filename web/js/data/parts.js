@@ -203,7 +203,16 @@ export const PARTS = {
       speed: 11,
       cost: 15,
       forgeCost: 22,
-      blurb: "AP slug — punches flat armor, light shred",
+      blurb: "AP kinetic — ignores 4 armor; light shred. Best vs Slab Haulers.",
+    },
+    emp: {
+      damage: 5,
+      damageType: "shock",
+      emp: true,
+      speed: 10,
+      cost: 14,
+      forgeCost: 26,
+      blurb: "EMP burst — strips energy wards & shields. Weak vs bare plate.",
     },
   },
 };
@@ -230,6 +239,7 @@ export const WAVE_UNLOCKS = [
   { bestWave: 20, payloads: ["acid"], label: "Acid payload" },
   { bestWave: 22, barrels: ["flak"], label: "Flak barrel" },
   { bestWave: 24, payloads: ["breach"], label: "Breach payload" },
+  { bestWave: 26, payloads: ["emp"], label: "EMP payload" },
 ];
 
 /** Soft roster size — matches slot4→slot6 tech. */

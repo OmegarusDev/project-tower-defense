@@ -770,18 +770,18 @@ export class App {
         <header class="meta-hero">
           <div class="meta-hero-row">
             <div>
-              <p class="title-mark">Pressure</p>
+              <p class="title-mark">Vein Claim</p>
               <h1>Endless</h1>
             </div>
             <button class="btn secondary tech-back" data-act="main">Menu</button>
           </div>
-          <p class="meta-blurb">Seeded themes · growing deck · hold the bastion</p>
+          <p class="meta-blurb">Pressure from the Vein — seeded claim patterns · growing deck</p>
         </header>
         <div class="hub-console">
           <div class="hub-card plate">
-            <h3>Personal best</h3>
+            <h3>Deepest hold</h3>
             <div class="hub-wave">${best || "—"}</div>
-            <p class="end-note" style="text-align:left;margin-top:6px">Themes unlock as you climb: ${themes}</p>
+            <p class="end-note" style="text-align:left;margin-top:6px">Claim themes unlock as you climb: ${themes}</p>
             <div class="hub-stat-row title-stats">
               <span><i>Æ</i>${this.meta.aether}</span>
               <span><i>Parts</i>${this.meta.forge}</span>
@@ -867,9 +867,9 @@ export class App {
     this.ui.innerHTML = `
       <div class="screen end-screen meta-enter">
         <header class="end-hero">
-          <p class="end-mark">Campaign</p>
-          <h1 class="end-title">Victory</h1>
-          <p class="end-sub">${lv ? lv.name : "Level"} secured</p>
+          <p class="end-mark">Bastion Op</p>
+          <h1 class="end-title">Still Held</h1>
+          <p class="end-sub">${lv ? lv.name : "Level"} sealed</p>
           ${opts.firstClear ? `<span class="end-best-tag">First clear</span>` : ""}
         </header>
         <div class="end-card">
@@ -936,7 +936,7 @@ export class App {
     this.ui.innerHTML = `
       <div class="screen end-screen meta-enter${endless ? " end-endless" : ""}">
         <header class="end-hero">
-          <p class="end-mark">${endless ? "Endless" : "Campaign"}</p>
+          <p class="end-mark">${endless ? "Vein Claim" : "Bastion Op"}</p>
           <h1 class="end-title">Run Over</h1>
           <p class="end-sub">${lv ? `${lv.name} · ` : ""}Reached wave</p>
           <div class="end-wave${isBest ? " is-best" : ""}">
@@ -1897,7 +1897,12 @@ export class App {
       }
       case "enemy_killed":
         if (this.meta.settings?.particles !== false && e.enemy?.pos) {
-          this.fx.death(e.enemy.pos.x, e.enemy.pos.y, e.enemy.kind || "soft");
+          this.fx.death(
+            e.enemy.pos.x,
+            e.enemy.pos.y,
+            e.enemy.kind || "soft",
+            e.enemy.armorKind || "none"
+          );
           this.board?.addStain?.(e.enemy.pos.x, e.enemy.pos.y, e.enemy.boss ? "fire" : "kinetic");
         }
         if (e.enemy?.boss) this.board?.punch?.(3.5);

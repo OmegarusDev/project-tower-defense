@@ -28,7 +28,7 @@ export function renderMain(app) {
           <span class="title-brand-line">Tower</span>
           <span class="title-brand-line accent">Defense</span>
         </h1>
-        <p class="title-tag">Compose towers. Shape the path. Survive.</p>
+        <p class="title-tag">Stamp the Yard. Shape the path. Hold the still.</p>
       </header>
       <nav class="title-actions" aria-label="Main menu">
         <button class="btn title-cta" data-act="endless">Endless</button>
@@ -44,7 +44,7 @@ export function renderMain(app) {
           <span><i>Parts</i>${app.meta.forge}</span>
           <span><i>Best</i>W${app.meta.bestWave}</span>
         </div>
-        <p class="title-credit">Vanilla web · zero asset packs</p>
+        <p class="title-credit">Crown Bastion · Slag Host · zero asset packs</p>
       </footer>
     </div>`;
 }
@@ -165,7 +165,7 @@ export function renderCampaign(app) {
           </div>
           <button class="btn secondary tech-back" data-act="main">Back</button>
         </div>
-        <p class="meta-blurb">Authored waves · prep before each fight</p>
+        <p class="meta-blurb">Vein Claim ops · prep the Yard before each seal</p>
         <div class="title-stats tech-stats">
           <span><i>Æ</i>${app.meta.aether}</span>
           <span><i>Parts</i>${app.meta.forge}</span>

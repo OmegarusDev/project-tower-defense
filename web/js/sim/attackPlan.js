@@ -37,6 +37,7 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
     pointBlankRange: base.pointBlankRange ?? 0,
     airDamageMult: (base.airDamageMult ?? 1) * (barrel.airDamageMult ?? 1),
     armorPierce: payload.armorPierce ?? 0,
+    emp: !!payload.emp,
     executeMult: base.executeMult ?? 1,
     executeThreshold: base.executeThreshold ?? 0,
   };

@@ -9,16 +9,29 @@ import { WAVE_PACKS, resolveCampaignWave } from "../data/waveScripts.js";
 import { ENDLESS_THEMES } from "../data/waveScripts.js";
 
 const THREAT_LABEL = {
-  grub: "Grub",
+  mite: "Mite",
+  courier: "Rush",
+  hauler: "Plate",
+  hauler_ceramite: "Ceramite",
+  duct: "Air",
+  ward: "Ward",
+  ward_volt: "Energy",
+  cask: "Split",
+  phantom: "Air",
+  kiln: "Heat",
+  siphon: "Regen",
+  claim: "Claim",
+  // legacy
+  grub: "Mite",
   runner: "Rush",
-  plate: "Armor",
+  plate: "Plate",
   skiff: "Air",
-  aegis: "Shield",
+  aegis: "Ward",
   cluster: "Split",
   wraith: "Air",
   furnace: "Heat",
   leech: "Regen",
-  overlord: "Boss",
+  overlord: "Claim",
 };
 
 /** Unique threat tags from a campaign level's authored waves. */

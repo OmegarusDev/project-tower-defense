@@ -3,6 +3,7 @@ import { Economy } from "./economy.js";
 import { CombatSystem } from "./combat.js";
 import { WaveManager } from "./waves.js";
 import { defaultSlots, migratePartId, makeSlot } from "../data/parts.js";
+import { ballastSlowFactor } from "../data/enemies.js";
 
 export const TICK_HZ = 60;
 export const TICK_DT = 1 / TICK_HZ;
@@ -305,7 +306,7 @@ export class SimWorld {
       if (e.hp <= 0) {
         this.economy.addBattle(e.battleDrop || 1);
         if ((e.splitsInto | 0) > 0) {
-          const childKind = e.splitKind || "grub";
+          const childKind = e.splitKind || "mite";
           for (let s = 0; s < e.splitsInto; s++) {
             const child = this.waves.makeEnemy(childKind, this.waveIndex, {
               scale: 0.55,
@@ -347,7 +348,8 @@ export class SimWorld {
   }
 
   _advance(e) {
-    const slow = Math.min(1, e.slowAmount || 0);
+    const slowRaw = Math.min(1, e.slowAmount || 0);
+    const slow = Math.min(1, slowRaw * ballastSlowFactor(e.ballast || "mid"));
     if (slow >= 1) return;
     // speed is cells/sec; glide along successive cell centers on the path
     let remaining = e.speed * (1 - slow) * this.dt;
