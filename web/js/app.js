@@ -1,3 +1,4 @@
+import { ENDLESS_GRID } from "./data/endlessGrid.js";
 import { SimWorld, TICK_HZ } from "./sim/simWorld.js";
 import {
   makeSlot,
@@ -890,7 +891,7 @@ export class App {
       clearEndless();
     }
     this.sim = new SimWorld();
-    this.sim.setup(11, 14, 1, true);
+    this.sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, 1, true);
     this._applyRunTech(this.sim, { battleBase: BASE_START_CASH });
     this.fx.clear();
     this.wireSim();
@@ -902,6 +903,7 @@ export class App {
     this.speed = 1;
     this.accum = 0;
     this.placeConfirm = null;
+    this.board.resetPan();
     this.enterGame();
   }
 
@@ -926,6 +928,7 @@ export class App {
     this.speed = 1;
     this.accum = 0;
     this.placeConfirm = null;
+    this.board.resetPan();
     this.enterGame();
     this.toast(`Checkpoint loaded — Call Wave ${savedWave || 1}`);
   }
@@ -953,6 +956,7 @@ export class App {
     this.speed = 1;
     this.accum = 0;
     this.placeConfirm = null;
+    this.board.resetPan();
     this.enterGame();
     this.toast(`${lv.name}: clear ${lv.wavesToWin} waves. Pre-walls are fixed.`);
   }
@@ -968,7 +972,7 @@ export class App {
     this.clearPlaceConfirm();
     this.renderGameChrome();
     if (this.sim?.modeEndless) {
-      this.toast("Place towers/walls, then Call Wave. Path cannot be sealed.");
+      this.toast("Place towers/walls, then Call Wave. Drag the map to pan.");
     }
   }
 
@@ -1064,8 +1068,8 @@ export class App {
         </div>
         <div class="dock">
           <div class="dock-meta" id="slotline"></div>
-          <div class="row build-strip">
-            ${buildBtns}
+          <div class="build-strip">${buildBtns}</div>
+          <div class="build-tools">
             <button class="btn ${this.tool === "wall" ? "active" : ""}" data-act="tool:wall" id="wallBtn">Wall</button>
           </div>
           <button class="btn call-btn" data-act="call" id="callBtn">Call Wave</button>
@@ -1362,6 +1366,11 @@ export class App {
       case "wall_placed":
       case "tower_sold":
       case "wall_sold":
+        this.refreshHud();
+        break;
+      case "grid_grew":
+        this.toast(`Map expands · ${e.rows} rows deep`);
+        this.board?.onGridGrew?.();
         this.refreshHud();
         break;
       case "tower_fired":

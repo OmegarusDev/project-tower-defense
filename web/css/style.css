@@ -58,6 +58,7 @@ html, body {
   width: 100%;
   height: 100%;
   image-rendering: auto;
+  touch-action: none;
 }
 
 .ui {
@@ -1116,12 +1117,9 @@ html, body {
   background: linear-gradient(to bottom, rgba(18,22,31,0.97), rgba(18,22,31,0.72), transparent);
 }
 
-.hud-center {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: stretch;
+.hud-center .status {
+  text-align: center;
+  font-size: 0.72rem;
 }
 
 .stat-chips {
@@ -1134,12 +1132,12 @@ html, body {
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 7px;
+  gap: 3px;
+  padding: 3px 6px;
   border-radius: 999px;
   background: rgba(20, 28, 42, 0.92);
   border: 1px solid #33485f;
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-weight: 650;
   letter-spacing: 0.02em;
   line-height: 1.2;
@@ -1259,24 +1257,32 @@ html, body {
 }
 
 .build-strip {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
   margin-bottom: 8px;
 }
 
 .build-strip .btn {
-  flex: 1 1 calc(25% - 6px);
-  min-width: 3.4rem;
-  padding: 12px 4px;
-  font-size: 0.7rem;
+  min-width: 0;
+  width: 100%;
+  padding: 12px 6px;
+  font-size: 0.72rem;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.build-strip #wallBtn {
-  flex: 1 1 calc(50% - 6px);
+.build-tools {
+  margin-bottom: 8px;
+}
+
+.build-tools .btn {
+  width: 100%;
+  padding: 12px 10px;
+  font-size: 0.82rem;
+  font-weight: 650;
 }
 
 .build-strip .btn.slot-locked {

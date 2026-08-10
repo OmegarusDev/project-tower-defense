@@ -51,7 +51,8 @@
 - Forge shop and Aether tech: **Main Menu only** (not mid-run)
 - Game over: keep Aether + Forge; discard Battle + board
 - Plain square grid; no pre-walls
-- Grid grows every **20 waves**, full at **wave 100**, **south from top** (spawn fixed; exit moves down)
+- Grid grows every **5 waves**, up to **22 rows**, **south from top** (spawn fixed; exit moves down)
+- Starts compact (**9×8**); drag / scroll the board when the field is taller than the screen
 - Kick drum tempo rises each wave; no music gap between waves
 
 ## 5. Campaign

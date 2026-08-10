@@ -1,3 +1,5 @@
+import { ENDLESS_GRID } from "../data/endlessGrid.js";
+
 export class WaveManager {
   constructor(world) {
     this.world = world;
@@ -39,8 +41,13 @@ export class WaveManager {
         this.world.emit("victory", { wave, levelId: this.world.campaignLevelId });
         return;
       }
-      if (this.world.modeEndless && wave % 20 === 0 && wave <= 100) {
-        if (this.world.grid.rows < 28) this.world.growSouth(2);
+      if (
+        this.world.modeEndless &&
+        wave > 0 &&
+        wave % ENDLESS_GRID.growEvery === 0 &&
+        this.world.grid.rows < ENDLESS_GRID.maxRows
+      ) {
+        this.world.growSouth(ENDLESS_GRID.growBy);
       }
     }
   }

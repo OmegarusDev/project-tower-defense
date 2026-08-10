@@ -16,19 +16,48 @@ export class BoardView {
     this.cam = new BoardCamera();
     this.origin = { x: 16, y: 200 };
     this.cell = 40;
+    this.panY = 0;
+    this.panMin = 0;
+    this.panMax = 0;
     this.hover = null;
     this.pendingPlace = null;
     this.tool = "tower";
     this.selectedTowerId = -1;
     this.onTap = null;
     this._portalAcc = 0;
+    this._drag = null;
 
-    canvas.addEventListener("pointerdown", (e) => this._pointer(e, true));
-    canvas.addEventListener("pointermove", (e) => this._pointer(e, false));
+    canvas.addEventListener("pointerdown", (e) => this._onPointerDown(e));
+    canvas.addEventListener("pointermove", (e) => this._onPointerMove(e));
+    canvas.addEventListener("pointerup", (e) => this._onPointerUp(e));
+    canvas.addEventListener("pointercancel", (e) => this._onPointerUp(e));
+    canvas.addEventListener(
+      "wheel",
+      (e) => {
+        if (!this.sim) return;
+        e.preventDefault();
+        this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY - e.deltaY * 0.45));
+        this._fit();
+      },
+      { passive: false }
+    );
   }
 
   setSim(sim) {
     this.sim = sim;
+    this.resetPan();
+  }
+
+  resetPan() {
+    this.panY = 0;
+    this._fit();
+  }
+
+  /** After the map grows south, ease pan so the new ground stays reachable. */
+  onGridGrew() {
+    this._fit();
+    // Nudge toward showing the bastion (south edge).
+    this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY - this.cell * 1.5));
     this._fit();
   }
 
@@ -48,16 +77,25 @@ export class BoardView {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const sy = VIEW25.yScale;
-    this.cell = Math.max(
-      26,
-      Math.min(48, Math.min((cssW - 28) / g.cols, (cssH - 220) / (g.rows * sy)))
-    );
+    const topPad = 102;
+    const bottomPad = 168;
+    const viewH = Math.max(120, cssH - topPad - bottomPad);
+
+    // Size for readable cells by width — never crush to fit full height.
+    this.cell = Math.max(30, Math.min(46, (cssW - 24) / g.cols));
     const boardW = this.cell * g.cols;
     const boardH = this.cell * g.rows * sy;
-    const topPad = 108;
-    const bottomPad = 148;
-    const y = Math.max(topPad, Math.min(cssH - bottomPad - boardH, (cssH - boardH) / 2));
-    this.origin = { x: (cssW - boardW) / 2, y };
+
+    if (boardH <= viewH) {
+      this.panMin = this.panMax = (viewH - boardH) / 2;
+      this.panY = this.panMin;
+    } else {
+      this.panMax = 0;
+      this.panMin = viewH - boardH;
+      this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY));
+    }
+
+    this.origin = { x: (cssW - boardW) / 2, y: topPad + this.panY };
     this.cam.configure(this.origin.x, this.origin.y, this.cell, g.cols, g.rows);
   }
 
@@ -66,11 +104,50 @@ export class BoardView {
     return this.cam.cellAtScreen(clientX - rect.left, clientY - rect.top);
   }
 
-  _pointer(e, down) {
+  _onPointerDown(e) {
     if (!this.sim) return;
+    this._drag = {
+      id: e.pointerId,
+      x0: e.clientX,
+      y0: e.clientY,
+      panY0: this.panY,
+      moved: false,
+    };
+    try {
+      this.canvas.setPointerCapture(e.pointerId);
+    } catch (_) {
+      /* ignore */
+    }
+    this.hover = this._cellAt(e.clientX, e.clientY);
+  }
+
+  _onPointerMove(e) {
+    if (!this.sim) return;
+    this.hover = this._cellAt(e.clientX, e.clientY);
+    const d = this._drag;
+    if (!d || e.pointerId !== d.id) return;
+    const dy = e.clientY - d.y0;
+    const dx = e.clientX - d.x0;
+    if (!d.moved && Math.hypot(dx, dy) > 8) d.moved = true;
+    if (d.moved && this.panMin < this.panMax - 0.5) {
+      this.panY = Math.max(this.panMin, Math.min(this.panMax, d.panY0 + dy));
+      this._fit();
+    }
+  }
+
+  _onPointerUp(e) {
+    if (!this.sim) return;
+    const d = this._drag;
+    if (!d || e.pointerId !== d.id) return;
+    this._drag = null;
+    try {
+      this.canvas.releasePointerCapture(e.pointerId);
+    } catch (_) {
+      /* ignore */
+    }
+    if (d.moved) return;
     const c = this._cellAt(e.clientX, e.clientY);
-    this.hover = c;
-    if (down && this.sim.grid.inBounds(c.x, c.y) && this.onTap) this.onTap(c);
+    if (this.sim.grid.inBounds(c.x, c.y) && this.onTap) this.onTap(c);
   }
 
   draw() {
