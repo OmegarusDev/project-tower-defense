@@ -60,8 +60,19 @@ export class ProcPalette {
       acid: "#7aad5c",
     };
     this.enemy = {
+      grub: "#b84a55",
+      runner: "#d4892a",
+      plate: "#6a7480",
+      skiff: "#6b5a9a",
+      aegis: "#5a8ab0",
+      cluster: "#a06070",
+      wraith: "#8a7ab8",
+      furnace: "#c4683a",
+      leech: "#8a4060",
+      overlord: "#c4305a",
+      // legacy aliases
       basic: "#b84a55",
-      heavy: "#7a3440",
+      heavy: "#6a7480",
       fast: "#d4892a",
       flying: "#6b5a9a",
       shielded: "#5a8ab0",

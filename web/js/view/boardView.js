@@ -1,7 +1,8 @@
 import { buildAttackPlan } from "../sim/attackPlan.js";
-import { drawComposedTower, cyl25, box25, frustum25 } from "./towerPainter.js";
+import { drawComposedTower } from "./towerPainter.js";
+import { drawEnemyBody } from "./enemyPainter.js";
 import { VIEW25, setPitch, deckRy, BoardCamera } from "./view25.js";
-import { shade, withAlpha, hash21, matsFrom } from "./drawUtil.js";
+import { shade, withAlpha, hash21 } from "./drawUtil.js";
 
 /** Draw towers/enemies a bit larger than the cell footprint. */
 const UNIT_SCALE = 1.22;
@@ -1268,20 +1269,13 @@ export class BoardView {
     const s = this.cell * 0.8 * p.s * UNIT_SCALE * hitSquash;
     const cx = p.x;
     const cy = p.y;
-    const col = this.palette.enemyColor(e.kind);
-    const m = matsFrom(col);
 
     ctx.fillStyle = "rgba(0,0,0,0.32)";
     ctx.beginPath();
     ctx.ellipse(cx + 1, cy + s * 0.22, s * 0.28, deckRy(s * 0.28), 0, 0, Math.PI * 2);
     ctx.fill();
 
-    if (e.kind === "fast") this._enemyFast(cx, cy, s, m);
-    else if (e.kind === "shielded") this._enemyShielded(cx, cy, s, m);
-    else if (e.kind === "splitter") this._enemySplitter(cx, cy, s, m);
-    else if (e.flying) this._enemyFly(cx, cy, s, m);
-    else if (e.kind === "heavy" || e.kind === "boss") this._enemyHeavy(cx, cy, s, m, e.kind === "boss");
-    else this._enemyBasic(cx, cy, s, m);
+    drawEnemyBody(ctx, this.palette, e.silhouette || e.kind, cx, cy, s);
 
     if ((e.shieldHp || 0) > 0) {
       ctx.strokeStyle = withAlpha("#9ec8e8", 0.75);
@@ -1296,6 +1290,7 @@ export class BoardView {
     else if ((e.poisonT || 0) > 0) ring = this.palette.dmg("poison");
     else if ((e.shredT || 0) > 0) ring = this.palette.dmg("acid");
     else if ((e.slowT || 0) > 0) ring = this.palette.dmg("frost");
+    else if ((e.regen || 0) > 0) ring = withAlpha("#c45a6a", 0.7);
     if (ring) {
       ctx.strokeStyle = ring;
       ctx.lineWidth = 2;
@@ -1308,58 +1303,11 @@ export class BoardView {
     const ratio = Math.max(0, e.hp / e.maxHp);
     const barW = s * 0.72;
     ctx.fillStyle = "rgba(20,16,12,0.85)";
-    ctx.fillRect(cx - barW / 2 - 1, cy - s * 0.5 - 1, barW + 2, 5);
+    ctx.fillRect(cx - barW / 2 - 1, cy - s * 0.55 - 1, barW + 2, 5);
     ctx.fillStyle = shade(this.palette.path, -0.35);
-    ctx.fillRect(cx - barW / 2, cy - s * 0.5, barW, 3);
+    ctx.fillRect(cx - barW / 2, cy - s * 0.55, barW, 3);
     ctx.fillStyle = ratio > 0.35 ? "#8fbf6a" : "#c45a4a";
-    ctx.fillRect(cx - barW / 2, cy - s * 0.5, barW * ratio, 3);
-  }
-
-  _enemyBasic(cx, cy, s, m) {
-    const rise = s * 0.16;
-    cyl25(this.ctx, cx, cy - rise * 0.55, s * 0.24, rise, m.top, m.side, m.sideDark);
-  }
-
-  _enemyHeavy(cx, cy, s, m, boss) {
-    const w = s * (boss ? 0.42 : 0.36);
-    const h = s * (boss ? 0.28 : 0.22);
-    box25(this.ctx, cx, cy - h * 0.35, w, w * 0.7, h, m);
-    if (boss) {
-      cyl25(this.ctx, cx, cy - h * 0.95, s * 0.12, s * 0.1, m.topHi || m.top, m.side, m.sideDark);
-    }
-  }
-
-  _enemyFast(cx, cy, s, m) {
-    frustum25(this.ctx, cx, cy - s * 0.22, s * 0.1, s * 0.28, s * 0.2, m);
-  }
-
-  _enemyFly(cx, cy, s, m) {
-    const ctx = this.ctx;
-    ctx.fillStyle = "rgba(0,0,0,0.16)";
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + s * 0.26, s * 0.2, s * 0.07, 0, 0, Math.PI * 2);
-    ctx.fill();
-    cyl25(ctx, cx, cy - s * 0.18, s * 0.28, s * 0.1, m.top, m.side, m.sideDark);
-    ctx.strokeStyle = withAlpha(m.rim || m.top, 0.45);
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy - s * 0.12, s * 0.38, s * 0.1, 0, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  _enemyShielded(cx, cy, s, m) {
-    cyl25(this.ctx, cx, cy - s * 0.2, s * 0.26, s * 0.18, m.top, m.side, m.sideDark);
-    box25(this.ctx, cx, cy - s * 0.08, s * 0.38, s * 0.2, s * 0.08, {
-      ...m,
-      top: shade(m.top, 0.15),
-      side: shade(m.side, 0.1),
-    });
-  }
-
-  _enemySplitter(cx, cy, s, m) {
-    cyl25(this.ctx, cx - s * 0.1, cy - s * 0.14, s * 0.16, s * 0.14, m.top, m.side, m.sideDark);
-    cyl25(this.ctx, cx + s * 0.1, cy - s * 0.14, s * 0.16, s * 0.14, m.top, m.side, m.sideDark);
-    box25(this.ctx, cx, cy - s * 0.02, s * 0.34, s * 0.18, s * 0.1, m);
+    ctx.fillRect(cx - barW / 2, cy - s * 0.55, barW * ratio, 3);
   }
 
   _drawProjectile(p) {

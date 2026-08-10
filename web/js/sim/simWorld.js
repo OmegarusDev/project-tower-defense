@@ -31,7 +31,7 @@ export class SimWorld {
     this.wavesToWin = 0;
     this.seed = 1;
     this.runSeed = 1;
-    this.campaignWaveScripts = null;
+    this.campaignWaves = null;
     this.actionLog = [];
     this._nextId = 1;
     this._listeners = new Map();
@@ -60,7 +60,7 @@ export class SimWorld {
     this.modeEndless = endless;
     this.campaignLevelId = 0;
     this.wavesToWin = 0;
-    this.campaignWaveScripts = null;
+    this.campaignWaves = null;
     this.actionLog = [];
     this.grid.setup(cols, rows);
     this.economy = new Economy();
@@ -305,8 +305,9 @@ export class SimWorld {
       if (e.hp <= 0) {
         this.economy.addBattle(e.battleDrop || 1);
         if ((e.splitsInto | 0) > 0) {
+          const childKind = e.splitKind || "grub";
           for (let s = 0; s < e.splitsInto; s++) {
-            const child = this.waves.makeEnemy("basic", this.waveIndex, {
+            const child = this.waves.makeEnemy(childKind, this.waveIndex, {
               scale: 0.55,
               pos: {
                 x: e.pos.x + (s === 0 ? -0.15 : 0.15),
@@ -321,6 +322,14 @@ export class SimWorld {
         this.emit("enemy_killed", { enemy: e, drop: e.battleDrop || 1 });
         this.enemies.splice(i, 1);
         continue;
+      }
+      // Leech regen
+      if ((e.regen || 0) > 0 && e.hp < e.maxHp) {
+        e._regenAcc = (e._regenAcc || 0) + this.dt;
+        if (e._regenAcc >= 0.5) {
+          e._regenAcc = 0;
+          e.hp = Math.min(e.maxHp, e.hp + e.regen * 0.5);
+        }
       }
       this._advance(e);
       if (e.reachedExit) {

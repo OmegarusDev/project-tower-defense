@@ -25,7 +25,7 @@ export class LevelEditor {
     this.name = "Custom Yard";
     this.wavesToWin = 5;
     this.coinGrant = 100;
-    this.waveScript = "mixed_early";
+    this.waveScript = "mixed_mid";
     this.paint = "wall";
     this.grid = new BoardGrid();
     this.grid.setup(this.cols, this.rows);
@@ -92,7 +92,10 @@ export class LevelEditor {
       wallCount: this.walls.length,
       wavesToWin: this.wavesToWin | 0 || 5,
       coinGrant: this.coinGrant | 0 || 100,
-      waveScripts: Array.from({ length: this.wavesToWin | 0 || 5 }, () => this.waveScript || "mixed_early"),
+      waves: Array.from({ length: this.wavesToWin | 0 || 5 }, () => ({
+        pack: this.waveScript || "mixed_mid",
+        spawnGap: 0.4,
+      })),
       preWalls: this.walls.map((w) => ({ x: w.x, y: w.y })),
       custom: true,
     };

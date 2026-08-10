@@ -4,7 +4,7 @@
  */
 
 import { CAMPAIGN_LEVELS, isLevelUnlocked, getCampaignLevel } from "../data/campaign.js";
-import { WAVE_SCRIPTS } from "../data/waveScripts.js";
+import { WAVE_PACKS } from "../data/waveScripts.js";
 import { VIEW25 } from "../view/view25.js";
 import { LevelEditor, loadEditorLevels } from "./levelEditor.js";
 import { buildAttackPlan } from "../sim/attackPlan.js";
@@ -173,7 +173,7 @@ export function renderEditor(app) {
   const ed = app.editor;
   app.screen = "editor";
   const saved = loadEditorLevels();
-  const scripts = Object.keys(WAVE_SCRIPTS)
+  const scripts = Object.keys(WAVE_PACKS)
     .map((id) => `<option value="${id}" ${ed.waveScript === id ? "selected" : ""}>${id}</option>`)
     .join("");
   const cells = [];

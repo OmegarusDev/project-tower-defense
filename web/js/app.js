@@ -883,14 +883,14 @@ export class App {
         } else if (act === "ed-save") {
           this.editor.name = this.ui.querySelector("#edName")?.value || "Custom";
           this.editor.wavesToWin = +(this.ui.querySelector("#edWaves")?.value || 5);
-          this.editor.waveScript = this.ui.querySelector("#edScript")?.value || "mixed_early";
+          this.editor.waveScript = this.ui.querySelector("#edScript")?.value || "mixed_mid";
           this.editor.saveNamed();
           this.toast("Level saved locally");
           this.showEditor();
         } else if (act === "ed-playtest") {
           this.editor.name = this.ui.querySelector("#edName")?.value || "Custom";
           this.editor.wavesToWin = +(this.ui.querySelector("#edWaves")?.value || 5);
-          this.editor.waveScript = this.ui.querySelector("#edScript")?.value || "mixed_early";
+          this.editor.waveScript = this.ui.querySelector("#edScript")?.value || "mixed_mid";
           this.playtestEditorLevel(this.editor.toLevelDef());
         } else if (act?.startsWith("ed-load:")) {
           const list = loadEditorLevels();
@@ -1102,7 +1102,12 @@ export class App {
     this.sim.runSeed = (lv.seed || 1) >>> 0;
     this.sim.campaignLevelId = lv.id || 0;
     this.sim.wavesToWin = lv.wavesToWin;
-    this.sim.campaignWaveScripts = lv.waveScripts || null;
+    // Prefer authored `waves`; migrate legacy editor `waveScripts` pack ids.
+    this.sim.campaignWaves =
+      lv.waves ||
+      (Array.isArray(lv.waveScripts)
+        ? lv.waveScripts.map((pack) => ({ pack, spawnGap: 0.4 }))
+        : null);
     this._applyRunTech(this.sim, { battleBase: lv.coinGrant || BASE_START_CASH });
     this.sim.applyPreWalls(lv.preWalls || []);
     this.fx.clear();
