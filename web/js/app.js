@@ -81,19 +81,24 @@ export class App {
     this._last = 0;
 
     this.board.onTap = (cell) => this.onCellTap(cell);
-    this.board.onPitchChange = (deg, opts = {}) => {
-      this.meta.settings = this.meta.settings || {};
-      this.meta.settings.cameraPitch = Math.round(deg);
-      if (opts.final) {
-        clearTimeout(this._pitchSaveT);
-        saveMeta(this.meta);
-      } else {
-        clearTimeout(this._pitchSaveT);
-        this._pitchSaveT = setTimeout(() => saveMeta(this.meta), 280);
-      }
-    };
     window.addEventListener("resize", () => this.board._fit());
     window.addEventListener("keydown", (e) => this.onKeyDown(e));
+  }
+
+  /** Persist camera pitch from Settings or the in-game slider. */
+  applyPitch(deg, { save = true } = {}) {
+    const v = Math.max(8, Math.min(58, Number(deg) || 24));
+    this.meta.settings = this.meta.settings || {};
+    this.meta.settings.cameraPitch = Math.round(v);
+    this.board.setPitchDeg(v);
+    const live = this.ui?.querySelector("#pitchLive");
+    if (live && +live.value !== Math.round(v)) live.value = String(Math.round(v));
+    const label = this.ui?.querySelector("#pitchLiveVal");
+    if (label) label.textContent = `${Math.round(v)}°`;
+    if (save) {
+      clearTimeout(this._pitchSaveT);
+      this._pitchSaveT = setTimeout(() => saveMeta(this.meta), 200);
+    }
   }
 
   persistMeta() {
@@ -368,7 +373,7 @@ export class App {
             <span><i>Parts</i>${this.meta.forge}</span>
             <span><i>Lvl Cap</i>L${this.meta.levelCap}</span>
             <span><i>Slots</i>${this.meta.slotCount}</span>
-            <span><i>Lives</i>${this.meta.startLives || 3}</span>
+            <span><i>Lives</i>${this.meta.startLives || 5}</span>
             <span><i>Start</i>${cash}</span>
           </div>
           <div class="status tech-status" id="status">${this.status}</div>
@@ -672,7 +677,7 @@ export class App {
         }/> Colorblind palette</label>
         <div class="end-card" style="margin-top:8px">
           <h3>Camera angle</h3>
-          <p class="end-note">Pitch ${Math.round(pitch)}° — steeper = more trapezoid foreshortening. In-game: two-finger drag (or ⌘/Ctrl+scroll) tilts live.</p>
+          <p class="end-note">Pitch ${Math.round(pitch)}° — steeper = more foreshortening. Also available as an in-game slider. Pinch (or ⌘/Ctrl+scroll) to zoom.</p>
           <input id="pitch" type="range" min="8" max="58" step="1" value="${pitch}" style="width:100%;margin-top:8px" />
         </div>
       </div>`;
@@ -686,13 +691,11 @@ export class App {
     const pitchEl = this.ui.querySelector("#pitch");
     pitchEl?.addEventListener("input", (e) => {
       const v = +e.target.value;
-      this.meta.settings = this.meta.settings || {};
-      this.meta.settings.cameraPitch = v;
-      setPitch(v);
-      this.board.refreshCamera();
+      this.applyPitch(v);
       const note = this.ui.querySelector(".end-note");
-      if (note) note.textContent = `Pitch ${Math.round(v)}° — steeper = more trapezoid foreshortening. In-game: two-finger drag (or ⌘/Ctrl+scroll) tilts live.`;
-      saveMeta(this.meta);
+      if (note) {
+        note.textContent = `Pitch ${Math.round(v)}° — steeper = more foreshortening. Also available as an in-game slider. Pinch (or ⌘/Ctrl+scroll) to zoom.`;
+      }
     });
   }
 
@@ -874,7 +877,7 @@ export class App {
       this.meta.slotCount,
       this.meta.levelCap
     );
-    sim.setStartLives(this.meta.startLives || 3, { resetCurrent: resetLives });
+    sim.setStartLives(this.meta.startLives || 5, { resetCurrent: resetLives });
     if (seedVault) {
       sim.economy.injectMeta(this.meta.forge, this.meta.aether);
     }
@@ -983,7 +986,7 @@ export class App {
     this.clearPlaceConfirm();
     this.renderGameChrome();
     if (this.sim?.modeEndless) {
-      this.toast("Place towers/walls, then Call Wave. Drag to pan · two fingers to tilt.");
+      this.toast("Place towers/walls, then Call Wave. Drag to pan · pinch to zoom.");
     }
   }
 
@@ -1056,6 +1059,7 @@ export class App {
   renderGameChrome() {
     if (!this.sim) return;
     const buildBtns = this._rosterSlotButtons("game");
+    const pitch = Math.round(this.meta.settings?.cameraPitch ?? VIEW25.pitchDeg);
     this.ui.innerHTML = `
       <div class="game-chrome">
         <header class="hud-bar">
@@ -1072,6 +1076,11 @@ export class App {
             <button class="icon-btn" data-act="menu" title="Menu" aria-label="Menu">☰</button>
           </div>
         </header>
+        <aside class="cam-rail" title="Camera pitch">
+          <span class="cam-rail-label">Pitch</span>
+          <input id="pitchLive" class="cam-pitch" type="range" min="8" max="58" step="1" value="${pitch}" />
+          <span class="cam-rail-val" id="pitchLiveVal">${pitch}°</span>
+        </aside>
         <div class="tower-overlay hidden" id="towerOverlay">
           <div class="meta" id="towerMeta"></div>
           <div class="xp-line" id="towerXp"></div>
@@ -1087,6 +1096,9 @@ export class App {
         </div>
       </div>`;
     this.bindUi();
+    this.ui.querySelector("#pitchLive")?.addEventListener("input", (e) => {
+      this.applyPitch(+e.target.value);
+    });
     this.refreshHud();
   }
 

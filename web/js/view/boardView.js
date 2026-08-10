@@ -5,6 +5,8 @@ import { shade, withAlpha, hash21 } from "./drawUtil.js";
 
 /** Draw towers/enemies a bit larger than the cell footprint. */
 const UNIT_SCALE = 1.22;
+const ZOOM_MIN = 0.72;
+const ZOOM_MAX = 1.85;
 
 export class BoardView {
   constructor(canvas, palette) {
@@ -16,7 +18,11 @@ export class BoardView {
     this.cam = new BoardCamera();
     this.origin = { x: 16, y: 200 };
     this.cell = 40;
+    this.zoom = 1;
+    this.panX = 0;
     this.panY = 0;
+    this.panMinX = 0;
+    this.panMaxX = 0;
     this.panMin = 0;
     this.panMax = 0;
     this.hover = null;
@@ -24,13 +30,10 @@ export class BoardView {
     this.tool = "tower";
     this.selectedTowerId = -1;
     this.onTap = null;
-    /** Fired while live pitch changes: (deg, { final?: boolean }) => void */
-    this.onPitchChange = null;
     this._portalAcc = 0;
     this._drag = null;
     this._pointers = new Map();
-    this._pitchGesture = null;
-    this._pitchHintUntil = 0;
+    this._pinch = null;
     this._motes = Array.from({ length: 18 }, () => ({
       u: Math.random(),
       v: Math.random(),
@@ -49,12 +52,14 @@ export class BoardView {
       (e) => {
         if (!this.sim) return;
         e.preventDefault();
-        // Ctrl / ⌘ + wheel → live pitch (desktop twin of two-finger tilt)
+        // Ctrl / ⌘ + wheel → zoom (desktop twin of pinch)
         if (e.ctrlKey || e.metaKey) {
-          this._nudgePitch(e.deltaY * 0.045, false);
+          const factor = Math.exp(-e.deltaY * 0.0018);
+          this.setZoom(this.zoom * factor);
           return;
         }
         this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY - e.deltaY * 0.45));
+        this.panX = Math.max(this.panMinX, Math.min(this.panMaxX, this.panX - e.deltaX * 0.45));
         this._fit();
       },
       { passive: false }
@@ -68,13 +73,24 @@ export class BoardView {
 
   resetPan() {
     this.panY = 0;
+    this.panX = 0;
+    this.zoom = 1;
+    this._fit();
+  }
+
+  setZoom(z) {
+    this.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+    this._fit();
+  }
+
+  setPitchDeg(deg) {
+    setPitch(deg);
     this._fit();
   }
 
   /** After the map grows south, ease pan so the new ground stays reachable. */
   onGridGrew() {
     this._fit();
-    // Nudge toward showing the bastion (south edge).
     this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY - this.cell * 1.5));
     this._fit();
   }
@@ -98,11 +114,21 @@ export class BoardView {
     const topPad = 102;
     const bottomPad = 168;
     const viewH = Math.max(120, cssH - topPad - bottomPad);
+    const sidePad = 12;
 
-    // Size for readable cells by width — never crush to fit full height.
-    this.cell = Math.max(30, Math.min(46, (cssW - 24) / g.cols));
+    const baseCell = Math.max(28, Math.min(46, (cssW - 24) / g.cols));
+    this.cell = baseCell * this.zoom;
     const boardW = this.cell * g.cols;
     const boardH = this.cell * g.rows * sy;
+
+    if (boardW <= cssW - sidePad * 2) {
+      this.panMinX = this.panMaxX = (cssW - boardW) / 2;
+      this.panX = this.panMinX;
+    } else {
+      this.panMaxX = sidePad;
+      this.panMinX = cssW - boardW - sidePad;
+      this.panX = Math.max(this.panMinX, Math.min(this.panMaxX, this.panX));
+    }
 
     if (boardH <= viewH) {
       this.panMin = this.panMax = (viewH - boardH) / 2;
@@ -113,7 +139,7 @@ export class BoardView {
       this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY));
     }
 
-    this.origin = { x: (cssW - boardW) / 2, y: topPad + this.panY };
+    this.origin = { x: this.panX, y: topPad + this.panY };
     this.cam.configure(this.origin.x, this.origin.y, this.cell, g.cols, g.rows);
   }
 
@@ -134,21 +160,22 @@ export class BoardView {
     return n ? { x: x / n, y: y / n } : null;
   }
 
-  _nudgePitch(deltaDeg, final = false) {
-    const next = Math.max(8, Math.min(58, VIEW25.pitchDeg + deltaDeg));
-    if (Math.abs(next - VIEW25.pitchDeg) < 0.01 && !final) return;
-    setPitch(next);
-    this._pitchHintUntil = performance.now() + 900;
-    this._fit();
-    if (this.onPitchChange) this.onPitchChange(VIEW25.pitchDeg, { final });
+  _pointerDist() {
+    const pts = [...this._pointers.values()];
+    if (pts.length < 2) return 0;
+    return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
   }
 
-  _beginPitchGesture() {
+  _beginPinch() {
     const mid = this._pointerMid();
-    if (!mid) return;
-    this._pitchGesture = {
-      pitch0: VIEW25.pitchDeg,
-      midY0: mid.y,
+    const dist = this._pointerDist();
+    if (!mid || dist < 8) return;
+    this._pinch = {
+      dist0: dist,
+      zoom0: this.zoom,
+      mid0: mid,
+      panX0: this.panX,
+      panY0: this.panY,
     };
     this._drag = null;
   }
@@ -163,7 +190,7 @@ export class BoardView {
     }
 
     if (this._pointers.size >= 2) {
-      this._beginPitchGesture();
+      this._beginPinch();
       return;
     }
 
@@ -171,6 +198,7 @@ export class BoardView {
       id: e.pointerId,
       x0: e.clientX,
       y0: e.clientY,
+      panX0: this.panX,
       panY0: this.panY,
       moved: false,
     };
@@ -183,18 +211,16 @@ export class BoardView {
       this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     }
 
-    if (this._pitchGesture && this._pointers.size >= 2) {
+    if (this._pinch && this._pointers.size >= 2) {
       const mid = this._pointerMid();
-      if (!mid) return;
-      // Drag both fingers up → steeper (pull the far edge toward you)
-      const dy = mid.y - this._pitchGesture.midY0;
-      const next = Math.max(8, Math.min(58, this._pitchGesture.pitch0 - dy * 0.085));
-      if (Math.abs(next - VIEW25.pitchDeg) >= 0.05) {
-        setPitch(next);
-        this._pitchHintUntil = performance.now() + 1100;
-        this._fit();
-        if (this.onPitchChange) this.onPitchChange(VIEW25.pitchDeg, { final: false });
-      }
+      const dist = this._pointerDist();
+      if (!mid || dist < 8) return;
+      const scale = dist / this._pinch.dist0;
+      this.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._pinch.zoom0 * scale));
+      // Two-finger scroll pans while pinching
+      this.panX = this._pinch.panX0 + (mid.x - this._pinch.mid0.x);
+      this.panY = this._pinch.panY0 + (mid.y - this._pinch.mid0.y);
+      this._fit();
       return;
     }
 
@@ -204,8 +230,9 @@ export class BoardView {
     const dy = e.clientY - d.y0;
     const dx = e.clientX - d.x0;
     if (!d.moved && Math.hypot(dx, dy) > 8) d.moved = true;
-    if (d.moved && this.panMin < this.panMax - 0.5) {
+    if (d.moved) {
       this.panY = Math.max(this.panMin, Math.min(this.panMax, d.panY0 + dy));
+      this.panX = Math.max(this.panMinX, Math.min(this.panMaxX, d.panX0 + dx));
       this._fit();
     }
   }
@@ -219,15 +246,13 @@ export class BoardView {
       /* ignore */
     }
 
-    if (this._pitchGesture) {
+    if (this._pinch) {
       if (this._pointers.size >= 2) {
-        this._beginPitchGesture();
+        this._beginPinch();
         return;
       }
-      // Pitch gesture finished
-      this._pitchGesture = null;
+      this._pinch = null;
       this._drag = null;
-      if (this.onPitchChange) this.onPitchChange(VIEW25.pitchDeg, { final: true });
       return;
     }
 
@@ -276,47 +301,11 @@ export class BoardView {
     }
 
     this._drawAtmosphere(cssW, cssH);
-    this._drawPitchHint(cssW, cssH);
   }
 
   cellScreenCenter(x, y) {
     const p = this.cam.projectCell(x, y);
     return { x: p.x, y: p.y };
-  }
-
-  _drawPitchHint(cssW, cssH) {
-    if (performance.now() > this._pitchHintUntil) return;
-    const ctx = this.ctx;
-    const label = `Pitch ${Math.round(VIEW25.pitchDeg)}°`;
-    ctx.save();
-    ctx.font = "600 12px system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    const tw = ctx.measureText(label).width;
-    const x = cssW * 0.5;
-    const y = 118;
-    const padX = 12;
-    const padY = 7;
-    ctx.fillStyle = "rgba(12,14,12,0.72)";
-    ctx.beginPath();
-    const w = tw + padX * 2;
-    const h = 14 + padY * 2;
-    const r = 10;
-    const left = x - w / 2;
-    const top = y - h / 2;
-    ctx.moveTo(left + r, top);
-    ctx.arcTo(left + w, top, left + w, top + h, r);
-    ctx.arcTo(left + w, top + h, left, top + h, r);
-    ctx.arcTo(left, top + h, left, top, r);
-    ctx.arcTo(left, top, left + w, top, r);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = withAlpha(this.palette.accent, 0.45);
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.fillStyle = "#ebe6d8";
-    ctx.fillText(label, x, y + 0.5);
-    ctx.restore();
   }
 
   _fillQuad(pts, color) {
@@ -495,93 +484,128 @@ export class BoardView {
     ctx.restore();
   }
 
-  /** Future-industrial deck plate — uniform tone, structural detail. */
+  /** Future-industrial deck plate — machined panels, welds, rivets. */
   _drawDeckTile(x, y, isSpawn) {
     const ctx = this.ctx;
     const p = this.palette;
     const q = this.cam.cellQuad(x, y);
     const n = hash21(x, y);
     const depthV = this.cam.projectCell(x, y).v;
-    // Minimal checker — just enough to read the grid
     const checker = (x + y) & 1;
     let base = checker ? p.tileA : p.tileB;
     if (isSpawn) base = shade("#1a2430", 0.02);
-    // Far rows sink into atmosphere a touch
     const depthShade = -VIEW25.depthFog * 0.1 * (1 - Math.max(0, Math.min(1, depthV)));
     this._fillQuad(q, shade(base, n * 0.012 + depthShade));
 
-    // Inner panel inset (machined plate)
-    const inner = this.cam.cellQuad(x, y, Math.max(2.5, this.cell * 0.08));
-    this._strokeQuad(inner, withAlpha(p.tileSeam, 0.55), 1);
+    // Soft left-face shade for plate thickness reading
+    const leftShade = [
+      q[0],
+      this.cam.projectCell(x, y, 0.22, 0.08),
+      this.cam.projectCell(x, y, 0.22, 0.92),
+      q[3],
+    ];
+    this._fillQuad(leftShade, "rgba(0,0,0,0.1)");
 
-    // Cross-seam / weld line (subtle, not a face wash)
-    const midH = this.cam.projectCell(x, y, 0.5, 0.22);
-    const midH2 = this.cam.projectCell(x, y, 0.5, 0.78);
-    ctx.strokeStyle = withAlpha(p.tileSeam, 0.28);
+    // Dual machined insets
+    const outer = this.cam.cellQuad(x, y, Math.max(2, this.cell * 0.06));
+    const inner = this.cam.cellQuad(x, y, Math.max(4, this.cell * 0.14));
+    this._strokeQuad(outer, withAlpha(p.tileSeam, 0.5), 1);
+    this._strokeQuad(inner, withAlpha(p.tileMetal, 0.22), 1);
+
+    // Cross weld + lateral seam
+    const midH = this.cam.projectCell(x, y, 0.5, 0.18);
+    const midH2 = this.cam.projectCell(x, y, 0.5, 0.82);
+    const midV = this.cam.projectCell(x, y, 0.18, 0.5);
+    const midV2 = this.cam.projectCell(x, y, 0.82, 0.5);
+    ctx.strokeStyle = withAlpha(p.tileSeam, 0.32);
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(midH.x, midH.y);
     ctx.lineTo(midH2.x, midH2.y);
     ctx.stroke();
+    ctx.strokeStyle = withAlpha(p.tileSeam, 0.18);
+    ctx.beginPath();
+    ctx.moveTo(midV.x, midV.y);
+    ctx.lineTo(midV2.x, midV2.y);
+    ctx.stroke();
 
-    // Corner rivets
+    // Hatch ticks on some plates
+    if (((x * 3 + y * 5) & 3) === 0) {
+      ctx.strokeStyle = withAlpha(p.tileMetal, 0.16);
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 3; i++) {
+        const a = this.cam.projectCell(x, y, 0.28 + i * 0.14, 0.32);
+        const b = this.cam.projectCell(x, y, 0.34 + i * 0.14, 0.68);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+    }
+
+    // Corner rivets + mid-edge studs
     const rivets = [
-      [0.18, 0.18],
-      [0.82, 0.18],
-      [0.18, 0.82],
-      [0.82, 0.82],
+      [0.16, 0.16],
+      [0.84, 0.16],
+      [0.16, 0.84],
+      [0.84, 0.84],
+      [0.5, 0.14],
+      [0.5, 0.86],
     ];
     for (const [u, v] of rivets) {
       const r = this.cam.projectCell(x, y, u, v);
-      const rr = Math.max(1.1, 1.6 * r.s);
-      ctx.fillStyle = withAlpha(p.tileMetal, 0.55);
+      const rr = Math.max(1.05, 1.55 * r.s);
+      ctx.fillStyle = withAlpha(p.tileMetal, 0.62);
       ctx.beginPath();
       ctx.arc(r.x, r.y, rr, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = withAlpha("#0a0c10", 0.35);
+      ctx.fillStyle = withAlpha("#e8eef4", 0.18);
       ctx.beginPath();
-      ctx.arc(r.x + 0.3, r.y + 0.3, rr * 0.35, 0, Math.PI * 2);
+      ctx.arc(r.x - rr * 0.25, r.y - rr * 0.25, rr * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = withAlpha("#0a0c10", 0.4);
+      ctx.beginPath();
+      ctx.arc(r.x + 0.35, r.y + 0.35, rr * 0.32, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Rare scorch / oil stain (very sparse)
-    if (n > 0.82) {
+    // Rare scorch / oil / ember stain
+    if (n > 0.8) {
       const c = this.cam.projectCell(x, y, 0.45 + n * 0.05, 0.55);
-      ctx.fillStyle = "rgba(0,0,0,0.18)";
+      ctx.fillStyle = "rgba(0,0,0,0.2)";
       ctx.beginPath();
-      ctx.ellipse(c.x, c.y, 3.5 * c.s, 2 * c.s, 0.3, 0, Math.PI * 2);
+      ctx.ellipse(c.x, c.y, 3.8 * c.s, 2.2 * c.s, 0.3, 0, Math.PI * 2);
       ctx.fill();
-    } else if (n < -0.88) {
+    } else if (n < -0.86) {
       const c = this.cam.projectCell(x, y, 0.55, 0.4);
-      ctx.fillStyle = withAlpha(p.accent, 0.06);
+      ctx.fillStyle = withAlpha(p.accent, 0.08);
       ctx.beginPath();
-      ctx.ellipse(c.x, c.y, 2.5 * c.s, 1.4 * c.s, -0.2, 0, Math.PI * 2);
+      ctx.ellipse(c.x, c.y, 2.6 * c.s, 1.5 * c.s, -0.2, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Far-edge bevel + near-edge thickness cue
-    ctx.strokeStyle = withAlpha("#c8d0d8", 0.14 + 0.06 * depthV);
-    ctx.lineWidth = 1.15;
+    // Far-edge bevel + near-edge thickness
+    ctx.strokeStyle = withAlpha("#c8d0d8", 0.16 + 0.08 * depthV);
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(q[0].x, q[0].y);
     ctx.lineTo(q[1].x, q[1].y);
     ctx.stroke();
-    ctx.strokeStyle = withAlpha("#000000", 0.16);
+    ctx.strokeStyle = withAlpha("#000000", 0.2);
     ctx.beginPath();
     ctx.moveTo(q[3].x, q[3].y);
     ctx.lineTo(q[2].x, q[2].y);
     ctx.stroke();
 
-    // Occasional specular fleck on the far lip
-    if (n > 0.55 && n < 0.62) {
+    if (n > 0.52 && n < 0.64) {
       const gl = this.cam.projectCell(x, y, 0.35 + n * 0.2, 0.12);
-      ctx.fillStyle = withAlpha("#f0f4f8", 0.12);
+      ctx.fillStyle = withAlpha("#f0f4f8", 0.14);
       ctx.beginPath();
-      ctx.ellipse(gl.x, gl.y, 2.8 * gl.s, 0.9 * gl.s, -0.2, 0, Math.PI * 2);
+      ctx.ellipse(gl.x, gl.y, 3 * gl.s, 1 * gl.s, -0.2, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    this._strokeQuad(q, withAlpha(p.tileEdge, 0.65), 1);
+    this._strokeQuad(q, withAlpha(p.tileEdge, 0.7), 1);
   }
 
   _drawBracketAt(p, sx, sy) {

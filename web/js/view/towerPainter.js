@@ -96,17 +96,27 @@ function drawBase(ctx, palette, base, cx, groundY, s) {
   }
 }
 
-/** Round keep — wide drum + collar ring. */
+/** Round keep — wide drum + collar ring + vent slits. */
 function drawBaseSentry(ctx, cx, deckY, s, m) {
-  // Compact foot — stays on the pad, does not hang into the near cell edge
   cyl25(ctx, cx, deckY + s * 0.02, s * 0.3, s * 0.05, m.sideDark, m.sideDeep, m.rim);
   cyl25(ctx, cx, deckY - s * 0.08, s * 0.25, s * 0.12, m.top, m.side, m.sideDark);
+  // Side vents
+  ctx.strokeStyle = withAlpha(m.sideDeep, 0.7);
+  ctx.lineWidth = Math.max(1, s * 0.02);
+  for (const ox of [-s * 0.16, s * 0.16]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + ox, deckY - s * 0.04);
+    ctx.lineTo(cx + ox, deckY - s * 0.12);
+    ctx.stroke();
+  }
+  ring25(ctx, cx, deckY - s * 0.1, s * 0.22, withAlpha(m.rim, 0.55));
   cyl25(ctx, cx, deckY - s * 0.14, s * 0.16, s * 0.06, m.topHi, m.accent, m.sideDark);
-  ctx.strokeStyle = withAlpha(m.topHi, 0.5);
+  ctx.strokeStyle = withAlpha(m.topHi, 0.55);
   ctx.lineWidth = 1.25;
   ctx.beginPath();
   ctx.ellipse(cx, deckY - s * 0.14, s * 0.14, deckRy(s * 0.14), 0, 0, Math.PI * 2);
   ctx.stroke();
+  rivetRing(ctx, cx, deckY - s * 0.14, s * 0.12, 6, m.rim);
 }
 
 /** Armored bunker — chunky iso box with bevelled top. */
@@ -114,8 +124,14 @@ function drawBaseBulwark(ctx, cx, deckY, s, m) {
   const w = s * 0.58;
   const d = s * 0.3;
   const h = s * 0.12;
-  // Body sits on the pad and rises (topY chosen so front lip stays near deckY)
   box25(ctx, cx, deckY - s * 0.12, w, d, h, m);
+  // Armor seam across the front lip
+  ctx.strokeStyle = withAlpha(m.rim, 0.55);
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(cx - w * 0.35, deckY - s * 0.02);
+  ctx.lineTo(cx + w * 0.35, deckY - s * 0.02);
+  ctx.stroke();
   box25(ctx, cx, deckY - s * 0.18, w * 0.72, d * 0.72, s * 0.06, {
     top: m.topHi,
     side: m.accent,
@@ -123,13 +139,14 @@ function drawBaseBulwark(ctx, cx, deckY, s, m) {
   });
   ctx.fillStyle = m.rim;
   for (const [ox, oy] of [
-    [-w * 0.2, -d * 0.1],
-    [w * 0.2, -d * 0.1],
-    [-w * 0.2, d * 0.06],
-    [w * 0.2, d * 0.06],
+    [-w * 0.22, -d * 0.12],
+    [w * 0.22, -d * 0.12],
+    [-w * 0.22, d * 0.08],
+    [w * 0.22, d * 0.08],
+    [0, -d * 0.02],
   ]) {
     ctx.beginPath();
-    ctx.arc(cx + ox, deckY - s * 0.18 + oy, s * 0.022, 0, Math.PI * 2);
+    ctx.arc(cx + ox, deckY - s * 0.18 + oy, s * 0.024, 0, Math.PI * 2);
     ctx.fill();
   }
 }
@@ -137,14 +154,20 @@ function drawBaseBulwark(ctx, cx, deckY, s, m) {
 /** Tall tapered stack — sniper pedestal. */
 function drawBaseSpire(ctx, cx, deckY, s, m) {
   cyl25(ctx, cx, deckY - s * 0.02, s * 0.28, s * 0.04, m.sideDark, m.sideDeep, m.rim);
+  rivetRing(ctx, cx, deckY - s * 0.02, s * 0.22, 8, m.rim);
   frustum25(ctx, cx, deckY - s * 0.14, s * 0.22, s * 0.13, s * 0.12, m);
+  // Observation band
+  ring25(ctx, cx, deckY - s * 0.16, s * 0.15, withAlpha(m.accent, 0.65));
   cyl25(ctx, cx, deckY - s * 0.22, s * 0.1, s * 0.1, m.topHi, m.side, m.sideDark);
   cyl25(ctx, cx, deckY - s * 0.28, s * 0.13, s * 0.04, m.top, m.accent, m.sideDark);
+  ctx.fillStyle = withAlpha(m.topHi, 0.55);
+  ctx.beginPath();
+  ctx.ellipse(cx - s * 0.03, deckY - s * 0.3, s * 0.04, deckRy(s * 0.03), -0.4, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 /** Nest platform on three stub legs. */
 function drawBaseAerie(ctx, cx, deckY, s, m) {
-  // Short tripod — feet on the pad, not past the near cell edge
   for (const ang of [-0.9, 0.9, 3.14]) {
     const fx = cx + Math.cos(ang) * s * 0.18;
     const fy = deckY + Math.sin(ang) * s * 0.02;
@@ -161,8 +184,12 @@ function drawBaseAerie(ctx, cx, deckY, s, m) {
     ctx.lineTo(x0 + 2, deckY - s * 0.08);
     ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = withAlpha(m.rim, 0.4);
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
   cyl25(ctx, cx, deckY - s * 0.1, s * 0.24, s * 0.07, m.top, m.side, m.sideDark);
+  ring25(ctx, cx, deckY - s * 0.1, s * 0.2, withAlpha(m.accent, 0.45));
   ctx.fillStyle = m.sideDeep;
   ctx.beginPath();
   ctx.ellipse(cx, deckY - s * 0.1, s * 0.14, deckRy(s * 0.14), 0, 0, Math.PI * 2);
@@ -171,6 +198,7 @@ function drawBaseAerie(ctx, cx, deckY, s, m) {
   ctx.beginPath();
   ctx.ellipse(cx, deckY - s * 0.12, s * 0.11, deckRy(s * 0.11), 0, 0, Math.PI * 2);
   ctx.fill();
+  rivetRing(ctx, cx, deckY - s * 0.12, s * 0.08, 5, m.rim);
 }
 
 /** Keep with peaked roof. */
@@ -179,6 +207,12 @@ function drawBaseWarden(ctx, cx, deckY, s, m) {
   const d = s * 0.28;
   const h = s * 0.11;
   box25(ctx, cx, deckY - s * 0.1, w, d, h, m);
+  // Window slits
+  ctx.fillStyle = withAlpha(m.sideDeep, 0.85);
+  for (const ox of [-w * 0.14, w * 0.14]) {
+    roundRect(ctx, cx + ox - s * 0.018, deckY - s * 0.08, s * 0.036, s * 0.05, 1);
+    ctx.fill();
+  }
   const roofH = s * 0.11;
   const topY = deckY - s * 0.14;
   const hw = w * 0.4;
@@ -204,20 +238,56 @@ function drawBaseWarden(ctx, cx, deckY, s, m) {
   ctx.moveTo(cx, topY - roofH);
   ctx.lineTo(cx, topY + s * 0.02);
   ctx.stroke();
+  ctx.fillStyle = withAlpha(m.accent, 0.7);
+  ctx.beginPath();
+  ctx.arc(cx, topY - roofH + 1, s * 0.02, 0, Math.PI * 2);
+  ctx.fill();
   ctx.fillStyle = m.sideDeep;
   roundRect(ctx, cx - s * 0.05, deckY - s * 0.02, s * 0.1, s * 0.07, 2);
   ctx.fill();
+  ctx.strokeStyle = withAlpha(m.rim, 0.5);
+  ctx.stroke();
 }
 
 /** Angular claw pedestal — diamond footprint extruded. */
 function drawBaseTalon(ctx, cx, deckY, s, m) {
   cyl25(ctx, cx, deckY - s * 0.02, s * 0.26, s * 0.04, m.sideDark, m.sideDeep, m.rim);
+  rivetRing(ctx, cx, deckY - s * 0.02, s * 0.2, 6, m.rim);
   diamondPrism25(ctx, cx, deckY - s * 0.12, s * 0.24, s * 0.12, m);
+  // Claw tip accents
+  ctx.strokeStyle = withAlpha(m.accent, 0.55);
+  ctx.lineWidth = 1.2;
+  for (const a of [-0.7, 0.7, 2.4, -2.4]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * s * 0.06, deckY - s * 0.12 + Math.sin(a) * s * 0.04);
+    ctx.lineTo(cx + Math.cos(a) * s * 0.2, deckY - s * 0.12 + Math.sin(a) * s * 0.1);
+    ctx.stroke();
+  }
   diamondPrism25(ctx, cx, deckY - s * 0.18, s * 0.13, s * 0.06, {
     top: m.topHi,
     side: m.accent,
     sideDark: m.sideDark,
   });
+}
+
+function ring25(ctx, cx, y, rx, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.25;
+  ctx.beginPath();
+  ctx.ellipse(cx, y, rx, deckRy(rx), 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function rivetRing(ctx, cx, y, rx, count, color) {
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    const px = cx + Math.cos(a) * rx;
+    const py = y + Math.sin(a) * deckRy(rx);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(px, py, Math.max(0.9, rx * 0.08), 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 // --- 2.5D primitives (light from upper-left) ---
@@ -438,7 +508,6 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
 }
 
 function drawHub(ctx, metal, r) {
-  // Drawn inside foreshortened space → reads as deck-aligned disc
   ctx.fillStyle = shade(metal, -0.3);
   ctx.beginPath();
   ctx.ellipse(0, r * 0.15, r, r * 0.85, 0, 0, Math.PI * 2);
@@ -447,6 +516,11 @@ function drawHub(ctx, metal, r) {
   ctx.beginPath();
   ctx.ellipse(0, 0, r, r * 0.85, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = withAlpha("#fff8e0", 0.16);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.15, -r * 0.1, r * 0.55, r * 0.4, -0.4, Math.PI * 1.1, Math.PI * 1.85);
+  ctx.stroke();
 }
 
 function drawHubCap(ctx, metal, r) {
@@ -454,9 +528,18 @@ function drawHubCap(ctx, metal, r) {
   ctx.beginPath();
   ctx.ellipse(0, -r * 0.05, r, r * 0.8, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = withAlpha(shade(metal, -0.35), 0.7);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(0, -r * 0.05, r * 0.72, r * 0.58, 0, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.fillStyle = shade(metal, -0.22);
   ctx.beginPath();
   ctx.ellipse(0, 0, r * 0.35, r * 0.28, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = withAlpha("#fff8e0", 0.25);
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.08, -r * 0.12, r * 0.12, r * 0.08, 0, 0, Math.PI * 2);
   ctx.fill();
 }
 
@@ -468,24 +551,30 @@ function drawCannon(ctx, metal, tip, x0, y, length, thickness, payload) {
   const mid = metal;
   const light = shade(metal, 0.18);
 
-  // underside / side face (fake extrusion toward "floor")
   ctx.fillStyle = dark;
   roundRect(ctx, x0, y - h / 2 + rise, length, h, h * 0.4);
   ctx.fill();
-  // top face
   ctx.fillStyle = mid;
   roundRect(ctx, x0, y - h / 2, length, h * 0.78, h * 0.35);
   ctx.fill();
-  // highlight
   ctx.fillStyle = light;
   roundRect(ctx, x0 + length * 0.08, y - h * 0.42, length * 0.65, h * 0.28, h * 0.18);
   ctx.fill();
+
+  // Reinforcing rings along the barrel
+  ctx.fillStyle = shade(metal, -0.35);
+  for (const t of [0.28, 0.55]) {
+    const bx = x0 + length * t;
+    ctx.fillRect(bx, y - h * 0.42, Math.max(1.5, h * 0.18), h * 0.72);
+  }
 
   const band = Math.max(2.5, length * 0.16);
   ctx.fillStyle = shade(tip, -0.15);
   ctx.fillRect(x0 + length - band, y - h / 2 + rise * 0.3, band, h * 0.85);
   ctx.fillStyle = tip;
   ctx.fillRect(x0 + length - band * 0.7, y - h * 0.38, band * 0.7, h * 0.55);
+  ctx.fillStyle = withAlpha("#fff8e0", 0.28);
+  ctx.fillRect(x0 + length - band * 0.45, y - h * 0.32, band * 0.2, h * 0.18);
 
   if (payload && payload !== "kinetic") {
     drawPayloadGem(ctx, tip, payload, x0 + length + h * 0.1, y - h * 0.05, h * 0.5);

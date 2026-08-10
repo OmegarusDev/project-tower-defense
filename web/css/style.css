@@ -1152,7 +1152,88 @@ html, body {
   gap: 8px;
   align-items: start;
   padding: 10px 10px 10px;
-  background: linear-gradient(to bottom, rgba(18,22,31,0.97), rgba(18,22,31,0.72), transparent);
+  background:
+    linear-gradient(to bottom, rgba(18,22,31,0.97), rgba(18,22,31,0.72), transparent),
+    linear-gradient(90deg, transparent, rgba(212, 120, 58, 0.06), transparent);
+  border-bottom: 1px solid rgba(90, 110, 130, 0.18);
+}
+
+.cam-rail {
+  position: absolute;
+  left: 8px;
+  top: 58px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 7px 10px;
+  width: 44px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(28, 34, 46, 0.94), rgba(16, 20, 28, 0.92));
+  border: 1px solid #4a5a72;
+  box-shadow:
+    0 1px 0 rgba(232, 228, 220, 0.1) inset,
+    0 6px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+.cam-rail-label,
+.cam-rail-val {
+  font-family: var(--font-btn);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c9b896;
+}
+
+.cam-rail-val {
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.cam-pitch {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  appearance: none;
+  width: 18px;
+  height: 110px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.cam-pitch::-webkit-slider-runnable-track {
+  width: 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #6aaf7e, #3a5a72 55%, #d4783a);
+  border: 1px solid #1a2230;
+}
+
+.cam-pitch::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #f0e6c8, #c9a227);
+  border: 1px solid #8a7020;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.cam-pitch::-moz-range-track {
+  width: 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #6aaf7e, #3a5a72 55%, #d4783a);
+  border: 1px solid #1a2230;
+}
+
+.cam-pitch::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #f0e6c8, #c9a227);
+  border: 1px solid #8a7020;
 }
 
 .hud-center .status {
@@ -1171,17 +1252,21 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 3px 6px;
+  padding: 4px 8px;
   border-radius: 999px;
-  background: rgba(20, 28, 42, 0.92);
-  border: 1px solid #33485f;
+  background: linear-gradient(180deg, rgba(36, 44, 58, 0.96), rgba(18, 24, 36, 0.94));
+  border: 1px solid #4a5e78;
+  box-shadow:
+    0 1px 0 rgba(232, 228, 220, 0.08) inset,
+    0 2px 6px rgba(0, 0, 0, 0.28);
+  font-family: var(--font-btn);
   font-size: 0.64rem;
   font-weight: 650;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   line-height: 1.2;
   white-space: nowrap;
   color: var(--text);
-  text-shadow: none;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
 .chip .k {
@@ -1271,10 +1356,24 @@ html, body {
 
 .dock {
   margin-top: auto;
-  background: rgba(16, 22, 34, 0.98);
-  border-top: 1px solid #3a4a62;
+  background:
+    linear-gradient(180deg, rgba(28, 34, 46, 0.98), rgba(14, 18, 28, 0.98));
+  border-top: 1px solid #5a6a48;
+  box-shadow:
+    0 1px 0 rgba(212, 120, 58, 0.18) inset,
+    0 -10px 28px rgba(0, 0, 0, 0.35);
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0));
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25);
+  position: relative;
+}
+
+.dock::before {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(232, 200, 120, 0.45), transparent);
 }
 
 .dock-meta {

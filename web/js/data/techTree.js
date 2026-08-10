@@ -159,7 +159,7 @@ export const TECH_TREES = [
           {
             id: "lives",
             name: "Iron Guard",
-            blurb: "+1 life / rank (from 3)",
+            blurb: "+1 life / rank (from 5)",
             maxRank: 3,
             costs: AE_CHAIN(18, 32, 50),
           },
@@ -397,7 +397,7 @@ export function syncTechDerived(meta) {
   else if (rank("slot5")) slotCount = 5;
   else if (rank("slot4")) slotCount = 4;
 
-  const startLives = 3 + rank("lives");
+  const startLives = 5 + rank("lives");
   const cashRanks = rank("cash");
   const startCashBonus = (cashRanks >= 1 ? 25 : 0) + (cashRanks >= 2 ? 40 : 0) + (cashRanks >= 3 ? 50 : 0);
 
@@ -483,4 +483,4 @@ export function spendTechCost(meta, cost) {
 }
 
 /** Default endless / campaign base Coin before War Chest bonus. */
-export const BASE_START_CASH = 100;
+export const BASE_START_CASH = 75;

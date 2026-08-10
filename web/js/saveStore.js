@@ -50,7 +50,7 @@ export function normalizeMeta(m) {
 
   draft.slotCount = Math.max(3, Math.min(6, draft.slotCount | 0 || 3));
   draft.levelCap = Math.max(2, Math.min(5, draft.levelCap | 0 || 2));
-  draft.startLives = Math.max(3, Math.min(8, draft.startLives | 0 || 3));
+  draft.startLives = Math.max(5, Math.min(8, draft.startLives | 0 || 5));
   draft.startCashBonus = Math.max(0, draft.startCashBonus | 0);
   draft.forgeCostMult = 1;
   draft.towerCostMult = clampMult(draft.towerCostMult, 1);
