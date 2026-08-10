@@ -162,6 +162,8 @@ export class App {
       this.board.selectedTowerId = this.selectedTowerId;
       this.board.draw();
       this.refreshHud();
+      this.slotPreviewAim = (this.slotPreviewAim || 0) + dt * 0.55;
+      this.paintSlotPreviews();
     }
   }
 
@@ -1055,7 +1057,7 @@ export class App {
         const q = this._gameSlotQuote(i);
         const empty = q.complete ? "" : " empty";
         bits.push(
-          `<button type="button" class="slot-tile ${active}${empty}" data-act="slot:${i}" data-build-slot="${i}" title="${q.tip}"><span class="slot-tile-idx">${i + 1}</span><span class="slot-tile-cost">${q.costLabel}</span></button>`
+          `<button type="button" class="slot-tile ${active}${empty}" data-act="slot:${i}" data-build-slot="${i}" title="${q.tip}"><span class="slot-tile-idx">${i + 1}</span><canvas class="slot-preview" data-slot-preview="${i}" width="72" height="72" aria-hidden="true"></canvas><span class="slot-tile-cost">${q.costLabel}</span></button>`
         );
       }
     }
@@ -1117,6 +1119,52 @@ export class App {
       this.applyPitch(+e.target.value);
     });
     this.refreshHud();
+    this.paintSlotPreviews();
+  }
+
+  /** Tiny rotating loadout previews inside arsenal slot tiles. */
+  paintSlotPreviews() {
+    if (this.screen !== "game" || !this.sim) return;
+    const aim = this.slotPreviewAim || -Math.PI / 2;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const css = 40;
+    for (let i = 0; i < MAX_ROSTER_SLOTS; i++) {
+      const canvas = this.ui.querySelector(`[data-slot-preview="${i}"]`);
+      if (!canvas) continue;
+      const ctx = canvas.getContext("2d");
+      if (canvas.width !== Math.floor(css * dpr)) {
+        canvas.width = Math.floor(css * dpr);
+        canvas.height = Math.floor(css * dpr);
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, css, css);
+
+      const slot = this.sim.roster?.[i];
+      if (!slot?.complete) {
+        ctx.fillStyle = "rgba(120,130,145,0.35)";
+        ctx.beginPath();
+        ctx.arc(css / 2, css / 2, 8, 0, Math.PI * 2);
+        ctx.fill();
+        continue;
+      }
+
+      const t = {
+        base: slot.base,
+        barrel: slot.barrel,
+        payload: slot.payload,
+        aimAngle: aim + i * 0.35,
+        level: 1,
+      };
+      const size = 34;
+      const px = (css - size) / 2;
+      const py = (css - size) / 2 + 1;
+      ctx.save();
+      ctx.translate(css / 2, css / 2);
+      ctx.scale(1, VIEW25.yScale);
+      ctx.translate(-css / 2, -css / 2);
+      drawComposedTower(ctx, this.palette, t, px, py, size, false, { showBadge: false });
+      ctx.restore();
+    }
   }
 
   /**

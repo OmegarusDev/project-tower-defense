@@ -112,7 +112,7 @@ export class BoardView {
 
     const sy = VIEW25.yScale;
     const topPad = 72;
-    const bottomPad = 148;
+    const bottomPad = 162;
     const viewH = Math.max(120, cssH - topPad - bottomPad);
     const sidePad = 12;
 
@@ -887,7 +887,7 @@ export class BoardView {
     ctx.lineWidth = 1.25;
     ctx.strokeRect(label.x - lw / 2, label.y - lh / 2, lw, lh);
     ctx.fillStyle = withAlpha("#ebe6d8", 0.9);
-    ctx.font = `bold ${Math.max(9, this.cell * 0.2 * label.s)}px Georgia, serif`;
+    ctx.font = `700 ${Math.max(9, this.cell * 0.2 * label.s)}px "Chakra Petch", sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("BASTION", label.x, label.y + 0.5);

@@ -26,9 +26,9 @@
   --danger: #c45a4a;
   --shadow-btn: 0 1px 0 var(--btn-border-hi) inset, 0 -1px 0 rgba(0, 0, 0, 0.35) inset, 0 2px 6px rgba(0, 0, 0, 0.28);
   --shadow-btn-press: 0 1px 0 rgba(0, 0, 0, 0.35) inset, 0 1px 2px rgba(0, 0, 0, 0.2);
-  --font-ui: "Source Serif 4", "Iowan Old Style", Georgia, serif;
-  --font-display: "Cinzel", "Palatino Linotype", Palatino, Georgia, serif;
-  --font-btn: "Cinzel", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-ui: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-btn: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
   font-family: var(--font-ui);
 }
 
@@ -108,7 +108,7 @@ html, body {
   font-family: var(--font-display);
   font-size: 0.72rem !important;
   font-weight: 500;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent) !important;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
@@ -120,7 +120,7 @@ html, body {
   font-weight: 700;
   font-size: clamp(2.4rem, 11vw, 3.35rem) !important;
   line-height: 0.95;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: #f3ecda !important;
   text-shadow:
@@ -707,7 +707,7 @@ html, body {
   margin: 0 0 6px !important;
   font-family: var(--font-display);
   font-size: 0.68rem !important;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--accent) !important;
   text-align: left !important;
@@ -831,7 +831,7 @@ html, body {
   font-family: var(--font-display);
   font-size: 0.7rem !important;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--accent) !important;
 }
@@ -841,7 +841,7 @@ html, body {
   font-family: var(--font-display);
   font-size: clamp(1.75rem, 8vw, 2.35rem) !important;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: #f3ecda !important;
   text-shadow: 0 2px 16px rgba(0, 0, 0, 0.45);
@@ -1533,7 +1533,7 @@ html, body {
 
 .arsenal {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 58px;
+  grid-template-columns: minmax(0, 1fr) 62px;
   gap: 6px;
   margin-bottom: 7px;
 }
@@ -1551,11 +1551,11 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1px;
+  justify-content: flex-end;
+  gap: 0;
   min-width: 0;
-  height: 52px;
-  padding: 4px 2px;
+  height: 68px;
+  padding: 3px 2px 4px;
   border-radius: 8px;
   border: 1px solid #4a5a6e;
   background:
@@ -1567,6 +1567,7 @@ html, body {
     0 -1px 0 rgba(0, 0, 0, 0.35) inset,
     0 2px 5px rgba(0, 0, 0, 0.28);
   -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
 }
 
 .slot-tile::before,
@@ -1577,19 +1578,41 @@ html, body {
   border-radius: 5px;
   border: 1px solid rgba(0, 0, 0, 0.28);
   pointer-events: none;
+  z-index: 2;
+}
+
+.slot-preview {
+  display: block;
+  width: 40px;
+  height: 40px;
+  margin: 2px auto 0;
+  pointer-events: none;
+  image-rendering: auto;
 }
 
 .slot-tile-idx {
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  z-index: 3;
   font-family: var(--font-btn);
-  font-size: 0.95rem;
+  font-size: 0.62rem;
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.02em;
+  color: rgba(232, 228, 220, 0.55);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+
+.slot-tile.active .slot-tile-idx {
+  color: #f6ecd0;
 }
 
 .slot-tile-cost,
 .wall-tile-cost {
-  font-family: var(--font-ui);
+  position: relative;
+  z-index: 3;
+  font-family: var(--font-btn);
   font-size: 0.62rem;
   font-weight: 650;
   color: #d4b06a;
@@ -1643,15 +1666,17 @@ html, body {
 }
 
 .wall-tile {
+  justify-content: center;
+  gap: 4px;
   border-color: #7a5a3a;
   background: linear-gradient(180deg, #4a4034 0%, #322c24 50%, #241e18 100%);
 }
 
 .wall-tile-k {
   font-family: var(--font-btn);
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #e0d0b0;
 }
@@ -1732,7 +1757,7 @@ html, body {
   font-family: var(--font-btn);
   font-size: 0.62rem;
   font-weight: 650;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.78;
 }

@@ -7,7 +7,7 @@ import { shade, withAlpha, roundRect, facePoly, matsFrom } from "./drawUtil.js";
 const BASE_SCALE = 1.22;
 const BARREL_SCALE = 0.8;
 
-export function drawComposedTower(ctx, palette, t, px, py, s, selected) {
+export function drawComposedTower(ctx, palette, t, px, py, s, selected, opts = {}) {
   const cx = px + s / 2;
   // Cell center = base pad / footprint. Turret hub lifts above by VIEW25.rise.
   const groundY = py + s / 2;
@@ -15,29 +15,31 @@ export function drawComposedTower(ctx, palette, t, px, py, s, selected) {
   const angle = aimToDrawAngle(t.aimAngle);
   const baseS = s * BASE_SCALE;
   const barrelS = s * BARREL_SCALE;
+  const showBadge = opts.showBadge !== false;
 
   drawGroundShadow(ctx, cx, groundY, baseS);
   drawBase(ctx, palette, t.base, cx, groundY, baseS);
   drawTurret(ctx, palette, t.barrel, t.payload, cx, hubY, barrelS, angle);
 
-  // Level badge (always visible)
-  const lvl = Math.max(1, t.level | 0);
-  const badgeR = Math.max(7, s * 0.14);
-  const bx = px + s - badgeR - 2;
-  const by = py + badgeR + 2;
-  ctx.fillStyle = "rgba(20,16,12,0.75)";
-  ctx.beginPath();
-  ctx.arc(bx, by, badgeR, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = withAlpha(palette.accent, 0.85);
-  ctx.lineWidth = 1.25;
-  ctx.stroke();
-  ctx.fillStyle = palette.text || "#ebe6d8";
-  ctx.font = `bold ${Math.max(8, s * 0.2)}px sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(`${lvl}`, bx, by + 0.5);
-  ctx.lineWidth = 1;
+  if (showBadge) {
+    const lvl = Math.max(1, t.level | 0);
+    const badgeR = Math.max(7, s * 0.14);
+    const bx = px + s - badgeR - 2;
+    const by = py + badgeR + 2;
+    ctx.fillStyle = "rgba(20,16,12,0.75)";
+    ctx.beginPath();
+    ctx.arc(bx, by, badgeR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = withAlpha(palette.accent, 0.85);
+    ctx.lineWidth = 1.25;
+    ctx.stroke();
+    ctx.fillStyle = palette.text || "#ebe6d8";
+    ctx.font = `700 ${Math.max(8, s * 0.2)}px "Chakra Petch", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${lvl}`, bx, by + 0.5);
+    ctx.lineWidth = 1;
+  }
 
   if (selected) {
     ctx.strokeStyle = withAlpha(palette.accent, 0.85);
