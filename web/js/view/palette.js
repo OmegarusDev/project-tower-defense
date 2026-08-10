@@ -64,6 +64,8 @@ export class ProcPalette {
       heavy: "#7a3440",
       fast: "#d4892a",
       flying: "#6b5a9a",
+      shielded: "#5a8ab0",
+      splitter: "#a06070",
       boss: "#c4305a",
     };
   }

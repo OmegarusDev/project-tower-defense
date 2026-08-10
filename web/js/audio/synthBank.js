@@ -5,6 +5,7 @@ export class SynthBank {
     this.ctx = null;
     this.buffers = {};
     this.ready = false;
+    this.sfxVolume = 0.35;
     this._onVisibility = () => {
       if (!this.ctx) return;
       if (document.hidden) {
@@ -12,6 +13,10 @@ export class SynthBank {
       }
     };
     document.addEventListener("visibilitychange", this._onVisibility);
+  }
+
+  setVolume(v) {
+    this.sfxVolume = Math.max(0, Math.min(1, Number(v) || 0));
   }
 
   async ensure() {
@@ -41,7 +46,7 @@ export class SynthBank {
     src.loop = false;
     src.playbackRate.value = rate;
     const g = this.ctx.createGain();
-    g.gain.value = 0.35;
+    g.gain.value = this.sfxVolume;
     src.connect(g).connect(this.ctx.destination);
     src.start();
   }

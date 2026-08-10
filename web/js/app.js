@@ -1,5 +1,6 @@
 import { ENDLESS_GRID } from "./data/endlessGrid.js";
 import { SimWorld, TICK_HZ } from "./sim/simWorld.js";
+import { buildAttackPlan } from "./sim/attackPlan.js";
 import {
   makeSlot,
   PARTS,
@@ -41,11 +42,18 @@ import {
   loadEndless,
   clearEndless,
 } from "./saveStore.js";
+import { getCampaignLevel, isLevelUnlocked } from "./data/campaign.js";
 import {
-  CAMPAIGN_LEVELS,
-  getCampaignLevel,
-  isLevelUnlocked,
-} from "./data/campaign.js";
+  renderMain,
+  renderSettings,
+  wireSettings,
+  renderCampaign,
+  renderPrep,
+  renderEditor,
+  forgePlanSummary,
+} from "./ui/menuScreens.js";
+import { loadEditorLevels } from "./ui/levelEditor.js";
+import { exportReplayBlob, applyReplayAction } from "./ui/replay.js";
 
 export class App {
   constructor() {
@@ -77,12 +85,24 @@ export class App {
     this.accum = 0;
     this.status = "";
     this.placeConfirm = null;
+    this.liveCompose = false;
+    this.editor = null;
+    this.prepLevelId = 0;
+    this._ghost = null;
     this._raf = 0;
     this._last = 0;
 
+    this.synth.setVolume(this.meta.settings?.sfxVolume ?? 0.35);
+    this.score.setEnabled(this.meta.settings?.music !== false);
+
     this.board.onTap = (cell) => this.onCellTap(cell);
-    window.addEventListener("resize", () => this.board._fit());
+    window.addEventListener("resize", () => this.board._fit(true));
     window.addEventListener("keydown", (e) => this.onKeyDown(e));
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && this.screen === "game" && this.sim && !this.paused) {
+        this.openPause();
+      }
+    });
   }
 
   /** Persist camera pitch from Settings or the in-game slider. */
@@ -131,6 +151,7 @@ export class App {
 
   openPause() {
     if (this.screen !== "game" || !this.sim) return;
+    this._endFastForward();
     this.paused = true;
     this.clearPlaceConfirm();
     this._renderPauseSheet();
@@ -141,6 +162,43 @@ export class App {
     this.ui.querySelector("#pauseSheet")?.remove();
   }
 
+  _beginFastForward() {
+    if (this.paused || this.screen !== "game" || !this.sim) return;
+    if (this._ffHeld) return;
+    this._ffHeld = true;
+    this._speedBeforeFf = this.speed || 1;
+    this.speed = 5;
+    this.score.setSpeed(5);
+    this.ui.querySelector("#ffBtn")?.classList.add("hot");
+  }
+
+  _endFastForward() {
+    if (!this._ffHeld) return;
+    this._ffHeld = false;
+    this.speed = this._speedBeforeFf || 1;
+    this.score.setSpeed(this.speed);
+    this.ui.querySelector("#ffBtn")?.classList.remove("hot");
+  }
+
+  _bindFastForward(btn) {
+    if (!btn) return;
+    const start = (e) => {
+      e.preventDefault();
+      try {
+        btn.setPointerCapture(e.pointerId);
+      } catch (_) {
+        /* ignore */
+      }
+      this._beginFastForward();
+    };
+    const end = () => this._endFastForward();
+    btn.addEventListener("pointerdown", start);
+    btn.addEventListener("pointerup", end);
+    btn.addEventListener("pointercancel", end);
+    btn.addEventListener("lostpointercapture", end);
+    btn.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+
   quitToMenu() {
     if (!this.sim) return;
     const campaign = !this.sim.modeEndless;
@@ -148,6 +206,7 @@ export class App {
       ? "Abandon this campaign run and return to the Campaign menu?"
       : "Return to the Endless menu? Your checkpoint is saved.";
     if (!confirm(msg)) return;
+    this._endFastForward();
     this.paused = false;
     this.selectedTowerId = -1;
     this.selectedWallId = -1;
@@ -171,12 +230,7 @@ export class App {
         <p class="pause-mark">Paused</p>
         <h2 id="pauseTitle">Wave ${wave}</h2>
         <p class="pause-note">${endless ? "Checkpoint saved at wave start." : `Campaign level ${this.sim.campaignLevelId}`}</p>
-        <div class="pause-speed" title="Game speed" role="group" aria-label="Speed">
-          <span class="pause-speed-k">Speed</span>
-          <button type="button" class="speed-btn ${this.speed === 1 ? "active" : ""}" data-act="spd:1"><span class="speed-bars" data-n="1"><i></i></span>1×</button>
-          <button type="button" class="speed-btn ${this.speed === 2 ? "active" : ""}" data-act="spd:2"><span class="speed-bars" data-n="2"><i></i><i></i></span>2×</button>
-          <button type="button" class="speed-btn ${this.speed === 3 ? "active" : ""}" data-act="spd:3"><span class="speed-bars" data-n="3"><i></i><i></i><i></i></span>3×</button>
-        </div>
+        <p class="pause-hint">Hold <b>FF</b> for 5× · Endless: <b>CMP</b> live compose · Seed ${this.sim.runSeed >>> 0}</p>
         <button type="button" class="btn title-cta" data-act="resume">Resume</button>
         <button type="button" class="btn secondary" data-act="quit-run">${quitLabel}</button>
       </div>`;
@@ -186,22 +240,8 @@ export class App {
         const act = el.getAttribute("data-act");
         if (act === "resume") this.resumeGame();
         else if (act === "quit-run") this.quitToMenu();
-        else if (act?.startsWith("spd:")) {
-          this.speed = +act.slice(4);
-          this.score.setSpeed(this.speed);
-          this._syncSpeedButtons();
-        }
       });
     });
-  }
-
-  _syncSpeedButtons() {
-    this.ui.querySelectorAll("[data-act^='spd:']").forEach((el) => {
-      const n = +el.getAttribute("data-act").slice(4);
-      el.classList.toggle("active", n === this.speed);
-    });
-    const rack = this.ui.querySelector(".speed-rack");
-    if (rack) rack.dataset.spd = String(this.speed);
   }
 
   start() {
@@ -228,7 +268,9 @@ export class App {
       this.paintForgePreview();
       return;
     }
+    if (this.screen === "editor") return;
     if (this.screen === "game" && this.sim) {
+      if (this._ghost) this._tickGhost(dt);
       if (!this.paused && this.sim.running) {
         this.accum += dt * this.speed;
         const step = 1 / TICK_HZ;
@@ -239,13 +281,47 @@ export class App {
         }
       }
       if (!this.paused) this.fx.tick(dt * this.speed);
+      this.score.setDensity(this.sim.enemies.length);
       this.board.tool = this.tool;
       this.board.selectedTowerId = this.selectedTowerId;
-      this.board.draw();
+      this._syncGhostPlan();
+      this.board.draw(dt);
       this.refreshHud();
       this.slotPreviewAim = (this.slotPreviewAim || 0) + dt * 0.55;
       this.paintSlotPreviews();
     }
+  }
+
+  _syncGhostPlan() {
+    if (!this.sim) {
+      this.board.setGhostPlan(null);
+      return;
+    }
+    let cell = this.placeConfirm || this.board.hover;
+    let slot = this.sim.roster?.[this.slot];
+    if (this.selectedTowerId >= 0) {
+      const t = this.sim.towers.find((x) => x.id === this.selectedTowerId);
+      if (t) {
+        cell = t.cell;
+        slot = t;
+      }
+    }
+    if (!cell || !slot?.base || !slot?.barrel || !slot?.payload) {
+      this.board.setGhostPlan(null);
+      return;
+    }
+    const up = this.sim.partUpgrades || {};
+    const g = this.sim.globalMods || {};
+    const plan = buildAttackPlan(slot.base, slot.barrel, slot.payload, slot.level || 1, {
+      chainRank: up[slot.payload]?.chain | 0,
+      powerRank: up[slot.payload]?.power | 0,
+      basePower: up[slot.base]?.power | 0,
+      barrelPower: up[slot.barrel]?.power | 0,
+      globalDamage: g.damage || 1,
+      globalRange: g.range || 1,
+      globalRof: g.rof || 1,
+    });
+    this.board.setGhostPlan(plan, cell);
   }
 
   async unlockAudio() {
@@ -253,33 +329,8 @@ export class App {
   }
 
   showMain() {
-    this.screen = "main";
-    this.ui.innerHTML = `
-      <div class="screen title-screen">
-        <header class="title-hero">
-          <p class="title-mark">Project</p>
-          <h1 class="title-brand">
-            <span class="title-brand-line">Tower</span>
-            <span class="title-brand-line accent">Defense</span>
-          </h1>
-          <p class="title-tag">Compose towers. Shape the path. Survive.</p>
-        </header>
-        <nav class="title-actions" aria-label="Main menu">
-          <button class="btn title-cta" data-act="endless">Endless</button>
-          <button class="btn" data-act="campaign">Campaign</button>
-          <button class="btn" data-act="forge-from-main">Forge</button>
-          <button class="btn" data-act="upgrade">Tech Tree</button>
-          <button class="btn secondary" data-act="settings">Settings</button>
-        </nav>
-        <footer class="title-foot">
-          <div class="title-stats" aria-label="Progress">
-            <span><i>Æ</i>${this.meta.aether}</span>
-            <span><i>Parts</i>${this.meta.forge}</span>
-            <span><i>Best</i>W${this.meta.bestWave}</span>
-          </div>
-          <p class="title-credit">Vanilla web · zero asset packs</p>
-        </footer>
-      </div>`;
+    this.score.stop();
+    renderMain(this);
     this.bindUi();
   }
 
@@ -333,11 +384,7 @@ export class App {
           <canvas id="forgePreview" width="160" height="160" aria-label="Tower preview"></canvas>
           <div class="forge-summary">
             <h3>Slot ${this.forgeSlot + 1}</h3>
-            <p id="forgeLoadout">${
-              slot.complete
-                ? `${partLabel(slot.base)} · ${doctrineLabel(PARTS.bases[slot.base]?.doctrine)}<br/>${partLabel(slot.barrel)} + ${partLabel(slot.payload)} · ${slot.placeCost} Coin`
-                : "Base = brain · Barrel = delivery · Payload = element"
-            }</p>
+            <p id="forgeLoadout">${forgePlanSummary(slot)}</p>
             <button class="btn secondary" data-act="forge-clear" style="margin-top:8px;padding:8px 10px;font-size:0.8rem">Clear slot</button>
           </div>
         </div>
@@ -687,33 +734,31 @@ export class App {
   }
 
   showCampaign() {
-    this.screen = "campaign";
-    // Campaign list is hub-only — never keep a live run here.
     this.sim = null;
     this.selectedTowerId = -1;
     this.selectedWallId = -1;
-    const cleared = this.meta.campaign?.cleared || [];
-    const levelBtns = CAMPAIGN_LEVELS.map((lv) => {
-      const open = isLevelUnlocked(lv.id, cleared);
-      const done = cleared.includes(lv.id);
-      const mark = done ? " · Cleared" : open ? ` · ${lv.wavesToWin} waves` : " · Locked";
-      const cls = open ? "btn" : "btn secondary";
-      const act = open ? `data-act="campaign-level:${lv.id}"` : "disabled";
-      return `<button class="${cls}" ${act} title="${lv.blurb}">${lv.id}. ${lv.name}${mark}</button>`;
-    }).join("");
-    this.ui.innerHTML = `
-      <div class="screen scroll">
-        <div class="screen-header">
-          <h1>Campaign</h1>
-          <button class="btn secondary" data-act="main" style="padding:10px 12px;font-size:0.85rem">Back</button>
-        </div>
-        <p class="currency-line">8×8 maps · clear waves to win · linear unlock</p>
-        <div class="status" id="status">${this.status}</div>
-        ${levelBtns}
-        <button class="btn secondary" disabled>4. Coming soon</button>
-        <button class="btn" data-act="forge-from-campaign">Forge</button>
-      </div>`;
+    renderCampaign(this);
     this.bindUi();
+  }
+
+  showPrep(levelId) {
+    if (!renderPrep(this, levelId)) return this.showCampaign();
+    this.bindUi();
+  }
+
+  showEditor() {
+    renderEditor(this);
+    this.bindUi();
+    const syncFields = () => {
+      const ed = this.editor;
+      if (!ed) return;
+      ed.name = this.ui.querySelector("#edName")?.value || ed.name;
+      ed.wavesToWin = +(this.ui.querySelector("#edWaves")?.value || ed.wavesToWin);
+      ed.waveScript = this.ui.querySelector("#edScript")?.value || ed.waveScript;
+    };
+    this.ui.querySelector("#edName")?.addEventListener("change", syncFields);
+    this.ui.querySelector("#edWaves")?.addEventListener("change", syncFields);
+    this.ui.querySelector("#edScript")?.addEventListener("change", syncFields);
   }
 
   showVictory(opts = {}) {
@@ -747,39 +792,9 @@ export class App {
   }
 
   showSettings() {
-    this.screen = "settings";
-    const pitch = this.meta.settings?.cameraPitch ?? VIEW25.pitchDeg;
-    this.ui.innerHTML = `
-      <div class="screen scroll">
-        <div class="screen-header">
-          <h1>Settings</h1>
-          <button class="btn secondary" data-act="main" style="padding:10px 12px;font-size:0.85rem">Back</button>
-        </div>
-        <label class="btn secondary"><input type="checkbox" id="cb" ${
-          this.meta.settings?.colorblind ? "checked" : ""
-        }/> Colorblind palette</label>
-        <div class="end-card" style="margin-top:8px">
-          <h3>Camera angle</h3>
-          <p class="end-note">Pitch ${Math.round(pitch)}° — steeper = more foreshortening. Also available as an in-game slider. Pinch (or ⌘/Ctrl+scroll) to zoom.</p>
-          <input id="pitch" type="range" min="8" max="58" step="1" value="${pitch}" style="width:100%;margin-top:8px" />
-        </div>
-      </div>`;
+    renderSettings(this);
     this.bindUi();
-    this.ui.querySelector("#cb")?.addEventListener("change", (e) => {
-      this.meta.settings = this.meta.settings || {};
-      this.meta.settings.colorblind = e.target.checked;
-      this.palette.setColorblind(e.target.checked);
-      saveMeta(this.meta);
-    });
-    const pitchEl = this.ui.querySelector("#pitch");
-    pitchEl?.addEventListener("input", (e) => {
-      const v = +e.target.value;
-      this.applyPitch(v);
-      const note = this.ui.querySelector(".end-note");
-      if (note) {
-        note.textContent = `Pitch ${Math.round(v)}° — steeper = more foreshortening. Also available as an in-game slider. Pinch (or ⌘/Ctrl+scroll) to zoom.`;
-      }
-    });
+    wireSettings(this);
   }
 
   showGameOver() {
@@ -795,13 +810,16 @@ export class App {
     const gains = this.sim?.economy?.runWaveGains || { coin: 0, parts: 0, aether: 0 };
     const gainLine = (n, label, kind = "") =>
       `<span class="gain-pill ${kind}${n > 0 ? "" : " muted"}">${n > 0 ? "+" : ""}${n} ${label}</span>`;
+    const seed = this.sim?.runSeed >>> 0;
     const actions = endless
       ? `<div class="end-actions">
           <button class="btn title-cta" data-act="newrun">New Run</button>
+          <button class="btn" data-act="ghost-replay">Ghost Replay</button>
           <button class="btn" data-act="forge-from-hub">Forge</button>
           <button class="btn secondary" data-act="${backAct}">${backLabel}</button>
           <button class="btn secondary" data-act="main">Main Menu</button>
-        </div>`
+        </div>
+        <p class="end-note">Seed ${seed || "—"}</p>`
       : `<div class="end-actions">
           <button class="btn" data-act="${backAct}">${backLabel}</button>
           <button class="btn secondary" data-act="main">Main Menu</button>
@@ -850,7 +868,46 @@ export class App {
         if (act === "endless" || act === "hub") this.showEndlessHub();
         else if (act === "main") this.showMain();
         else if (act === "campaign") this.showCampaign();
-        else if (act?.startsWith("campaign-level:")) this.startCampaignLevel(+act.slice(15));
+        else if (act?.startsWith("prep:")) this.showPrep(+act.slice(5));
+        else if (act?.startsWith("start-level:")) this.startCampaignLevel(+act.slice(12));
+        else if (act?.startsWith("campaign-level:")) this.showPrep(+act.slice(15));
+        else if (act === "editor") this.showEditor();
+        else if (act === "ed-apply-size") {
+          const c = +(this.ui.querySelector("#edCols")?.value || 8);
+          const r = +(this.ui.querySelector("#edRows")?.value || 8);
+          this.editor?.resize(c, r);
+          this.showEditor();
+        } else if (act === "ed-random") {
+          this.editor?.randomize(10);
+          this.showEditor();
+        } else if (act === "ed-save") {
+          this.editor.name = this.ui.querySelector("#edName")?.value || "Custom";
+          this.editor.wavesToWin = +(this.ui.querySelector("#edWaves")?.value || 5);
+          this.editor.waveScript = this.ui.querySelector("#edScript")?.value || "mixed_early";
+          this.editor.saveNamed();
+          this.toast("Level saved locally");
+          this.showEditor();
+        } else if (act === "ed-playtest") {
+          this.editor.name = this.ui.querySelector("#edName")?.value || "Custom";
+          this.editor.wavesToWin = +(this.ui.querySelector("#edWaves")?.value || 5);
+          this.editor.waveScript = this.ui.querySelector("#edScript")?.value || "mixed_early";
+          this.playtestEditorLevel(this.editor.toLevelDef());
+        } else if (act?.startsWith("ed-load:")) {
+          const list = loadEditorLevels();
+          const lv = list[+act.slice(8)];
+          if (lv) this.playtestEditorLevel(lv);
+        } else if (act?.startsWith("ed-cell:")) {
+          const [, xs, ys] = act.split(":");
+          if (!this.editor.toggle(+xs, +ys)) this.toast("Would seal the path");
+          this.showEditor();
+        } else if (act === "compose-toggle") this.toggleLiveCompose();
+        else if (act === "compose-close") {
+          this.liveCompose = false;
+          this.renderGameChrome();
+        } else if (act?.startsWith("compose-part:")) {
+          const [, kind, id] = act.split(":");
+          this.applyLiveComposePart(kind, id);
+        } else if (act === "ghost-replay") this.startGhostReplay();
         else if (act === "forge") this.showForge(this.forgeReturn || "main");
         else if (act === "forge-from-hub") this.showForge("hub");
         else if (act === "forge-from-main") this.showForge("main");
@@ -918,10 +975,6 @@ export class App {
           this.selectedTowerId = -1;
           this.selectedWallId = -1;
           this.renderGameChrome();
-        } else if (act?.startsWith("spd:")) {
-          this.speed = +act.slice(4);
-          this.score.setSpeed(this.speed);
-          this._syncSpeedButtons();
         }
       });
     });
@@ -973,15 +1026,18 @@ export class App {
     });
   }
 
-  newRun() {
-    if (hasEndless()) {
+  newRun(seed, { skipConfirm = false } = {}) {
+    if (!skipConfirm && hasEndless()) {
       if (!confirm("Overwrite endless checkpoint?")) return;
-      clearEndless();
     }
+    clearEndless();
+    const runSeed = (seed >>> 0) || ((Math.random() * 0xffffffff) | 1);
     this.sim = new SimWorld();
-    this.sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, 1, true);
+    this.sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, runSeed, true);
+    this.sim.runSeed = runSeed;
     this._applyRunTech(this.sim, { battleBase: BASE_START_CASH });
     this.fx.clear();
+    this._ghost = null;
     this.wireSim();
     this.tool = "tower";
     this.slot = 0;
@@ -991,8 +1047,10 @@ export class App {
     this.speed = 1;
     this.accum = 0;
     this.placeConfirm = null;
+    this.liveCompose = false;
     this.board.resetPan();
     this.enterGame();
+    this.toast(`Seed ${runSeed >>> 0}`);
   }
 
   continueRun() {
@@ -1028,13 +1086,27 @@ export class App {
       this.toast("Clear the previous level first");
       return;
     }
+    this._bootLevel(lv);
+    this.toast(`${lv.name}: clear ${lv.wavesToWin} waves. Pre-walls are fixed.`);
+  }
+
+  playtestEditorLevel(lv) {
+    if (!lv) return;
+    this._bootLevel({ ...lv, id: 0 });
+    this.toast(`Playtest · ${lv.name}`);
+  }
+
+  _bootLevel(lv) {
     this.sim = new SimWorld();
-    this.sim.setup(lv.cols, lv.rows, lv.seed, false);
-    this.sim.campaignLevelId = lv.id;
+    this.sim.setup(lv.cols, lv.rows, lv.seed || 1, false);
+    this.sim.runSeed = (lv.seed || 1) >>> 0;
+    this.sim.campaignLevelId = lv.id || 0;
     this.sim.wavesToWin = lv.wavesToWin;
-    this._applyRunTech(this.sim, { battleBase: lv.coinGrant });
-    this.sim.applyPreWalls(lv.preWalls);
+    this.sim.campaignWaveScripts = lv.waveScripts || null;
+    this._applyRunTech(this.sim, { battleBase: lv.coinGrant || BASE_START_CASH });
+    this.sim.applyPreWalls(lv.preWalls || []);
     this.fx.clear();
+    this._ghost = null;
     this.wireSim();
     this.tool = "tower";
     this.slot = 0;
@@ -1044,9 +1116,9 @@ export class App {
     this.speed = 1;
     this.accum = 0;
     this.placeConfirm = null;
+    this.liveCompose = false;
     this.board.resetPan();
     this.enterGame();
-    this.toast(`${lv.name}: clear ${lv.wavesToWin} waves. Pre-walls are fixed.`);
   }
 
   wireSim() {
@@ -1058,9 +1130,13 @@ export class App {
     this.screen = "game";
     if (this.sim && this.slot >= this.sim.roster.length) this.slot = 0;
     this.clearPlaceConfirm();
+    this.score.setWave(this.sim?.waveIndex || 1);
+    this.score.setSpeed(this.speed || 1);
+    this.score.setEnabled(this.meta.settings?.music !== false);
+    this.score.start();
     this.renderGameChrome();
     if (this.sim?.modeEndless) {
-      this.toast("Place towers/walls, then Call Wave. Drag to pan · pinch to zoom.");
+      this.toast("Place towers/walls, then Call Wave. Hold FF · Compose on the left.");
     }
   }
 
@@ -1145,26 +1221,14 @@ export class App {
     if (!this.sim) return;
     const buildBtns = this._rosterSlotButtons("game");
     const pitch = Math.round(this.meta.settings?.cameraPitch ?? VIEW25.pitchDeg);
+    const endless = !!this.sim.modeEndless;
+    const composeBtn = endless
+      ? `<button type="button" class="compose-fab" data-act="compose-toggle" title="Live compose">CMP</button>`
+      : "";
+    const composeSheet = endless && this.liveCompose ? this._liveComposeHtml() : "";
     this.ui.innerHTML = `
       <div class="game-chrome">
         <header class="hud-bar">
-          <div class="speed-rack" data-spd="${this.speed}" title="Game speed" role="group" aria-label="Speed">
-            <span class="speed-rack-k">SPD</span>
-            <div class="speed-seg">
-              <button type="button" class="speed-btn ${this.speed === 1 ? "active" : ""}" data-act="spd:1" aria-label="1x speed">
-                <span class="speed-bars" data-n="1"><i></i></span>
-                <span class="speed-n">1×</span>
-              </button>
-              <button type="button" class="speed-btn ${this.speed === 2 ? "active" : ""}" data-act="spd:2" aria-label="2x speed">
-                <span class="speed-bars" data-n="2"><i></i><i></i></span>
-                <span class="speed-n">2×</span>
-              </button>
-              <button type="button" class="speed-btn ${this.speed === 3 ? "active" : ""}" data-act="spd:3" aria-label="3x speed">
-                <span class="speed-bars" data-n="3"><i></i><i></i><i></i></span>
-                <span class="speed-n">3×</span>
-              </button>
-            </div>
-          </div>
           <div class="wave-badge" id="waveBadge">
             <span class="wave-badge-k">Wave</span>
             <span class="wave-badge-n" id="waveNum">0</span>
@@ -1175,6 +1239,16 @@ export class App {
             <span></span><span></span>
           </button>
         </header>
+        <aside class="cam-rail" title="Camera pitch">
+          <span class="cam-rail-label">Angle</span>
+          <input id="pitchLive" class="cam-pitch" type="range" min="8" max="58" step="1" value="${pitch}" orient="vertical" aria-label="Camera angle" />
+          <span class="cam-rail-val" id="pitchLiveVal">${pitch}°</span>
+        </aside>
+        ${composeBtn}
+        <button type="button" class="ff-fab" id="ffBtn" title="Hold for 5× speed" aria-label="Hold for 5x speed">
+          <span class="ff-mark">FF</span>
+        </button>
+        ${composeSheet}
         <div class="status-toast ${this.status ? "" : "empty"}" id="status">${this.status}</div>
         <div class="tower-overlay hidden" id="towerOverlay">
           <div class="meta" id="towerMeta"></div>
@@ -1184,11 +1258,6 @@ export class App {
         <footer class="dock">
           <div class="dock-head">
             <div class="dock-meta" id="slotline"></div>
-            <label class="dock-pitch" title="Camera pitch">
-              <span class="dock-pitch-k">Angle</span>
-              <input id="pitchLive" class="dock-pitch-range" type="range" min="8" max="58" step="1" value="${pitch}" />
-              <span class="dock-pitch-v" id="pitchLiveVal">${pitch}°</span>
-            </label>
           </div>
           <div class="arsenal">
             <div class="arsenal-slots">${buildBtns}</div>
@@ -1204,12 +1273,87 @@ export class App {
         </footer>
       </div>`;
     this.bindUi();
+    this._bindFastForward(this.ui.querySelector("#ffBtn"));
     this.ui.querySelector("#pitchLive")?.addEventListener("input", (e) => {
       this.applyPitch(+e.target.value);
     });
     this.refreshHud();
     this.paintSlotPreviews();
     if (this.paused) this._renderPauseSheet();
+  }
+
+  _liveComposeHtml() {
+    const slot = this.meta.roster[this.slot] || makeSlot();
+    const partBtn = (kind, id) => {
+      const have = ownsPart(this.meta.owned, kind, id);
+      if (!have) return "";
+      const eq = slot[kind] === id ? " equipped" : "";
+      return `<button class="btn part-btn${eq}" data-act="compose-part:${kind}:${id}">${partLabel(id)}</button>`;
+    };
+    return `
+      <div class="compose-sheet" id="composeSheet">
+        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px">
+          <h3>Live Compose · Slot ${this.slot + 1}</h3>
+          <button class="btn secondary" data-act="compose-close" style="padding:6px 10px;font-size:0.7rem">Close</button>
+        </div>
+        <p style="margin:0 0 6px;font-size:0.72rem;color:#9aacbe">${forgePlanSummary(slot)}</p>
+        <div class="compose-cols">
+          <div><h4 style="margin:0 0 4px;font-size:0.65rem">Base</h4>${Object.keys(PARTS.bases).map((id) => partBtn("base", id)).join("")}</div>
+          <div><h4 style="margin:0 0 4px;font-size:0.65rem">Barrel</h4>${Object.keys(PARTS.barrels).map((id) => partBtn("barrel", id)).join("")}</div>
+          <div><h4 style="margin:0 0 4px;font-size:0.65rem">Payload</h4>${Object.keys(PARTS.payloads).map((id) => partBtn("payload", id)).join("")}</div>
+        </div>
+      </div>`;
+  }
+
+  toggleLiveCompose() {
+    if (!this.sim?.modeEndless) return;
+    this.liveCompose = !this.liveCompose;
+    this.renderGameChrome();
+  }
+
+  applyLiveComposePart(kind, id) {
+    if (!this.sim?.modeEndless) return;
+    if (!ownsPart(this.meta.owned, kind, id)) return;
+    const s = this.meta.roster[this.slot] || makeSlot("", "", "", this.meta.levelCap);
+    s[kind] = id;
+    this.meta.roster[this.slot] = makeSlot(s.base, s.barrel, s.payload, this.meta.levelCap);
+    this.persistMeta();
+    this._syncSimFromMeta(this.sim);
+    this.synth.play("ui");
+    this.renderGameChrome();
+  }
+
+  startGhostReplay() {
+    const blob = this._lastReplay;
+    if (!blob?.actionLog?.length) {
+      this.toast("No replay log from last run");
+      return;
+    }
+    this.newRun(blob.runSeed, { skipConfirm: true });
+    if (!this.sim) return;
+    // Ghost owns the action log — clear live log so we don't double-record
+    this.sim.actionLog = [];
+    this._ghost = { log: blob.actionLog, i: 0, wait: 0.45 };
+    this.toast("Ghost replay · watching seed actions");
+  }
+
+  _tickGhost(dt) {
+    const g = this._ghost;
+    if (!g || !this.sim || this.paused) return;
+    g.wait -= dt;
+    if (g.wait > 0) return;
+    if (g.i >= g.log.length) {
+      this._ghost = null;
+      this.toast("Ghost replay finished");
+      return;
+    }
+    // Wait for waves to clear before next call
+    const act = g.log[g.i];
+    if (act.type === "call" && this.waveBusy()) return;
+    applyReplayAction(this.sim, act);
+    g.i += 1;
+    g.wait = act.type === "call" ? 0.2 : 0.15;
+    this.refreshHud();
   }
 
   /** Tiny rotating loadout previews inside arsenal slot tiles. */
@@ -1573,6 +1717,7 @@ export class App {
       case "wall_placed":
       case "tower_sold":
       case "wall_sold":
+        this.board?.invalidateStatic?.();
         this.refreshHud();
         break;
       case "grid_grew":
@@ -1582,12 +1727,24 @@ export class App {
         break;
       case "tower_fired":
         this.synth.play("shot", 0.95 + Math.random() * 0.1);
+        if (e.towerId != null) this.board?.noteRecoil?.(e.towerId);
+        if (this.meta.settings?.particles !== false && e.x != null) {
+          this.fx.muzzle(e.x, e.y, e.angle || 0, e.damageType || "kinetic");
+        }
         break;
       case "hit":
         this.synth.play("hit", 0.9 + Math.random() * 0.15);
         if (this.meta.settings?.particles !== false && e.x != null) {
           this.fx.hit(e.x, e.y, e.type || "kinetic");
+          this.fx.damageNumber(e.x, e.y, e.damage || 0, e.type || "kinetic");
+          this.board?.addStain?.(e.x, e.y, e.type || "kinetic");
         }
+        if ((e.damage || 0) >= 40) this.board?.punch?.(2.5);
+        break;
+      case "leak":
+        this.board?.bastionFlinch?.();
+        this.synth.play("explode", 0.85);
+        this.refreshHud();
         break;
       case "chain_arc":
         if (this.meta.settings?.particles !== false) {
@@ -1626,7 +1783,9 @@ export class App {
       case "game_over":
         this.synth.play("explode");
         this.syncMetaProgress();
+        this._lastReplay = exportReplayBlob(this.sim);
         if (this.sim.modeEndless) clearEndless();
+        this.score.stop();
         this.showGameOver();
         break;
       case "tower_leveled":
@@ -1647,14 +1806,17 @@ export class App {
     const id = this.sim.campaignLevelId | 0;
     const cleared = new Set(this.meta.campaign?.cleared || []);
     const first = !cleared.has(id);
-    cleared.add(id);
-    this.meta.campaign = { cleared: [...cleared].sort((a, b) => a - b) };
+    if (id > 0) {
+      cleared.add(id);
+      this.meta.campaign = { cleared: [...cleared].sort((a, b) => a - b) };
+    }
     this.meta.aether = this.sim.economy.aether;
     this.meta.forge = this.sim.economy.forge;
-    if (first) this.meta.aether += 8;
+    if (first && id > 0) this.meta.aether += 8;
     this.persistMeta();
-    this.status = first ? "First clear · +8 Aether" : "Level cleared";
-    this.showVictory({ firstClear: first });
+    this.score.stop();
+    this.status = first && id > 0 ? "First clear · +8 Aether" : "Level cleared";
+    this.showVictory({ firstClear: first && id > 0 });
   }
 
   callEarly() {
@@ -1673,10 +1835,11 @@ export class App {
     }
     this.clearPlaceConfirm();
     this.paused = false;
-    this.sim.startWave();
+    const earlyBonus = 4 + Math.floor(this.sim.waveIndex * 0.5);
+    this.sim.startWave({ earlyBonus });
     this.synth.play("wave");
     this.score.setWave(this.sim.waveIndex);
-    this.toast(`Wave ${this.sim.waveIndex}`);
+    this.toast(`Wave ${this.sim.waveIndex} · +${earlyBonus} Coin early`);
     this.renderGameChrome();
   }
 

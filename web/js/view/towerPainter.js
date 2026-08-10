@@ -294,7 +294,7 @@ function rivetRing(ctx, cx, y, rx, count, color) {
 
 // --- 2.5D primitives (light from upper-left) ---
 
-function cyl25(ctx, cx, topY, rx, rise, topCol, sideCol, bottomCol) {
+export function cyl25(ctx, cx, topY, rx, rise, topCol, sideCol, bottomCol) {
   const ry = deckRy(rx);
   ctx.fillStyle = sideCol;
   ctx.fillRect(cx - rx, topY, rx * 2, Math.max(1, rise));
@@ -316,7 +316,7 @@ function cyl25(ctx, cx, topY, rx, rise, topCol, sideCol, bottomCol) {
   ctx.stroke();
 }
 
-function box25(ctx, cx, topY, w, d, h, m) {
+export function box25(ctx, cx, topY, w, d, h, m) {
   const hw = w / 2;
   const hd = d / 2;
   // foreshortened top corners (pitch-linked iso skew)
@@ -362,7 +362,7 @@ function box25(ctx, cx, topY, w, d, h, m) {
   ctx.stroke();
 }
 
-function frustum25(ctx, cx, topY, rxBot, rxTop, rise, m) {
+export function frustum25(ctx, cx, topY, rxBot, rxTop, rise, m) {
   const ryBot = deckRy(rxBot);
   const ryTop = deckRy(rxTop);
   ctx.fillStyle = m.side;

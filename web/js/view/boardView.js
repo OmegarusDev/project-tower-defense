@@ -1,7 +1,7 @@
 import { buildAttackPlan } from "../sim/attackPlan.js";
-import { drawComposedTower } from "./towerPainter.js";
+import { drawComposedTower, cyl25, box25, frustum25 } from "./towerPainter.js";
 import { VIEW25, setPitch, deckRy, BoardCamera } from "./view25.js";
-import { shade, withAlpha, hash21 } from "./drawUtil.js";
+import { shade, withAlpha, hash21, matsFrom } from "./drawUtil.js";
 
 /** Draw towers/enemies a bit larger than the cell footprint. */
 const UNIT_SCALE = 1.22;
@@ -34,6 +34,15 @@ export class BoardView {
     this._drag = null;
     this._pointers = new Map();
     this._pinch = null;
+    this._staticDirty = true;
+    this._staticLayer = null;
+    this._fitKey = "";
+    this._shakeT = 0;
+    this._shakeMag = 0;
+    this._bastionFlinch = 0;
+    this._stains = [];
+    this._ghostPlan = null;
+    this.recoil = new Map();
     this._motes = Array.from({ length: 18 }, () => ({
       u: Math.random(),
       v: Math.random(),
@@ -60,7 +69,7 @@ export class BoardView {
         }
         this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY - e.deltaY * 0.45));
         this.panX = Math.max(this.panMinX, Math.min(this.panMaxX, this.panX - e.deltaX * 0.45));
-        this._fit();
+        this._fit(true);
       },
       { passive: false }
     );
@@ -68,44 +77,100 @@ export class BoardView {
 
   setSim(sim) {
     this.sim = sim;
+    this._stains.length = 0;
+    this.recoil.clear();
+    this.invalidateStatic();
     this.resetPan();
+  }
+
+  invalidateStatic() {
+    this._staticDirty = true;
+  }
+
+  addStain(x, y, type = "kinetic") {
+    if (this._stains.length > 80) this._stains.shift();
+    this._stains.push({
+      x: x + (Math.random() - 0.5) * 0.2,
+      y: y + (Math.random() - 0.5) * 0.2,
+      type,
+      a: 0.35 + Math.random() * 0.25,
+      r: 0.18 + Math.random() * 0.16,
+    });
+  }
+
+  punch(mag = 3) {
+    this._shakeT = 0.18;
+    this._shakeMag = Math.max(this._shakeMag, mag);
+  }
+
+  bastionFlinch() {
+    this._bastionFlinch = 0.35;
+    this.punch(4.5);
+  }
+
+  setGhostPlan(plan, cell) {
+    this._ghostPlan = plan && cell ? { plan, cell } : null;
+  }
+
+  noteRecoil(towerId) {
+    this.recoil.set(towerId, 0.12);
   }
 
   resetPan() {
     this.panY = 0;
     this.panX = 0;
     this.zoom = 1;
+    this.invalidateStatic();
     this._fit();
   }
 
   setZoom(z) {
     this.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
-    this._fit();
+    this._fit(true);
   }
 
   setPitchDeg(deg) {
     setPitch(deg);
-    this._fit();
+    this._fit(true);
   }
 
   /** After the map grows south, ease pan so the new ground stays reachable. */
   onGridGrew() {
-    this._fit();
+    this.invalidateStatic();
+    this._fit(true);
     this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY - this.cell * 1.5));
-    this._fit();
+    this._fit(true);
   }
 
   /** Refresh derived camera after pitch changes. */
   refreshCamera() {
-    this._fit();
+    this._fit(true);
   }
 
-  _fit() {
+  _fit(force = false) {
     if (!this.sim) return;
     const g = this.sim.grid;
     const cssW = this.canvas.clientWidth || 360;
     const cssH = this.canvas.clientHeight || 640;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const key = [
+      cssW | 0,
+      cssH | 0,
+      dpr.toFixed(2),
+      this.zoom.toFixed(3),
+      this.panX.toFixed(2),
+      this.panY.toFixed(2),
+      g.cols,
+      g.rows,
+      VIEW25.pitchDeg | 0,
+      this.sim.walls.length,
+    ].join("|");
+    if (!force && key === this._fitKey && this.canvas.width === Math.floor(cssW * dpr)) {
+      return false;
+    }
+    this._fitKey = key;
+    this.invalidateStatic();
+
     this.canvas.width = Math.floor(cssW * dpr);
     this.canvas.height = Math.floor(cssH * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -114,19 +179,20 @@ export class BoardView {
     const topPad = 72;
     const bottomPad = 162;
     const viewH = Math.max(120, cssH - topPad - bottomPad);
-    const sidePad = 12;
+    const leftPad = 52;
+    const rightPad = 58;
 
-    const baseCell = Math.max(28, Math.min(46, (cssW - 24) / g.cols));
+    const baseCell = Math.max(28, Math.min(46, (cssW - leftPad - rightPad) / g.cols));
     this.cell = baseCell * this.zoom;
     const boardW = this.cell * g.cols;
     const boardH = this.cell * g.rows * sy;
 
-    if (boardW <= cssW - sidePad * 2) {
-      this.panMinX = this.panMaxX = (cssW - boardW) / 2;
+    if (boardW <= cssW - leftPad - rightPad) {
+      this.panMinX = this.panMaxX = leftPad + (cssW - leftPad - rightPad - boardW) / 2;
       this.panX = this.panMinX;
     } else {
-      this.panMaxX = sidePad;
-      this.panMinX = cssW - boardW - sidePad;
+      this.panMaxX = leftPad;
+      this.panMinX = cssW - boardW - rightPad;
       this.panX = Math.max(this.panMinX, Math.min(this.panMaxX, this.panX));
     }
 
@@ -141,6 +207,7 @@ export class BoardView {
 
     this.origin = { x: this.panX, y: topPad + this.panY };
     this.cam.configure(this.origin.x, this.origin.y, this.cell, g.cols, g.rows);
+    return true;
   }
 
   _cellAt(clientX, clientY) {
@@ -220,7 +287,7 @@ export class BoardView {
       // Two-finger scroll pans while pinching
       this.panX = this._pinch.panX0 + (mid.x - this._pinch.mid0.x);
       this.panY = this._pinch.panY0 + (mid.y - this._pinch.mid0.y);
-      this._fit();
+      this._fit(true);
       return;
     }
 
@@ -233,7 +300,7 @@ export class BoardView {
     if (d.moved) {
       this.panY = Math.max(this.panMin, Math.min(this.panMax, d.panY0 + dy));
       this.panX = Math.max(this.panMinX, Math.min(this.panMaxX, d.panX0 + dx));
-      this._fit();
+      this._fit(true);
     }
   }
 
@@ -264,26 +331,56 @@ export class BoardView {
     if (this.sim.grid.inBounds(c.x, c.y) && this.onTap) this.onTap(c);
   }
 
-  draw() {
+  draw(dt = 0.016) {
     if (!this.sim) return;
-    this._fit();
+    this._fit(false);
+    if (this._shakeT > 0) {
+      this._shakeT = Math.max(0, this._shakeT - dt);
+      if (this._shakeT <= 0) this._shakeMag = 0;
+    }
+    if (this._bastionFlinch > 0) this._bastionFlinch = Math.max(0, this._bastionFlinch - dt);
+    for (const [id, t] of this.recoil) {
+      const n = t - dt;
+      if (n <= 0) this.recoil.delete(id);
+      else this.recoil.set(id, n);
+    }
+
     const ctx = this.ctx;
     const g = this.sim.grid;
     const cssW = this.canvas.clientWidth;
     const cssH = this.canvas.clientHeight;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssW, cssH);
 
     ctx.fillStyle = this.palette.void;
     ctx.fillRect(0, 0, cssW, cssH);
 
+    const shake =
+      this._shakeT > 0
+        ? {
+            x: (Math.random() - 0.5) * this._shakeMag * (this._shakeT / 0.18),
+            y: (Math.random() - 0.5) * this._shakeMag * (this._shakeT / 0.18),
+          }
+        : { x: 0, y: 0 };
+    ctx.save();
+    ctx.translate(shake.x, shake.y);
+
+    this._ensureStaticLayer(cssW, cssH, dpr);
+    if (this._staticLayer) {
+      ctx.drawImage(this._staticLayer, 0, 0, cssW, cssH);
+    } else {
     this._drawBoardShadow();
-    this._drawField(g);
-    this._drawPath(g);
+      this._drawField(g);
+      for (const w of this.sim.walls) this._drawWall(w.cell.x, w.cell.y);
+    }
+
+    this._drawStains();
     this._drawBastion(g);
+    this._drawPath(g);
     this._drawPortal(g);
     this._emitPortalFx(g);
 
-    for (const w of this.sim.walls) this._drawWall(w.cell.x, w.cell.y);
     const towers = [...this.sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
     for (const t of towers) this._drawTower(t);
     const enemies = [...this.sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
@@ -294,13 +391,98 @@ export class BoardView {
       this.fx.drawProjected(ctx, this.cam, (type) => this.palette.dmg(type));
     }
 
+    if (this._ghostPlan) this._drawPlanGhost(this._ghostPlan.plan, this._ghostPlan.cell);
     if (this.pendingPlace && g.inBounds(this.pendingPlace.x, this.pendingPlace.y)) {
       this._drawPendingPlace(this.pendingPlace);
     } else if (this.hover && g.inBounds(this.hover.x, this.hover.y) && this.selectedTowerId < 0) {
       this._drawHover(this.hover.x, this.hover.y, g.isBuildable(this.hover.x, this.hover.y));
     }
 
+    ctx.restore();
     this._drawAtmosphere(cssW, cssH);
+  }
+
+  _ensureStaticLayer(cssW, cssH, dpr) {
+    if (!this._staticDirty && this._staticLayer) return;
+    if (!this._staticLayer) this._staticLayer = document.createElement("canvas");
+    const layer = this._staticLayer;
+    const w = Math.floor(cssW * dpr);
+    const h = Math.floor(cssH * dpr);
+    if (layer.width !== w || layer.height !== h) {
+      layer.width = w;
+      layer.height = h;
+    }
+    const lctx = layer.getContext("2d");
+    lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    lctx.clearRect(0, 0, cssW, cssH);
+    const prev = this.ctx;
+    this.ctx = lctx;
+    const g = this.sim.grid;
+    this._drawBoardShadow();
+    this._drawField(g);
+    for (const wall of this.sim.walls) this._drawWall(wall.cell.x, wall.cell.y);
+    this.ctx = prev;
+    this._staticDirty = false;
+  }
+
+  _drawStains() {
+    if (!this._stains.length) return;
+    const ctx = this.ctx;
+    for (const s of this._stains) {
+      const p = this.cam.project(s.x * this.cell, s.y * this.cell);
+      const col = this.palette.dmg(s.type);
+      const r = s.r * this.cell * p.s;
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+      g.addColorStop(0, withAlpha(col, s.a));
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, r, deckRy(r), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  _drawPlanGhost(plan, cell) {
+    if (!plan || !cell) return;
+    const ctx = this.ctx;
+    const tint = this.palette.dmg(plan.damageType || "kinetic");
+    const ox = cell.x + 0.5;
+    const oy = cell.y + 0.5;
+    const drawRing = (radiusCells, alpha, dash) => {
+      const r = radiusCells * this.cell;
+      const steps = 48;
+      ctx.strokeStyle = withAlpha(tint, alpha);
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash(dash);
+      ctx.beginPath();
+      for (let i = 0; i <= steps; i++) {
+        const a = (i / steps) * Math.PI * 2;
+        const sp = this.cam.project(ox * this.cell + Math.cos(a) * r, oy * this.cell + Math.sin(a) * r);
+        if (i === 0) ctx.moveTo(sp.x, sp.y);
+        else ctx.lineTo(sp.x, sp.y);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    };
+    drawRing(plan.rangeCells || 2.5, 0.45, [5, 4]);
+    if (plan.pulseRadius > 0) drawRing(plan.pulseRadius, 0.35, [2, 3]);
+    if ((plan.chainJumps | 0) > 0) {
+      const p0 = this.cam.project(ox * this.cell, oy * this.cell);
+      for (let i = 0; i < Math.min(3, plan.chainJumps); i++) {
+        const a = -0.4 + i * 0.55;
+        const p1 = this.cam.project(
+          (ox + Math.cos(a) * (plan.rangeCells * 0.7)) * this.cell,
+          (oy + Math.sin(a) * (plan.rangeCells * 0.7)) * this.cell
+        );
+        ctx.strokeStyle = withAlpha(tint, 0.4);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+      }
+    }
+    ctx.lineWidth = 1;
   }
 
   cellScreenCenter(x, y) {
@@ -639,36 +821,43 @@ export class BoardView {
     const pts = this._pathPoints(g);
     if (pts.length < 2) return;
 
+    const pressure = Math.min(1, (this.sim?.enemies?.length || 0) / 14);
     const c = this.cell;
     const midS = pts[Math.floor(pts.length / 2)]?.s || 1;
-    const w = Math.max(5, c * 0.38 * midS);
+    const w = Math.max(5, c * (0.38 + pressure * 0.12) * midS);
     const t = performance.now() * 0.001;
-    const travel = -t * c * 1.15;
+    const travel = -t * c * (1.15 + pressure * 0.8);
+    const warm = 0.06 + pressure * 0.14;
 
     ctx.save();
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    // Soft under-bloom
-    ctx.strokeStyle = "rgba(120, 190, 220, 0.06)";
+    ctx.strokeStyle = `rgba(120, 190, 220, ${0.06 + pressure * 0.08})`;
     ctx.lineWidth = w * 1.85;
     this._strokePts(pts);
 
-    ctx.strokeStyle = "rgba(170, 205, 225, 0.08)";
+    if (pressure > 0.15) {
+      ctx.strokeStyle = `rgba(212, 120, 58, ${warm})`;
+      ctx.lineWidth = w * 1.35;
+      this._strokePts(pts);
+    }
+
+    ctx.strokeStyle = `rgba(170, 205, 225, ${0.08 + pressure * 0.1})`;
     ctx.lineWidth = w;
     this._strokePts(pts);
 
-    ctx.strokeStyle = "rgba(190, 220, 240, 0.12)";
+    ctx.strokeStyle = `rgba(190, 220, 240, ${0.12 + pressure * 0.12})`;
     ctx.lineWidth = w * 0.55;
     this._strokePts(pts);
 
-    ctx.strokeStyle = "rgba(210, 230, 245, 0.26)";
+    ctx.strokeStyle = `rgba(210, 230, 245, ${0.26 + pressure * 0.2})`;
     ctx.lineWidth = w * 0.65;
     ctx.setLineDash([c * 0.32, c * 0.9]);
     ctx.lineDashOffset = travel;
     this._strokePts(pts);
 
-    ctx.strokeStyle = "rgba(240, 250, 255, 0.2)";
+    ctx.strokeStyle = `rgba(240, 250, 255, ${0.2 + pressure * 0.25})`;
     ctx.lineWidth = w * 0.28;
     ctx.setLineDash([c * 0.12, c * 1.1]);
     ctx.lineDashOffset = travel - c * 0.28;
@@ -779,12 +968,13 @@ export class BoardView {
     const y = g.rows - 1;
     const t = performance.now() * 0.001;
     const accent = this.palette.accent;
+    const flinch = this._bastionFlinch > 0 ? Math.sin(this._bastionFlinch * 40) * 2.5 : 0;
 
     const left = this.cam.project(0, y * this.cell);
     const right = this.cam.project(g.cols * this.cell, y * this.cell);
     const leftB = this.cam.project(0, (y + 1) * this.cell);
     const rightB = this.cam.project(g.cols * this.cell, (y + 1) * this.cell);
-    const body = [left, right, rightB, leftB];
+    const body = [left, right, rightB, leftB].map((p) => ({ x: p.x, y: p.y + flinch }));
 
     // Extruded face under the rampart
     const rise = Math.max(4, this.cell * 0.14);
@@ -1012,8 +1202,11 @@ export class BoardView {
     const ctx = this.ctx;
     const p = this.cam.projectCell(t.cell.x, t.cell.y);
     const s = this.cell * p.s * UNIT_SCALE;
-    const px = p.x - s / 2;
-    const py = p.y - s / 2;
+    const recoil = this.recoil.get(t.id) || 0;
+    const kick = recoil > 0 ? Math.cos(t.aimAngle || 0) * recoil * 10 * p.s : 0;
+    const kickY = recoil > 0 ? Math.sin(t.aimAngle || 0) * recoil * 10 * p.s : 0;
+    const px = p.x - s / 2 - kick;
+    const py = p.y - s / 2 - kickY;
     const selected = t.id === this.selectedTowerId;
     drawComposedTower(ctx, this.palette, t, px, py, s, selected);
 
@@ -1069,21 +1262,34 @@ export class BoardView {
 
   _drawEnemy(e) {
     const ctx = this.ctx;
+    const hitSquash = e._hitFlash > 0 ? 1 + e._hitFlash * 0.35 : 1;
+    if (e._hitFlash > 0) e._hitFlash = Math.max(0, e._hitFlash - 0.04);
     const p = this.cam.project(e.pos.x * this.cell, e.pos.y * this.cell);
-    const s = this.cell * 0.8 * p.s * UNIT_SCALE;
+    const s = this.cell * 0.8 * p.s * UNIT_SCALE * hitSquash;
     const cx = p.x;
     const cy = p.y;
     const col = this.palette.enemyColor(e.kind);
+    const m = matsFrom(col);
 
     ctx.fillStyle = "rgba(0,0,0,0.32)";
     ctx.beginPath();
-    ctx.ellipse(cx + 1, cy + s * 0.2, s * 0.26, deckRy(s * 0.26), 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 1, cy + s * 0.22, s * 0.28, deckRy(s * 0.28), 0, 0, Math.PI * 2);
     ctx.fill();
 
-    if (e.kind === "fast") this._enemyFast(cx, cy, s, col);
-    else if (e.flying) this._enemyFly(cx, cy, s, col);
-    else if (e.kind === "heavy" || e.kind === "boss") this._enemyHeavy(cx, cy, s, col, e.kind === "boss");
-    else this._enemyBasic(cx, cy, s, col);
+    if (e.kind === "fast") this._enemyFast(cx, cy, s, m);
+    else if (e.kind === "shielded") this._enemyShielded(cx, cy, s, m);
+    else if (e.kind === "splitter") this._enemySplitter(cx, cy, s, m);
+    else if (e.flying) this._enemyFly(cx, cy, s, m);
+    else if (e.kind === "heavy" || e.kind === "boss") this._enemyHeavy(cx, cy, s, m, e.kind === "boss");
+    else this._enemyBasic(cx, cy, s, m);
+
+    if ((e.shieldHp || 0) > 0) {
+      ctx.strokeStyle = withAlpha("#9ec8e8", 0.75);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - s * 0.08, s * 0.34, deckRy(s * 0.34), 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     let ring = null;
     if ((e.burnT || 0) > 0) ring = this.palette.dmg("fire");
@@ -1094,7 +1300,7 @@ export class BoardView {
       ctx.strokeStyle = ring;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(cx, cy - s * 0.04, s * 0.28, deckRy(s * 0.28), 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy - s * 0.04, s * 0.3, deckRy(s * 0.3), 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.lineWidth = 1;
     }
@@ -1102,79 +1308,58 @@ export class BoardView {
     const ratio = Math.max(0, e.hp / e.maxHp);
     const barW = s * 0.72;
     ctx.fillStyle = "rgba(20,16,12,0.85)";
-    ctx.fillRect(cx - barW / 2 - 1, cy - s * 0.44 - 1, barW + 2, 5);
+    ctx.fillRect(cx - barW / 2 - 1, cy - s * 0.5 - 1, barW + 2, 5);
     ctx.fillStyle = shade(this.palette.path, -0.35);
-    ctx.fillRect(cx - barW / 2, cy - s * 0.44, barW, 3);
+    ctx.fillRect(cx - barW / 2, cy - s * 0.5, barW, 3);
     ctx.fillStyle = ratio > 0.35 ? "#8fbf6a" : "#c45a4a";
-    ctx.fillRect(cx - barW / 2, cy - s * 0.44, barW * ratio, 3);
+    ctx.fillRect(cx - barW / 2, cy - s * 0.5, barW * ratio, 3);
   }
 
-  _enemyBasic(cx, cy, s, col) {
-    const ctx = this.ctx;
-    const rx = s * 0.26;
-    const ry = deckRy(rx);
-    const rise = s * 0.14;
-    ctx.fillStyle = shade(col, -0.25);
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + rise * 0.4, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = shade(col, -0.08);
-    ctx.fillRect(cx - rx, cy - rise * 0.35, rx * 2, rise);
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy - rise * 0.35, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(20,14,10,0.45)";
-    ctx.beginPath();
-    ctx.ellipse(cx, cy - rise * 0.35, rx, ry, 0, 0, Math.PI * 2);
-    ctx.stroke();
+  _enemyBasic(cx, cy, s, m) {
+    const rise = s * 0.16;
+    cyl25(this.ctx, cx, cy - rise * 0.55, s * 0.24, rise, m.top, m.side, m.sideDark);
   }
 
-  _enemyHeavy(cx, cy, s, col, boss) {
-    const ctx = this.ctx;
-    const rx = s * (boss ? 0.34 : 0.3);
-    const ry = deckRy(rx);
-    const rise = s * (boss ? 0.2 : 0.17);
-    ctx.fillStyle = shade(col, -0.28);
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + rise * 0.45, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = shade(col, -0.1);
-    ctx.fillRect(cx - rx, cy - rise * 0.3, rx * 2, rise);
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy - rise * 0.3, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fill();
+  _enemyHeavy(cx, cy, s, m, boss) {
+    const w = s * (boss ? 0.42 : 0.36);
+    const h = s * (boss ? 0.28 : 0.22);
+    box25(this.ctx, cx, cy - h * 0.35, w, w * 0.7, h, m);
+    if (boss) {
+      cyl25(this.ctx, cx, cy - h * 0.95, s * 0.12, s * 0.1, m.topHi || m.top, m.side, m.sideDark);
+    }
   }
 
-  _enemyFast(cx, cy, s, col) {
-    const ctx = this.ctx;
-    ctx.fillStyle = shade(col, -0.22);
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - s * 0.26 + 2);
-    ctx.lineTo(cx + s * 0.3, cy + s * 0.2 + 2);
-    ctx.lineTo(cx - s * 0.3, cy + s * 0.2 + 2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - s * 0.26);
-    ctx.lineTo(cx + s * 0.3, cy + s * 0.2);
-    ctx.lineTo(cx - s * 0.3, cy + s * 0.2);
-    ctx.closePath();
-    ctx.fill();
+  _enemyFast(cx, cy, s, m) {
+    frustum25(this.ctx, cx, cy - s * 0.22, s * 0.1, s * 0.28, s * 0.2, m);
   }
 
-  _enemyFly(cx, cy, s, col) {
+  _enemyFly(cx, cy, s, m) {
     const ctx = this.ctx;
     ctx.fillStyle = "rgba(0,0,0,0.16)";
     ctx.beginPath();
     ctx.ellipse(cx, cy + s * 0.26, s * 0.2, s * 0.07, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = col;
+    cyl25(ctx, cx, cy - s * 0.18, s * 0.28, s * 0.1, m.top, m.side, m.sideDark);
+    ctx.strokeStyle = withAlpha(m.rim || m.top, 0.45);
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.ellipse(cx, cy - s * 0.1, s * 0.32, s * 0.14, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.ellipse(cx, cy - s * 0.12, s * 0.38, s * 0.1, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  _enemyShielded(cx, cy, s, m) {
+    cyl25(this.ctx, cx, cy - s * 0.2, s * 0.26, s * 0.18, m.top, m.side, m.sideDark);
+    box25(this.ctx, cx, cy - s * 0.08, s * 0.38, s * 0.2, s * 0.08, {
+      ...m,
+      top: shade(m.top, 0.15),
+      side: shade(m.side, 0.1),
+    });
+  }
+
+  _enemySplitter(cx, cy, s, m) {
+    cyl25(this.ctx, cx - s * 0.1, cy - s * 0.14, s * 0.16, s * 0.14, m.top, m.side, m.sideDark);
+    cyl25(this.ctx, cx + s * 0.1, cy - s * 0.14, s * 0.16, s * 0.14, m.top, m.side, m.sideDark);
+    box25(this.ctx, cx, cy - s * 0.02, s * 0.34, s * 0.18, s * 0.1, m);
   }
 
   _drawProjectile(p) {
@@ -1182,6 +1367,19 @@ export class BoardView {
     const sp = this.cam.project(p.pos.x * this.cell, p.pos.y * this.cell);
     const col = this.palette.dmg(p.damageType);
     const r = 3.2 * sp.s;
+    const trail = p._trail || (p._trail = []);
+    trail.push({ x: p.pos.x, y: p.pos.y });
+    if (trail.length > 6) trail.shift();
+    for (let i = 0; i < trail.length - 1; i++) {
+      const a = (i + 1) / trail.length;
+      const t0 = this.cam.project(trail[i].x * this.cell, trail[i].y * this.cell);
+      ctx.globalAlpha = a * 0.45;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(t0.x, t0.y, r * 0.55 * a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
     ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.beginPath();
     ctx.ellipse(sp.x + 1, sp.y + 3, 4 * sp.s, 1.8 * sp.s, 0, 0, Math.PI * 2);

@@ -67,7 +67,14 @@ export class CombatSystem {
     if (plan.pattern === Pattern.PROJECTILE || plan.pattern === Pattern.HYBRID) {
       this._fireProjectiles(t, plan, target);
     }
-    this.world.emit("tower_fired", { towerId: t.id, pattern: plan.pattern });
+    this.world.emit("tower_fired", {
+      towerId: t.id,
+      pattern: plan.pattern,
+      x: t.cell.x + 0.5,
+      y: t.cell.y + 0.5,
+      angle: t.aimAngle || 0,
+      damageType: plan.damageType,
+    });
   }
 
   _firePulse(t, plan) {
@@ -299,8 +306,14 @@ export class CombatSystem {
     }
     const armor = Math.max(0, (e.armorFlat || 0) - (e.shred || 0));
     const resist = (e.resist && e.resist[plan.damageType]) || 0;
-    const dmg = Math.max(0, raw - armor) * (1 - Math.min(0.95, resist));
+    let dmg = Math.max(0, raw - armor) * (1 - Math.min(0.95, resist));
+    if ((e.shieldHp || 0) > 0) {
+      const absorbed = Math.min(e.shieldHp, dmg);
+      e.shieldHp -= absorbed;
+      dmg -= absorbed;
+    }
     e.hp -= dmg;
+    e._hitFlash = 1;
     this._applyStatus(e, plan.status || {});
     if (tower) this._grantXp(tower, 1);
     this.world.emit("hit", {

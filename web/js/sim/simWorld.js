@@ -30,6 +30,9 @@ export class SimWorld {
     this.campaignLevelId = 0;
     this.wavesToWin = 0;
     this.seed = 1;
+    this.runSeed = 1;
+    this.campaignWaveScripts = null;
+    this.actionLog = [];
     this._nextId = 1;
     this._listeners = new Map();
   }
@@ -53,9 +56,12 @@ export class SimWorld {
 
   setup(cols = 11, rows = 14, seed = 1, endless = true) {
     this.seed = seed;
+    this.runSeed = seed >>> 0 || 1;
     this.modeEndless = endless;
     this.campaignLevelId = 0;
     this.wavesToWin = 0;
+    this.campaignWaveScripts = null;
+    this.actionLog = [];
     this.grid.setup(cols, rows);
     this.economy = new Economy();
     this.economy.resetRunGains();
@@ -74,6 +80,10 @@ export class SimWorld {
     this.roster = defaultSlots(3, 2);
     this.partUpgrades = {};
     this.globalMods = { damage: 1, range: 1, rof: 1 };
+  }
+
+  logAction(type, data = {}) {
+    this.actionLog.push({ t: this.tickIndex, type, ...data });
   }
 
   setPartUpgrades(up) {
@@ -129,10 +139,12 @@ export class SimWorld {
     this._tickEnemies();
   }
 
-  startWave() {
+  startWave({ earlyBonus = 0 } = {}) {
     this.running = true;
+    if (earlyBonus > 0) this.economy.addBattle(earlyBonus);
     this.waves.startNextWave();
-    this.emit("wave_started", { wave: this.waveIndex });
+    this.logAction("call", { wave: this.waveIndex, earlyBonus });
+    this.emit("wave_started", { wave: this.waveIndex, earlyBonus });
   }
 
   growSouth(n) {
@@ -154,6 +166,7 @@ export class SimWorld {
     const wall = { id: this.allocId(), cell: { x, y }, paid: cost };
     this.walls.push(wall);
     this.grid.recompute();
+    this.logAction("place_wall", { x, y });
     this.emit("wall_placed", { wall });
     return { ok: true, wall };
   }
@@ -193,6 +206,7 @@ export class SimWorld {
     this.towers.push(tower);
     this.grid.recompute();
     this.combat.dirtyAuras();
+    this.logAction("place_tower", { x, y, slot: slotIndex });
     this.emit("tower_placed", { tower, surcharge });
     return { ok: true, tower, surcharge };
   }
@@ -207,6 +221,7 @@ export class SimWorld {
     this.towers.splice(i, 1);
     this.grid.recompute();
     this.combat.dirtyAuras();
+    this.logAction("sell_tower", { id });
     this.emit("tower_sold", { id, refund });
     return { ok: true, refund };
   }
@@ -221,6 +236,7 @@ export class SimWorld {
     this.grid.setBlocked(w.cell.x, w.cell.y, false);
     this.walls.splice(i, 1);
     this.grid.recompute();
+    this.logAction("sell_wall", { id });
     this.emit("wall_sold", { id, refund });
     return { ok: true, refund };
   }
@@ -237,6 +253,8 @@ export class SimWorld {
       walls: structuredClone(this.walls),
       roster: structuredClone(this.roster),
       seed: this.seed,
+      runSeed: this.runSeed,
+      actionLog: structuredClone(this.actionLog || []),
       cols: this.grid.cols,
       rows: this.grid.rows,
       blocked: this.grid.exportBlocked(),
@@ -244,7 +262,9 @@ export class SimWorld {
   }
 
   loadCheckpoint(blob) {
-    this.setup(blob.cols || 11, blob.rows || 14, blob.seed || 1, true);
+    this.setup(blob.cols || 11, blob.rows || 14, blob.runSeed || blob.seed || 1, true);
+    this.runSeed = (blob.runSeed || blob.seed || 1) >>> 0;
+    this.actionLog = Array.isArray(blob.actionLog) ? structuredClone(blob.actionLog) : [];
     this.economy.battle = blob.battle ?? 100;
     this.economy.forge = blob.forge ?? 0;
     this.economy.aether = blob.aether ?? 0;
@@ -284,6 +304,20 @@ export class SimWorld {
       const e = this.enemies[i];
       if (e.hp <= 0) {
         this.economy.addBattle(e.battleDrop || 1);
+        if ((e.splitsInto | 0) > 0) {
+          for (let s = 0; s < e.splitsInto; s++) {
+            const child = this.waves.makeEnemy("basic", this.waveIndex, {
+              scale: 0.55,
+              pos: {
+                x: e.pos.x + (s === 0 ? -0.15 : 0.15),
+                y: e.pos.y,
+              },
+              cell: { x: e.cell.x, y: e.cell.y },
+            });
+            child.battleDrop = 1;
+            this.enemies.push(child);
+          }
+        }
         this.emit("enemy_killed", { enemy: e, drop: e.battleDrop || 1 });
         this.enemies.splice(i, 1);
         continue;

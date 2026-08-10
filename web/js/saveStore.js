@@ -41,6 +41,8 @@ export function normalizeMeta(m) {
     settings: {
       colorblind: !!m.settings?.colorblind,
       particles: m.settings?.particles !== false,
+      music: m.settings?.music !== false,
+      sfxVolume: clampVol(m.settings?.sfxVolume),
       cameraPitch: clampPitch(m.settings?.cameraPitch),
     },
   };
@@ -68,6 +70,12 @@ function clampPitch(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return 24;
   return Math.max(8, Math.min(58, n));
+}
+
+function clampVol(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0.35;
+  return Math.max(0, Math.min(1, n));
 }
 
 function clampMult(v, fallback) {
