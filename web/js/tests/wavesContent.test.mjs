@@ -18,11 +18,12 @@ assert(packKinds.has("overlord"), "packs include overlord");
 assert(packKinds.has("furnace"), "packs include furnace");
 assert(packKinds.has("leech"), "packs include leech");
 
-assert(CAMPAIGN_LEVELS.length >= 5, "campaign has 5 levels");
+assert(CAMPAIGN_LEVELS.length >= 7, "campaign has Act II levels");
 assert(
   CAMPAIGN_LEVELS[4].waves?.length === CAMPAIGN_LEVELS[4].wavesToWin,
   "level 5 authored waves match wavesToWin"
 );
+assert(CAMPAIGN_LEVELS[6].id === 7, "level 7 Ash Causeway");
 
 for (const lv of CAMPAIGN_LEVELS) {
   assert(lv.waves.length === lv.wavesToWin, `${lv.name} wave count`);
@@ -44,6 +45,15 @@ assert(!same || r1.queue.length >= 3, "endless RNG varies or still valid");
 
 const late = composeEndlessWave(12, mulberry32(99));
 assert(late.queue.length >= 5, "late endless has bulk");
+assert(typeof late.theme === "string", "endless theme string");
+// Events are optional; ensure field exists when rolled
+let sawEventField = false;
+for (let i = 0; i < 40; i++) {
+  const p = composeEndlessWave(10, mulberry32(1000 + i));
+  if ("event" in p) sawEventField = true;
+  if (p.event) break;
+}
+assert(sawEventField, "endless plan exposes event field");
 
 assert(resolveEnemyKind("boss") === "overlord", "alias boss→overlord");
 assert(resolveEnemyKind("fast") === "runner", "alias fast→runner");

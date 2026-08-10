@@ -122,6 +122,18 @@ export const PARTS = {
       forgeCost: 26,
       blurb: "Lobs a blast on impact",
     },
+    flak: {
+      pattern: "projectile",
+      count: 4,
+      spreadDeg: 42,
+      speed: 9.5,
+      airCapable: true,
+      airDamageMult: 1.35,
+      damageMult: 0.72,
+      cost: 20,
+      forgeCost: 24,
+      blurb: "Burst flak — shreds air swarms",
+    },
   },
   payloads: {
     kinetic: {
@@ -183,6 +195,16 @@ export const PARTS = {
       forgeCost: 18,
       blurb: "Green acid — shreds armor for a few seconds",
     },
+    breach: {
+      damage: 11,
+      damageType: "kinetic",
+      armorPierce: 4,
+      status: { shred: { amount: 1, duration: 2.5 } },
+      speed: 11,
+      cost: 15,
+      forgeCost: 22,
+      blurb: "AP slug — punches flat armor, light shred",
+    },
   },
 };
 
@@ -206,6 +228,8 @@ export const WAVE_UNLOCKS = [
   { bestWave: 16, payloads: ["poison"], label: "Poison payload" },
   { bestWave: 18, barrels: ["pulse"], label: "Pulse barrel" },
   { bestWave: 20, payloads: ["acid"], label: "Acid payload" },
+  { bestWave: 22, barrels: ["flak"], label: "Flak barrel" },
+  { bestWave: 24, payloads: ["breach"], label: "Breach payload" },
 ];
 
 /** Soft roster size — matches slot4→slot6 tech. */

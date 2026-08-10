@@ -50,6 +50,7 @@ export class ProcPalette {
       rail: "#6a7680",
       pulse: "#6a9080",
       launcher: "#c4843e",
+      flak: "#b8a878",
     };
     this.payload = {
       kinetic: "#d8d2c4",
@@ -58,6 +59,7 @@ export class ProcPalette {
       frost: "#7eb8c9",
       poison: "#9a6bb8",
       acid: "#7aad5c",
+      breach: "#c8b090",
     };
     this.enemy = {
       grub: "#b84a55",
@@ -79,10 +81,147 @@ export class ProcPalette {
       splitter: "#a06070",
       boss: "#c4305a",
     };
+    this.atmosphere = {
+      fog: this.fog,
+      moteWarm: this.accent,
+      moteCool: "#9eb0c0",
+      bloom: 0.35,
+      pulse: this.accent,
+    };
+    this._atmosphereId = "default";
   }
 
   setColorblind(on) {
     this.colorblind = !!on;
+  }
+
+  /** Soft deck/fog variants for campaign levels and endless themes. */
+  setAtmosphere(id) {
+    const key = id || "default";
+    this._atmosphereId = key;
+    const table = {
+      default: {
+        fog: "rgba(8, 10, 14, 0.58)",
+        moteWarm: "#d4783a",
+        moteCool: "#9eb0c0",
+        bloom: 0.35,
+        pulse: "#d4783a",
+      },
+      campaign_1: {
+        fog: "rgba(10, 14, 20, 0.55)",
+        moteWarm: "#7a9ab0",
+        moteCool: "#9eb0c0",
+        bloom: 0.4,
+        pulse: "#6a8a9a",
+      },
+      campaign_2: {
+        fog: "rgba(12, 12, 18, 0.58)",
+        moteWarm: "#d4892a",
+        moteCool: "#a0a8b8",
+        bloom: 0.32,
+        pulse: "#d4892a",
+      },
+      campaign_3: {
+        fog: "rgba(10, 12, 16, 0.6)",
+        moteWarm: "#8a6a9a",
+        moteCool: "#7a90a8",
+        bloom: 0.36,
+        pulse: "#8a6a9a",
+      },
+      campaign_4: {
+        fog: "rgba(18, 10, 8, 0.58)",
+        moteWarm: "#e07a3a",
+        moteCool: "#a08070",
+        bloom: 0.28,
+        pulse: "#e07a3a",
+      },
+      campaign_5: {
+        fog: "rgba(14, 10, 8, 0.62)",
+        moteWarm: "#c9a227",
+        moteCool: "#b09070",
+        bloom: 0.3,
+        pulse: "#c9a227",
+      },
+      campaign_6: {
+        fog: "rgba(8, 16, 18, 0.6)",
+        moteWarm: "#5aaf8a",
+        moteCool: "#7a9ab0",
+        bloom: 0.38,
+        pulse: "#5aaf8a",
+      },
+      campaign_7: {
+        fog: "rgba(16, 8, 14, 0.62)",
+        moteWarm: "#c4305a",
+        moteCool: "#8a6a9a",
+        bloom: 0.28,
+        pulse: "#c4305a",
+      },
+      fodder: {
+        fog: "rgba(8, 10, 14, 0.55)",
+        moteWarm: "#b84a55",
+        moteCool: "#9eb0c0",
+        bloom: 0.34,
+        pulse: "#b84a55",
+      },
+      rush: {
+        fog: "rgba(14, 12, 8, 0.52)",
+        moteWarm: "#d4892a",
+        moteCool: "#c0a878",
+        bloom: 0.3,
+        pulse: "#d4892a",
+      },
+      armor: {
+        fog: "rgba(10, 12, 16, 0.6)",
+        moteWarm: "#8a96a0",
+        moteCool: "#6a7480",
+        bloom: 0.36,
+        pulse: "#8a96a0",
+      },
+      sky: {
+        fog: "rgba(12, 10, 22, 0.55)",
+        moteWarm: "#8a7ab8",
+        moteCool: "#6b5a9a",
+        bloom: 0.42,
+        pulse: "#8a7ab8",
+      },
+      breach: {
+        fog: "rgba(16, 10, 12, 0.58)",
+        moteWarm: "#a06070",
+        moteCool: "#9eb0c0",
+        bloom: 0.33,
+        pulse: "#a06070",
+      },
+      foundry: {
+        fog: "rgba(20, 10, 6, 0.6)",
+        moteWarm: "#e07a3a",
+        moteCool: "#a07050",
+        bloom: 0.26,
+        pulse: "#e07a3a",
+      },
+      chaos: {
+        fog: "rgba(14, 8, 16, 0.62)",
+        moteWarm: "#c9a227",
+        moteCool: "#9a6bb8",
+        bloom: 0.3,
+        pulse: "#c4305a",
+      },
+      sky_breach: {
+        fog: "rgba(14, 12, 28, 0.58)",
+        moteWarm: "#a090d0",
+        moteCool: "#6b5a9a",
+        bloom: 0.45,
+        pulse: "#a090d0",
+      },
+      foundry_night: {
+        fog: "rgba(22, 8, 4, 0.64)",
+        moteWarm: "#ff8a40",
+        moteCool: "#805040",
+        bloom: 0.22,
+        pulse: "#ff8a40",
+      },
+    };
+    this.atmosphere = table[key] || table[key.replace(/^event_/, "")] || table.default;
+    this.fog = this.atmosphere.fog;
   }
 
   c(hex) {

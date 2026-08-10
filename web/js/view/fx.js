@@ -106,6 +106,49 @@ export class FxSystem {
     });
   }
 
+  /** Enemy death — armored plate shatter vs soft scrap/puff. */
+  death(x, y, kind = "soft") {
+    const armored = kind === "plate" || kind === "aegis" || kind === "overlord" || kind === "furnace";
+    this.items.push({
+      kind: "ring",
+      x,
+      y,
+      life: 0.32,
+      max: 0.32,
+      type: armored ? "kinetic" : "poison",
+      r0: 0.05,
+      r1: armored ? 0.5 : 0.35,
+    });
+    const n = armored ? 10 : 6;
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 1.1 + Math.random() * (armored ? 2.8 : 1.8);
+      this.items.push({
+        kind: armored ? "scrap" : "spark",
+        x,
+        y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 0.4,
+        life: 0.35 + Math.random() * 0.25,
+        max: 0.6,
+        type: armored ? "kinetic" : kind === "furnace" ? "fire" : "kinetic",
+        size: armored ? 2 + Math.random() * 2.5 : 1.5 + Math.random() * 1.5,
+        rot: Math.random() * Math.PI,
+      });
+    }
+    if (!armored) {
+      this.items.push({
+        kind: "puff",
+        x,
+        y,
+        life: 0.45,
+        max: 0.45,
+        type: "poison",
+        vy: -0.4,
+      });
+    }
+  }
+
   portalMote(x, y) {
     const a = Math.random() * Math.PI * 2;
     const sp = 0.25 + Math.random() * 0.55;

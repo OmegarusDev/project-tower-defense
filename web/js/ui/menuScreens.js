@@ -10,11 +10,18 @@ import { LevelEditor, loadEditorLevels } from "./levelEditor.js";
 import { buildAttackPlan } from "../sim/attackPlan.js";
 import { PARTS, partLabel, doctrineLabel } from "../data/parts.js";
 import { saveMeta } from "../saveStore.js";
+import {
+  threatTagsForLevel,
+  rosterPeekHtml,
+  prepSlotButtonsHtml,
+  endlessThemeBlurb,
+  paintLevelThumb,
+} from "./metaUi.js";
 
 export function renderMain(app) {
   app.screen = "main";
   app.ui.innerHTML = `
-    <div class="screen title-screen">
+    <div class="screen title-screen meta-enter">
       <header class="title-hero">
         <p class="title-mark">Project</p>
         <h1 class="title-brand">
@@ -47,28 +54,44 @@ export function renderSettings(app) {
   const pitch = app.meta.settings?.cameraPitch ?? VIEW25.pitchDeg;
   const vol = Math.round((app.meta.settings?.sfxVolume ?? 0.35) * 100);
   app.ui.innerHTML = `
-    <div class="screen scroll">
-      <div class="screen-header">
-        <h1>Settings</h1>
-        <button class="btn secondary" data-act="main" style="padding:10px 12px;font-size:0.85rem">Back</button>
-      </div>
-      <label class="btn secondary"><input type="checkbox" id="cb" ${
-        app.meta.settings?.colorblind ? "checked" : ""
-      }/> Colorblind palette</label>
-      <label class="btn secondary"><input type="checkbox" id="particles" ${
-        app.meta.settings?.particles !== false ? "checked" : ""
-      }/> Particles & juice</label>
-      <label class="btn secondary"><input type="checkbox" id="music" ${
-        app.meta.settings?.music !== false ? "checked" : ""
-      }/> Pressure kick bed</label>
-      <div class="end-card" style="margin-top:8px">
-        <h3>SFX volume · ${vol}%</h3>
-        <input id="sfxVol" type="range" min="0" max="100" step="1" value="${vol}" style="width:100%;margin-top:8px" />
-      </div>
-      <div class="end-card" style="margin-top:8px">
-        <h3>Camera angle</h3>
-        <p class="end-note">Pitch ${Math.round(pitch)}° — steeper = more foreshortening.</p>
-        <input id="pitch" type="range" min="8" max="58" step="1" value="${pitch}" style="width:100%;margin-top:8px" />
+    <div class="screen scroll meta-screen meta-enter">
+      <header class="meta-hero">
+        <div class="meta-hero-row">
+          <div>
+            <p class="title-mark">Console</p>
+            <h1>Settings</h1>
+          </div>
+          <button class="btn secondary tech-back" data-act="main">Back</button>
+        </div>
+      </header>
+      <div class="settings-plate plate">
+        <label class="set-row">
+          <span>Colorblind palette</span>
+          <input type="checkbox" id="cb" ${app.meta.settings?.colorblind ? "checked" : ""}/>
+        </label>
+        <label class="set-row">
+          <span>Particles & juice</span>
+          <input type="checkbox" id="particles" ${app.meta.settings?.particles !== false ? "checked" : ""}/>
+        </label>
+        <label class="set-row">
+          <span>Pressure kick bed</span>
+          <input type="checkbox" id="music" ${app.meta.settings?.music !== false ? "checked" : ""}/>
+        </label>
+        <div class="set-block">
+          <div class="set-head">
+            <h3>SFX volume</h3>
+            <span id="sfxVolLabel">${vol}%</span>
+          </div>
+          <input id="sfxVol" type="range" min="0" max="100" step="1" value="${vol}" />
+        </div>
+        <div class="set-block">
+          <div class="set-head">
+            <h3>Camera angle</h3>
+            <span id="pitchLabel">${Math.round(pitch)}°</span>
+          </div>
+          <p class="end-note">Steeper = more foreshortening.</p>
+          <input id="pitch" type="range" min="8" max="58" step="1" value="${pitch}" />
+        </div>
       </div>
     </div>`;
 }
@@ -97,15 +120,15 @@ export function wireSettings(app) {
     app.meta.settings = app.meta.settings || {};
     app.meta.settings.sfxVolume = v;
     app.synth.setVolume(v);
-    const h = app.ui.querySelector(".end-card h3");
-    if (h && h.textContent.startsWith("SFX")) h.textContent = `SFX volume · ${e.target.value}%`;
+    const lab = app.ui.querySelector("#sfxVolLabel");
+    if (lab) lab.textContent = `${e.target.value}%`;
     save();
   });
   app.ui.querySelector("#pitch")?.addEventListener("input", (e) => {
     const v = +e.target.value;
     app.applyPitch(v);
-    const note = app.ui.querySelector(".end-note");
-    if (note) note.textContent = `Pitch ${Math.round(v)}° — steeper = more foreshortening.`;
+    const lab = app.ui.querySelector("#pitchLabel");
+    if (lab) lab.textContent = `${Math.round(v)}°`;
   });
 }
 
@@ -115,25 +138,51 @@ export function renderCampaign(app) {
   const cards = CAMPAIGN_LEVELS.map((lv) => {
     const open = isLevelUnlocked(lv.id, cleared);
     const done = cleared.includes(lv.id);
-    return `<button class="btn ${done ? "equipped" : ""} ${open ? "" : "cant-afford"}" data-act="prep:${lv.id}" ${
-      open ? "" : "disabled"
-    } title="${lv.blurb}">
-      <strong>${lv.id}. ${lv.name}</strong>
-      <span style="display:block;font-size:0.75rem;opacity:0.8">${lv.wavesToWin} waves · ${lv.cols}×${lv.rows}${
-        done ? " · cleared" : ""
-      }</span>
+    const tags = threatTagsForLevel(lv, 4)
+      .map((t) => `<span class="threat-tag" data-kind="${t.id}">${t.label}</span>`)
+      .join("");
+    return `<button type="button" class="level-card plate ${done ? "cleared" : ""} ${
+      open ? "" : "locked"
+    }" data-act="prep:${lv.id}" ${open ? "" : "disabled"}>
+      <canvas class="level-thumb" data-level="${lv.id}" width="72" height="72" aria-hidden="true"></canvas>
+      <div class="level-card-body">
+        <div class="level-card-top">
+          <strong>${lv.id}. ${lv.name}</strong>
+          ${done ? `<span class="level-cleared">Cleared</span>` : ""}
+        </div>
+        <p class="level-meta">${lv.wavesToWin} waves · ${lv.cols}×${lv.rows} · ${lv.preWalls.length} walls</p>
+        <div class="threat-row">${tags}</div>
+      </div>
     </button>`;
   }).join("");
   app.ui.innerHTML = `
-    <div class="screen scroll">
-      <div class="screen-header">
-        <h1>Campaign</h1>
-        <button class="btn secondary" data-act="main" style="padding:10px 12px;font-size:0.85rem">Back</button>
-      </div>
-      <p class="currency-line">First campaign · 5 levels · Prep before each fight</p>
-      <div class="cols" style="grid-template-columns:1fr">${cards}</div>
-      <button class="btn" data-act="forge-from-campaign" style="margin-top:10px">Forge</button>
+    <div class="screen scroll meta-screen meta-enter">
+      <header class="meta-hero">
+        <div class="meta-hero-row">
+          <div>
+            <p class="title-mark">Operations</p>
+            <h1>Campaign</h1>
+          </div>
+          <button class="btn secondary tech-back" data-act="main">Back</button>
+        </div>
+        <p class="meta-blurb">Authored waves · prep before each fight</p>
+        <div class="title-stats tech-stats">
+          <span><i>Æ</i>${app.meta.aether}</span>
+          <span><i>Parts</i>${app.meta.forge}</span>
+          <span><i>Clear</i>${cleared.length}/${CAMPAIGN_LEVELS.length}</span>
+        </div>
+      </header>
+      <div class="level-grid">${cards}</div>
+      <button class="btn" data-act="forge-from-campaign">Forge</button>
     </div>`;
+}
+
+export function paintCampaignThumbs(app) {
+  app.ui.querySelectorAll("canvas.level-thumb").forEach((c) => {
+    const id = +c.getAttribute("data-level");
+    const lv = getCampaignLevel(id);
+    paintLevelThumb(c, lv, app.palette);
+  });
 }
 
 export function renderPrep(app, levelId) {
@@ -141,7 +190,8 @@ export function renderPrep(app, levelId) {
   if (!lv) return false;
   app.screen = "prep";
   app.prepLevelId = levelId;
-  const slot = app.meta.roster?.[0];
+  if (app.prepSlot == null) app.prepSlot = 0;
+  const slot = app.meta.roster?.[app.prepSlot];
   let planLine = "Complete a triad in Forge.";
   if (slot?.complete) {
     const plan = buildAttackPlan(slot.base, slot.barrel, slot.payload, 1, {});
@@ -149,21 +199,41 @@ export function renderPrep(app, levelId) {
       plan.damageType
     } · range ${plan.rangeCells.toFixed(1)} · ${(1 / plan.fireInterval).toFixed(2)}/s`;
   }
+  const tags = threatTagsForLevel(lv, 6)
+    .map((t) => `<span class="threat-tag" data-kind="${t.id}">${t.label}</span>`)
+    .join("");
   app.ui.innerHTML = `
-    <div class="screen scroll">
-      <div class="screen-header">
-        <h1>Prep · ${lv.name}</h1>
-        <button class="btn secondary" data-act="campaign" style="padding:10px 12px;font-size:0.85rem">Back</button>
+    <div class="screen scroll meta-screen meta-enter">
+      <header class="meta-hero">
+        <div class="meta-hero-row">
+          <div>
+            <p class="title-mark">Briefing</p>
+            <h1>${lv.name}</h1>
+          </div>
+          <button class="btn secondary tech-back" data-act="campaign">Back</button>
+        </div>
+        <p class="meta-blurb">${lv.blurb}</p>
+      </header>
+      <div class="prep-layout">
+        <canvas class="prep-thumb level-thumb" data-level="${lv.id}" width="120" height="120" aria-hidden="true"></canvas>
+        <div class="end-card prep-card plate">
+          <h3>Mission</h3>
+          <p>${lv.wavesToWin} waves · start ${lv.coinGrant} Coin · ${lv.preWalls.length} pre-walls</p>
+          <div class="threat-row" style="margin-top:10px;justify-content:flex-start">${tags}</div>
+        </div>
       </div>
-      <p class="end-note">${lv.blurb}</p>
-      <div class="end-card">
-        <h3>Briefing</h3>
-        <p>${lv.wavesToWin} waves · start ${lv.coinGrant} Coin · ${lv.preWalls.length} pre-walls</p>
-        <p style="margin-top:6px;font-size:0.8rem;color:var(--muted)">Loadout preview: ${planLine}</p>
+      <div class="end-card prep-card plate">
+        <h3>Loadout</h3>
+        ${rosterPeekHtml(app.meta)}
+        <p class="end-note" style="margin-top:8px;text-align:left">Active · ${planLine}</p>
+        <p class="end-note" style="margin-top:4px;text-align:left">Tap a slot to highlight for deploy priority.</p>
+        ${prepSlotButtonsHtml(app.meta, app.prepSlot)}
       </div>
       <button class="btn title-cta" data-act="start-level:${lv.id}">Start Level</button>
-      <button class="btn" data-act="forge-from-campaign">Forge</button>
-      <button class="btn" data-act="upgrade">Tech Tree</button>
+      <div class="row" style="gap:8px">
+        <button class="btn" data-act="forge-from-prep">Forge</button>
+        <button class="btn" data-act="upgrade-from-prep">Tech Tree</button>
+      </div>
     </div>`;
   return true;
 }
@@ -190,11 +260,16 @@ export function renderEditor(app) {
     }
   }
   app.ui.innerHTML = `
-    <div class="screen scroll">
-      <div class="screen-header">
-        <h1>Level Editor</h1>
-        <button class="btn secondary" data-act="main" style="padding:10px 12px;font-size:0.85rem">Back</button>
-      </div>
+    <div class="screen scroll meta-screen meta-enter">
+      <header class="meta-hero">
+        <div class="meta-hero-row">
+          <div>
+            <p class="title-mark">Yard</p>
+            <h1>Level Editor</h1>
+          </div>
+          <button class="btn secondary tech-back" data-act="main">Back</button>
+        </div>
+      </header>
       <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">
         <label>Cols <input id="edCols" type="number" min="6" max="12" value="${ed.cols}" style="width:3.5em"/></label>
         <label>Rows <input id="edRows" type="number" min="6" max="16" value="${ed.rows}" style="width:3.5em"/></label>
@@ -231,3 +306,5 @@ export function forgePlanSummary(slot) {
     plan.chainJumps ? ` · chain ${plan.chainJumps}` : ""
   }${plan.pulseRadius ? ` · pulse ${plan.pulseRadius.toFixed(1)}` : ""}</span>`;
 }
+
+export { endlessThemeBlurb };

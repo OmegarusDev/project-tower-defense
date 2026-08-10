@@ -133,6 +133,60 @@ const LEVEL_DEFS = [
       { pack: "finale_b", spawnGap: 0.28 },
     ],
   },
+  {
+    id: 6,
+    name: "Sky Vein",
+    blurb: "Act II opens above the deck. Flak and Aerie earn their keep.",
+    cols: 9,
+    rows: 10,
+    seed: 6060,
+    wallCount: 12,
+    coinGrant: 145,
+    atmosphere: "campaign_6",
+    waves: [
+      { pack: "air_cut", spawnGap: 0.3 },
+      { queue: ["skiff", "skiff", "wraith", "runner", "skiff", "wraith"], spawnGap: 0.28 },
+      { pack: "runners", spawnGap: 0.32 },
+      { pack: "aegis_wall", spawnGap: 0.34 },
+      { pack: "air_cut", spawnGap: 0.26 },
+      {
+        queue: ["wraith", "skiff", "cluster", "wraith", "skiff", "plate", "skiff"],
+        spawnGap: 0.26,
+      },
+      { pack: "cluster_burst", spawnGap: 0.28 },
+      {
+        queue: ["skiff", "wraith", "aegis", "skiff", "overlord", "wraith", "skiff"],
+        spawnGap: 0.28,
+      },
+    ],
+  },
+  {
+    id: 7,
+    name: "Ash Causeway",
+    blurb: "Foundry heat and regen. Breach payloads and frost change the math.",
+    cols: 10,
+    rows: 10,
+    seed: 7070,
+    wallCount: 15,
+    coinGrant: 155,
+    atmosphere: "campaign_7",
+    waves: [
+      { pack: "heat", spawnGap: 0.34 },
+      { pack: "leech_pack", spawnGap: 0.32 },
+      { pack: "plates", spawnGap: 0.36 },
+      { pack: "foundry_mix", spawnGap: 0.3 },
+      { pack: "aegis_wall", spawnGap: 0.32 },
+      {
+        queue: ["furnace", "leech", "plate", "furnace", "aegis", "leech", "cluster"],
+        spawnGap: 0.3,
+      },
+      { pack: "finale_a", spawnGap: 0.3 },
+      {
+        queue: ["furnace", "furnace", "leech", "overlord", "plate", "aegis", "furnace"],
+        spawnGap: 0.28,
+      },
+    ],
+  },
 ];
 
 export const CAMPAIGN_LEVELS = LEVEL_DEFS.map((def) => ({

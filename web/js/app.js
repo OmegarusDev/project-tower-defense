@@ -42,7 +42,7 @@ import {
   loadEndless,
   clearEndless,
 } from "./saveStore.js";
-import { getCampaignLevel, isLevelUnlocked } from "./data/campaign.js";
+import { CAMPAIGN_LEVELS, getCampaignLevel, isLevelUnlocked } from "./data/campaign.js";
 import {
   renderMain,
   renderSettings,
@@ -51,7 +51,10 @@ import {
   renderPrep,
   renderEditor,
   forgePlanSummary,
+  paintCampaignThumbs,
+  endlessThemeBlurb,
 } from "./ui/menuScreens.js";
+import { paintLevelThumb } from "./ui/metaUi.js";
 import { loadEditorLevels } from "./ui/levelEditor.js";
 import { exportReplayBlob, applyReplayAction } from "./ui/replay.js";
 
@@ -88,6 +91,9 @@ export class App {
     this.liveCompose = false;
     this.editor = null;
     this.prepLevelId = 0;
+    this.prepSlot = 0;
+    this.playtestFromEditor = false;
+    this.menuBackdrop = false;
     this._ghost = null;
     this._raf = 0;
     this._last = 0;
@@ -201,17 +207,22 @@ export class App {
 
   quitToMenu() {
     if (!this.sim) return;
+    const fromEditor = !!this.playtestFromEditor;
     const campaign = !this.sim.modeEndless;
-    const msg = campaign
-      ? "Abandon this campaign run and return to the Campaign menu?"
-      : "Return to the Endless menu? Your checkpoint is saved.";
+    const msg = fromEditor
+      ? "End playtest and return to the Level Editor?"
+      : campaign
+        ? "Abandon this campaign run and return to the Campaign menu?"
+        : "Return to the Endless menu? Your checkpoint is saved.";
     if (!confirm(msg)) return;
     this._endFastForward();
     this.paused = false;
     this.selectedTowerId = -1;
     this.selectedWallId = -1;
     this.sim = null;
-    if (campaign) this.showCampaign();
+    this.playtestFromEditor = false;
+    if (fromEditor) this.showEditor();
+    else if (campaign) this.showCampaign();
     else this.showEndlessHub();
   }
 
@@ -229,10 +240,18 @@ export class App {
       <div class="pause-card" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
         <p class="pause-mark">Paused</p>
         <h2 id="pauseTitle">Wave ${wave}</h2>
-        <p class="pause-note">${endless ? "Checkpoint saved at wave start." : `Campaign level ${this.sim.campaignLevelId}`}</p>
+        <p class="pause-note">${
+          this.playtestFromEditor
+            ? "Editor playtest"
+            : endless
+              ? "Checkpoint saved at wave start."
+              : `Campaign level ${this.sim.campaignLevelId}`
+        }</p>
         <p class="pause-hint">Hold <b>≫</b> for 5× · Endless: forge button for live compose · Seed ${this.sim.runSeed >>> 0}</p>
         <button type="button" class="btn title-cta" data-act="resume">Resume</button>
-        <button type="button" class="btn secondary" data-act="quit-run">${quitLabel}</button>
+        <button type="button" class="btn secondary" data-act="quit-run">${
+          this.playtestFromEditor ? "Editor" : quitLabel
+        }</button>
       </div>`;
     this.ui.appendChild(sheet);
     sheet.querySelectorAll("[data-act]").forEach((el) => {
@@ -256,16 +275,29 @@ export class App {
     this._raf = requestAnimationFrame(loop);
   }
 
+  _metaBackdropScreens() {
+    return new Set([
+      "main",
+      "hub",
+      "campaign",
+      "prep",
+      "settings",
+      "victory",
+      "gameover",
+      "forge",
+      "upgrade",
+    ]);
+  }
+
   tick(dt) {
     this.score.tick(dt);
-    if (this.screen === "main") {
+    if (this._metaBackdropScreens().has(this.screen) && this.screen !== "game") {
       this.title.tick(dt);
       this.title.draw();
-      return;
-    }
-    if (this.screen === "forge") {
-      this.forgeAim += dt * 0.7;
-      this.paintForgePreview();
+      if (this.screen === "forge") {
+        this.forgeAim += dt * 0.7;
+        this.paintForgePreview();
+      }
       return;
     }
     if (this.screen === "editor") return;
@@ -351,7 +383,9 @@ export class App {
         ? "hub"
         : this.forgeReturn === "campaign"
           ? "campaign"
-          : "main";
+          : this.forgeReturn === "prep"
+            ? `prep:${this.prepLevelId || 1}`
+            : "main";
     const partBtn = (kind, id) => {
       const have = ownsPart(owned, kind, id);
       const equipped = slot[kind] === id;
@@ -359,36 +393,45 @@ export class App {
       const tip = table[id]?.blurb || "";
       const extra =
         kind === "base" && table[id]?.doctrine
-          ? ` (${doctrineLabel(table[id].doctrine)})`
+          ? ` · ${doctrineLabel(table[id].doctrine)}`
           : "";
       if (have) {
-        const cls = `btn part-btn ${equipped ? "equipped" : ""}`.trim();
+        const cls = `btn part-btn part-chip ${equipped ? "equipped" : ""}`.trim();
         return `<button class="${cls}" data-act="forge-part:${kind}:${id}" title="${tip}">${partLabel(id)}${extra}</button>`;
       }
       const cost = this._forgeCost(kind, id);
       const can = this.meta.forge >= cost;
-      const cls = `btn part-btn locked ${can ? "" : "cant-afford"}`.trim();
-      return `<button class="${cls}" data-act="buy:${kind}:${id}" title="${tip} — unlock for ${cost} Forge parts">${partLabel(id)}${extra} · ${cost}</button>`;
+      const cls = `btn part-btn part-chip locked ${can ? "" : "cant-afford"}`.trim();
+      return `<button class="${cls}" data-act="buy:${kind}:${id}" title="${tip} — unlock for ${cost} Forge parts">${partLabel(id)}${extra}<br/><span style="opacity:0.75">${cost} Parts</span></button>`;
     };
     const slotBtns = this._rosterSlotButtons("forge");
     this.ui.innerHTML = `
-      <div class="screen scroll">
-        <div class="screen-header">
-          <h1>Forge</h1>
-          <button class="btn secondary" data-act="${backAct}" style="padding:10px 12px;font-size:0.85rem">Back</button>
-        </div>
-        <p class="currency-line">Forge parts ${this.meta.forge} · Aether ${this.meta.aether} · Cap L${this.meta.levelCap}</p>
-        <div class="status" id="status">${this.status}</div>
+      <div class="screen scroll meta-screen forge-screen meta-enter">
+        <header class="meta-hero">
+          <div class="meta-hero-row">
+            <div>
+              <p class="title-mark">Compose</p>
+              <h1>Forge</h1>
+            </div>
+            <button class="btn secondary tech-back" data-act="${backAct}">Back</button>
+          </div>
+          <div class="title-stats tech-stats">
+            <span><i>Parts</i>${this.meta.forge}</span>
+            <span><i>Æ</i>${this.meta.aether}</span>
+            <span><i>Cap</i>L${this.meta.levelCap}</span>
+          </div>
+          <div class="status tech-status" id="status">${this.status}</div>
+        </header>
         <div class="row build-strip">${slotBtns}</div>
         <div class="forge-preview-wrap">
           <canvas id="forgePreview" width="160" height="160" aria-label="Tower preview"></canvas>
           <div class="forge-summary">
             <h3>Slot ${this.forgeSlot + 1}</h3>
             <p id="forgeLoadout">${forgePlanSummary(slot)}</p>
-            <button class="btn secondary" data-act="forge-clear" style="margin-top:8px;padding:8px 10px;font-size:0.8rem">Clear slot</button>
+            <button class="btn secondary part-chip" data-act="forge-clear" style="margin-top:8px">Clear slot</button>
           </div>
         </div>
-        <div class="cols">
+        <div class="cols forge-part-grid">
           <div>
             <h4>Base</h4>
             ${Object.keys(PARTS.bases)
@@ -409,7 +452,7 @@ export class App {
           </div>
         </div>
         <button class="btn warn" data-act="upgrade">Tech Tree</button>
-        <p style="font-size:0.8rem;color:var(--muted)">Tap a locked part to spend Forge parts. Some parts also unlock free at wave milestones. Permanent power lives in the Tech Tree.</p>
+        <p class="end-note">Locked chips spend Forge parts. Wave gifts unlock free. Permanent power lives in the Tech Tree.</p>
       </div>`;
     this.bindUi();
     this.paintForgePreview();
@@ -468,15 +511,14 @@ export class App {
     if (!this.upgradeReturn) this.upgradeReturn = "forge";
     if (!this.techTreeTab) this.techTreeTab = "foundations";
     this.screen = "upgrade";
-    const backAct =
-      this.upgradeReturn === "main"
-        ? "main"
-        : this.upgradeReturn === "hub"
-          ? "hub"
-          : this.upgradeReturn === "campaign"
-            ? "campaign"
-            : "forge";
-    const backLabel = backAct === "main" ? "Menu" : backAct === "forge" ? "Forge" : "Back";
+    let backAct = "forge";
+    if (this.upgradeReturn === "main") backAct = "main";
+    else if (this.upgradeReturn === "hub") backAct = "hub";
+    else if (this.upgradeReturn === "campaign") backAct = "campaign";
+    else if (this.upgradeReturn === "prep") backAct = `prep:${this.prepLevelId || 1}`;
+    else if (this.upgradeReturn === "forge") backAct = "forge";
+    const backLabel =
+      backAct === "main" ? "Menu" : backAct === "forge" ? "Forge" : backAct.startsWith("prep:") ? "Prep" : "Back";
     const nextGift = WAVE_UNLOCKS.find((w) => w.bestWave > (this.meta.bestWave | 0));
     const cash = BASE_START_CASH + (this.meta.startCashBonus | 0);
     const giftLine = nextGift
@@ -489,7 +531,7 @@ export class App {
     const tree = TECH_TREES.find((t) => t.id === this.techTreeTab) || TECH_TREES[0];
     const overlay = this.techSelectedId ? this._techOverlayHtml(this.techSelectedId) : "";
     this.ui.innerHTML = `
-      <div class="screen tech-screen">
+      <div class="screen tech-screen meta-screen meta-enter">
         <header class="tech-hero">
           <div class="tech-hero-row">
             <div>
@@ -721,14 +763,51 @@ export class App {
     this.screen = "hub";
     const canContinue = hasEndless();
     const blob = canContinue ? loadEndless() : null;
+    const best = this.meta.bestWave | 0;
+    const themes = endlessThemeBlurb();
     this.ui.innerHTML = `
-      <div class="screen">
-        <h1>Endless</h1>
-        <button class="btn" data-act="newrun">New Run</button>
-        <button class="btn hub-continue" data-act="continue" ${canContinue ? "" : "disabled"}>Continue</button>
-        <p>${canContinue ? `Resume wave ${blob.wave}` : "No checkpoint yet"}</p>
-        <button class="btn" data-act="forge-from-hub">Forge</button>
-        <button class="btn secondary" data-act="main">Main Menu</button>
+      <div class="screen scroll meta-screen hub-screen meta-enter">
+        <header class="meta-hero">
+          <div class="meta-hero-row">
+            <div>
+              <p class="title-mark">Pressure</p>
+              <h1>Endless</h1>
+            </div>
+            <button class="btn secondary tech-back" data-act="main">Menu</button>
+          </div>
+          <p class="meta-blurb">Seeded themes · growing deck · hold the bastion</p>
+        </header>
+        <div class="hub-console">
+          <div class="hub-card plate">
+            <h3>Personal best</h3>
+            <div class="hub-wave">${best || "—"}</div>
+            <p class="end-note" style="text-align:left;margin-top:6px">Themes unlock as you climb: ${themes}</p>
+            <div class="hub-stat-row title-stats">
+              <span><i>Æ</i>${this.meta.aether}</span>
+              <span><i>Parts</i>${this.meta.forge}</span>
+            </div>
+          </div>
+          <div class="hub-card plate">
+            <h3>${canContinue ? "Checkpoint" : "Ready"}</h3>
+            <p style="text-align:left;color:var(--text);margin:0">
+              ${
+                canContinue
+                  ? `Resume at wave <strong>${blob.wave}</strong> · seed ${blob.seed >>> 0}`
+                  : "No checkpoint yet. Call a new run when your loadout is ready."
+              }
+            </p>
+            ${
+              canContinue
+                ? `<p class="end-note" style="text-align:left;margin-top:8px">Ghost replay unlocks after a run ends.</p>`
+                : ""
+            }
+          </div>
+          <div class="hub-actions">
+            <button class="btn title-cta" data-act="newrun">New Run</button>
+            <button class="btn hub-continue" data-act="continue" ${canContinue ? "" : "disabled"}>Continue</button>
+            <button class="btn" data-act="forge-from-hub">Forge</button>
+          </div>
+        </div>
       </div>`;
     this.bindUi();
   }
@@ -739,11 +818,15 @@ export class App {
     this.selectedWallId = -1;
     renderCampaign(this);
     this.bindUi();
+    paintCampaignThumbs(this);
   }
 
   showPrep(levelId) {
     if (!renderPrep(this, levelId)) return this.showCampaign();
     this.bindUi();
+    const thumb = this.ui.querySelector("canvas.prep-thumb");
+    const lv = getCampaignLevel(levelId);
+    if (thumb && lv) paintLevelThumb(thumb, lv, this.palette);
   }
 
   showEditor() {
@@ -763,30 +846,50 @@ export class App {
 
   showVictory(opts = {}) {
     this.screen = "victory";
-    const lv = getCampaignLevel(this.sim?.campaignLevelId);
+    const id = this.sim?.campaignLevelId | 0;
+    const lv = getCampaignLevel(id);
     const gains = this.sim?.economy?.runWaveGains || { coin: 0, parts: 0, aether: 0 };
     const firstBonus = opts.firstClear ? 8 : 0;
+    const next = CAMPAIGN_LEVELS.find((l) => l.id === id + 1);
+    const nextOpen = next && isLevelUnlocked(next.id, this.meta.campaign?.cleared || []);
+    const actions = `
+      <div class="end-actions">
+        ${
+          nextOpen
+            ? `<button class="btn title-cta" data-act="prep:${next.id}">Next · ${next.name}</button>`
+            : ""
+        }
+        ${id > 0 ? `<button class="btn" data-act="start-level:${id}">Retry</button>` : ""}
+        <button class="btn" data-act="forge-from-campaign">Forge</button>
+        <button class="btn secondary" data-act="campaign">Campaign Menu</button>
+        <button class="btn secondary" data-act="main">Main Menu</button>
+      </div>`;
     this.ui.innerHTML = `
-      <div class="screen end-screen">
-        <h1>Victory</h1>
-        <p class="end-sub">${lv ? lv.name : "Level"} cleared</p>
+      <div class="screen end-screen meta-enter">
+        <header class="end-hero">
+          <p class="end-mark">Campaign</p>
+          <h1 class="end-title">Victory</h1>
+          <p class="end-sub">${lv ? lv.name : "Level"} secured</p>
+          ${opts.firstClear ? `<span class="end-best-tag">First clear</span>` : ""}
+        </header>
         <div class="end-card">
           <h3>This run</h3>
           <div class="end-gains">
-            <span class="gain-pill">+${gains.parts} Parts</span>
-            <span class="gain-pill">+${gains.aether + firstBonus} Aether${
-              firstBonus ? " (incl. first clear)" : ""
+            <span class="gain-pill parts">+${gains.parts} Parts</span>
+            <span class="gain-pill aether">+${gains.aether + firstBonus} Aether${
+              firstBonus ? " · first clear" : ""
             }</span>
           </div>
+          <p class="end-note">Wave clears paid <strong>+${gains.coin}</strong> Coin in-run</p>
         </div>
-        <div class="end-card">
-          <h3>Totals kept</h3>
+        <div class="end-card end-card-totals">
+          <h3>Vault</h3>
           <div class="end-totals">
             <span class="chip parts"><span class="k">Parts</span>${this.meta.forge}</span>
             <span class="chip aether"><span class="k">Aether</span>${this.meta.aether}</span>
           </div>
         </div>
-        <button class="btn" data-act="campaign">Campaign Menu</button>
+        ${actions}
       </div>`;
     this.bindUi();
   }
@@ -821,11 +924,17 @@ export class App {
         </div>
         <p class="end-note">Seed ${seed || "—"}</p>`
       : `<div class="end-actions">
+          ${
+            lv
+              ? `<button class="btn title-cta" data-act="start-level:${lv.id}">Retry · ${lv.name}</button>`
+              : ""
+          }
+          <button class="btn" data-act="forge-from-campaign">Forge</button>
           <button class="btn" data-act="${backAct}">${backLabel}</button>
           <button class="btn secondary" data-act="main">Main Menu</button>
         </div>`;
     this.ui.innerHTML = `
-      <div class="screen end-screen${endless ? " end-endless" : ""}">
+      <div class="screen end-screen meta-enter${endless ? " end-endless" : ""}">
         <header class="end-hero">
           <p class="end-mark">${endless ? "Endless" : "Campaign"}</p>
           <h1 class="end-title">Run Over</h1>
@@ -869,6 +978,10 @@ export class App {
         else if (act === "main") this.showMain();
         else if (act === "campaign") this.showCampaign();
         else if (act?.startsWith("prep:")) this.showPrep(+act.slice(5));
+        else if (act?.startsWith("prep-slot:")) {
+          this.prepSlot = +act.slice(10) | 0;
+          if (this.screen === "prep" && this.prepLevelId) this.showPrep(this.prepLevelId);
+        }
         else if (act?.startsWith("start-level:")) this.startCampaignLevel(+act.slice(12));
         else if (act?.startsWith("campaign-level:")) this.showPrep(+act.slice(15));
         else if (act === "editor") this.showEditor();
@@ -912,13 +1025,21 @@ export class App {
         else if (act === "forge-from-hub") this.showForge("hub");
         else if (act === "forge-from-main") this.showForge("main");
         else if (act === "forge-from-campaign") this.showForge("campaign");
+        else if (act === "forge-from-prep") this.showForge("prep");
+        else if (act === "upgrade-from-prep") this.showUpgrade("prep");
         else if (act === "upgrade") {
           const from =
             this.screen === "main"
               ? "main"
               : this.screen === "forge"
                 ? "forge"
-                : this.forgeReturn || "forge";
+                : this.screen === "prep"
+                  ? "prep"
+                  : this.screen === "hub"
+                    ? "hub"
+                    : this.screen === "campaign"
+                      ? "campaign"
+                      : this.forgeReturn || "forge";
           this.showUpgrade(from);
         } else if (act === "tech-close") this.closeTechOverlay();
         else if (act?.startsWith("tech-tab:")) this.setTechTreeTab(act.slice(9));
@@ -1048,7 +1169,11 @@ export class App {
     this.accum = 0;
     this.placeConfirm = null;
     this.liveCompose = false;
+    this.playtestFromEditor = false;
     this.board.resetPan();
+    this.board.setAtmosphere?.("default");
+    this.palette.setAtmosphere?.("default");
+    this.board.handOffZoom?.(0.9);
     this.enterGame();
     this.toast(`Seed ${runSeed >>> 0}`);
   }
@@ -1086,12 +1211,18 @@ export class App {
       this.toast("Clear the previous level first");
       return;
     }
+    this.playtestFromEditor = false;
     this._bootLevel(lv);
-    this.toast(`${lv.name}: clear ${lv.wavesToWin} waves. Pre-walls are fixed.`);
+    const slot = Math.max(0, Math.min(this.prepSlot | 0, (this.meta.slotCount | 0) - 1));
+    this.slot = slot;
+    this.board.setAtmosphere?.(lv.atmosphere || `campaign_${lv.id}`);
+    this.palette.setAtmosphere?.(lv.atmosphere || `campaign_${lv.id}`);
+    this.toast(`${lv.name}: portal locked. Call Wave 1 when ready.`);
   }
 
   playtestEditorLevel(lv) {
     if (!lv) return;
+    this.playtestFromEditor = true;
     this._bootLevel({ ...lv, id: 0 });
     this.toast(`Playtest · ${lv.name}`);
   }
@@ -1123,6 +1254,7 @@ export class App {
     this.placeConfirm = null;
     this.liveCompose = false;
     this.board.resetPan();
+    this.board.handOffZoom?.(0.85);
     this.enterGame();
   }
 
@@ -1245,6 +1377,7 @@ export class App {
             <span class="wave-badge-k">Wave</span>
             <span class="wave-badge-n" id="waveNum">0</span>
             <span class="wave-badge-sub hidden" id="waveSub"></span>
+            <span class="theme-chip hidden" id="themeChip"></span>
           </div>
           <div class="telemetry plate" id="statChips"></div>
           <div class="hud-ops">
@@ -1305,13 +1438,13 @@ export class App {
       const have = ownsPart(this.meta.owned, kind, id);
       if (!have) return "";
       const eq = slot[kind] === id ? " equipped" : "";
-      return `<button class="btn part-btn${eq}" data-act="compose-part:${kind}:${id}">${partLabel(id)}</button>`;
+      return `<button class="btn part-btn part-chip${eq}" data-act="compose-part:${kind}:${id}">${partLabel(id)}</button>`;
     };
     return `
-      <div class="compose-sheet" id="composeSheet">
+      <div class="compose-sheet plate" id="composeSheet">
         <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px">
           <h3>Live Compose · Slot ${this.slot + 1}</h3>
-          <button class="btn secondary" data-act="compose-close" style="padding:6px 10px;font-size:0.7rem">Close</button>
+          <button class="btn secondary part-chip" data-act="compose-close">Close</button>
         </div>
         <p style="margin:0 0 6px;font-size:0.72rem;color:#9aacbe">${forgePlanSummary(slot)}</p>
         <div class="compose-cols">
@@ -1446,6 +1579,7 @@ export class App {
         waveSub.classList.add("hidden");
       }
     }
+    this._refreshThemeChip(this.sim.waves?.lastTheme, this.sim.waves?.lastEvent);
 
     const gear = `<svg class="tel-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.4.9h3.2l.25 1.45c.45.12.87.32 1.25.58l1.3-.7 1.6 1.6-.7 1.3c.26.38.46.8.58 1.25L15.1 6.4v3.2l-1.45.25a4.6 4.6 0 0 1-.58 1.25l.7 1.3-1.6 1.6-1.3-.7a4.6 4.6 0 0 1-1.25.58L9.6 15.1H6.4l-.25-1.45a4.6 4.6 0 0 1-1.25-.58l-1.3.7-1.6-1.6.7-1.3a4.6 4.6 0 0 1-.58-1.25L.9 9.6V6.4l1.45-.25c.12-.45.32-.87.58-1.25l-.7-1.3 1.6-1.6 1.3.7c.38-.26.8-.46 1.25-.58L6.4.9zm1.6 4.3a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z"/></svg>`;
     chips.innerHTML = `
@@ -1483,6 +1617,19 @@ export class App {
       }
     }
     this.syncTowerOverlay();
+  }
+
+  _refreshThemeChip(theme, event) {
+    const chip = this.ui?.querySelector("#themeChip");
+    if (!chip) return;
+    const label = event || (theme && theme !== "campaign" ? theme : "");
+    if (!label) {
+      chip.textContent = "";
+      chip.classList.add("hidden");
+      return;
+    }
+    chip.textContent = String(label).replace(/_/g, " ");
+    chip.classList.remove("hidden");
   }
 
   /** Update slot/wall prices + dock meta from current economy state. */
@@ -1729,6 +1876,31 @@ export class App {
     switch (e.kind) {
       case "wave_checkpoint":
         if (this.sim.modeEndless) saveEndless(this.sim.checkpoint());
+        break;
+      case "wave_composition": {
+        const theme = e.theme || "";
+        const event = e.event || "";
+        if (this.sim.modeEndless) {
+          const atmo = event || theme;
+          if (atmo && atmo !== "campaign") {
+            this.board?.setAtmosphere?.(atmo);
+            this.palette.setAtmosphere?.(atmo);
+          }
+          if (event) {
+            this.toast(`Event · ${event.replace(/_/g, " ")}`);
+          } else if (theme && theme !== "campaign") {
+            this.toast(`Theme · ${theme}`);
+          }
+        }
+        this._refreshThemeChip?.(theme, event);
+        break;
+      }
+      case "enemy_killed":
+        if (this.meta.settings?.particles !== false && e.enemy?.pos) {
+          this.fx.death(e.enemy.pos.x, e.enemy.pos.y, e.enemy.kind || "soft");
+          this.board?.addStain?.(e.enemy.pos.x, e.enemy.pos.y, e.enemy.boss ? "fire" : "kinetic");
+        }
+        if (e.enemy?.boss) this.board?.punch?.(3.5);
         break;
       case "tower_placed":
       case "wall_placed":

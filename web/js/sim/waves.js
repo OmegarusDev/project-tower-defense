@@ -13,6 +13,7 @@ export class WaveManager {
     this._spawnGap = 0.4;
     this._rand = null;
     this.lastTheme = "";
+    this.lastEvent = "";
   }
 
   startNextWave() {
@@ -23,6 +24,7 @@ export class WaveManager {
     this._queue = plan.queue.slice();
     this._spawnGap = plan.spawnGap;
     this.lastTheme = plan.theme || "";
+    this.lastEvent = plan.event || "";
     this.toSpawn = this._queue.length;
     this.spawnTimer = Math.min(0.2, this._spawnGap);
     this.waveActive = true;
@@ -31,6 +33,7 @@ export class WaveManager {
       count: this.toSpawn,
       wave: w,
       theme: this.lastTheme,
+      event: this.lastEvent,
     });
   }
 

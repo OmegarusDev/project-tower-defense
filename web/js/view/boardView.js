@@ -44,6 +44,10 @@ export class BoardView {
     this._stains = [];
     this._ghostPlan = null;
     this.recoil = new Map();
+    this.atmosphereId = "default";
+    this._handOffT = 0;
+    this._themePulse = 0;
+    this._bossVignette = 0;
     this._motes = Array.from({ length: 18 }, () => ({
       u: Math.random(),
       v: Math.random(),
@@ -74,6 +78,19 @@ export class BoardView {
       },
       { passive: false }
     );
+  }
+
+  setAtmosphere(id) {
+    this.atmosphereId = id || "default";
+    this._themePulse = 0.55;
+    this.palette?.setAtmosphere?.(this.atmosphereId);
+    this._staticDirty = true;
+  }
+
+  handOffZoom(mult = 0.88) {
+    this._handOffT = 0.9;
+    this._handOffFrom = this.zoom;
+    this._handOffTo = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, (this.zoom || 1) * mult));
   }
 
   setSim(sim) {
@@ -1275,7 +1292,12 @@ export class BoardView {
     ctx.ellipse(cx + 1, cy + s * 0.22, s * 0.28, deckRy(s * 0.28), 0, 0, Math.PI * 2);
     ctx.fill();
 
-    drawEnemyBody(ctx, this.palette, e.silhouette || e.kind, cx, cy, s);
+    const t = performance.now() * 0.001;
+    drawEnemyBody(ctx, this.palette, e.silhouette || e.kind, cx, cy, s, {
+      t,
+      phase: (e.id || 0) * 0.7,
+      flying: !!e.flying,
+    });
 
     if ((e.shieldHp || 0) > 0) {
       ctx.strokeStyle = withAlpha("#9ec8e8", 0.75);
@@ -1313,19 +1335,34 @@ export class BoardView {
   _drawProjectile(p) {
     const ctx = this.ctx;
     const sp = this.cam.project(p.pos.x * this.cell, p.pos.y * this.cell);
-    const col = this.palette.dmg(p.damageType);
-    const r = 3.2 * sp.s;
+    const type = p.damageType || "kinetic";
+    const col = this.palette.dmg(type);
+    const r = (type === "frost" ? 2.6 : type === "fire" ? 3.6 : 3.2) * sp.s;
     const trail = p._trail || (p._trail = []);
     trail.push({ x: p.pos.x, y: p.pos.y });
-    if (trail.length > 6) trail.shift();
+    const maxTrail = type === "fire" || type === "poison" ? 8 : 6;
+    if (trail.length > maxTrail) trail.shift();
     for (let i = 0; i < trail.length - 1; i++) {
       const a = (i + 1) / trail.length;
       const t0 = this.cam.project(trail[i].x * this.cell, trail[i].y * this.cell);
-      ctx.globalAlpha = a * 0.45;
+      ctx.globalAlpha = a * (type === "acid" ? 0.35 : 0.45);
       ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.arc(t0.x, t0.y, r * 0.55 * a, 0, Math.PI * 2);
-      ctx.fill();
+      if (type === "frost") {
+        ctx.beginPath();
+        ctx.moveTo(t0.x, t0.y - r * 0.5 * a);
+        ctx.lineTo(t0.x + r * 0.4 * a, t0.y + r * 0.35 * a);
+        ctx.lineTo(t0.x - r * 0.4 * a, t0.y + r * 0.35 * a);
+        ctx.closePath();
+        ctx.fill();
+      } else if (type === "acid") {
+        ctx.beginPath();
+        ctx.ellipse(t0.x, t0.y, r * 0.45 * a, r * 0.7 * a, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.arc(t0.x, t0.y, r * 0.55 * a, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     ctx.globalAlpha = 1;
     ctx.fillStyle = "rgba(0,0,0,0.22)";
@@ -1333,16 +1370,49 @@ export class BoardView {
     ctx.ellipse(sp.x + 1, sp.y + 3, 4 * sp.s, 1.8 * sp.s, 0, 0, Math.PI * 2);
     ctx.fill();
     const glow = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, r * 2.4);
-    glow.addColorStop(0, withAlpha(col, 0.45));
+    glow.addColorStop(0, withAlpha(col, type === "shock" ? 0.55 : 0.45));
     glow.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = glow;
     ctx.beginPath();
     ctx.arc(sp.x, sp.y, r * 2.4, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
-    ctx.fill();
+    if (type === "kinetic") {
+      // slug
+      const ang = Math.atan2(p.vy || 0, p.vx || 1);
+      ctx.save();
+      ctx.translate(sp.x, sp.y);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 1.35, r * 0.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (type === "frost") {
+      ctx.beginPath();
+      ctx.moveTo(sp.x, sp.y - r * 1.2);
+      ctx.lineTo(sp.x + r, sp.y + r * 0.7);
+      ctx.lineTo(sp.x - r, sp.y + r * 0.7);
+      ctx.closePath();
+      ctx.fill();
+    } else if (type === "acid") {
+      ctx.beginPath();
+      ctx.ellipse(sp.x, sp.y, r * 0.75, r * 1.15, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (type === "shock") {
+      ctx.beginPath();
+      ctx.moveTo(sp.x - r, sp.y);
+      ctx.lineTo(sp.x - r * 0.2, sp.y - r * 0.9);
+      ctx.lineTo(sp.x + r * 0.35, sp.y - r * 0.15);
+      ctx.lineTo(sp.x + r, sp.y);
+      ctx.lineTo(sp.x + r * 0.2, sp.y + r * 0.9);
+      ctx.lineTo(sp.x - r * 0.35, sp.y + r * 0.15);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.fillStyle = withAlpha("#ffffff", 0.45);
     ctx.beginPath();
     ctx.arc(sp.x - r * 0.25, sp.y - r * 0.25, r * 0.35, 0, Math.PI * 2);
@@ -1417,6 +1487,21 @@ export class BoardView {
   _drawAtmosphere(cssW, cssH) {
     const ctx = this.ctx;
     const t = performance.now() * 0.001;
+    const atmo = this.palette.atmosphere || {};
+    const fog = atmo.fog || this.palette.fog;
+    const moteWarm = atmo.moteWarm || this.palette.accent;
+    const moteCool = atmo.moteCool || "#9eb0c0";
+    const bloomA = atmo.bloom ?? 0.35;
+
+    if (this._handOffT > 0) {
+      const u = 1 - this._handOffT / 0.9;
+      const z = (this._handOffFrom || 1) + ((this._handOffTo || 1) - (this._handOffFrom || 1)) * Math.min(1, u);
+      if (Math.abs(z - this.zoom) > 0.002) this.setZoom(z);
+      this._handOffT = Math.max(0, this._handOffT - 0.016);
+    }
+    if (this._themePulse > 0) this._themePulse = Math.max(0, this._themePulse - 0.02);
+    const bossOnField = this.sim?.enemies?.some((e) => e.boss);
+    this._bossVignette += ((bossOnField ? 1 : 0) - this._bossVignette) * 0.08;
 
     const vg = ctx.createRadialGradient(
       cssW * 0.5,
@@ -1427,18 +1512,35 @@ export class BoardView {
       cssH * (0.74 + 0.08 * VIEW25.depthFog)
     );
     vg.addColorStop(0, "transparent");
-    vg.addColorStop(1, this.palette.fog);
+    vg.addColorStop(1, fog);
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, cssW, cssH);
 
-    // Soft top horizon (void above the far edge) — deepens with pitch
     const bloom = ctx.createLinearGradient(0, 0, 0, cssH * 0.28);
-    bloom.addColorStop(0, `rgba(4, 6, 8, ${0.35 + 0.25 * VIEW25.depthFog})`);
+    bloom.addColorStop(0, `rgba(4, 6, 8, ${bloomA + 0.25 * VIEW25.depthFog})`);
     bloom.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = bloom;
     ctx.fillRect(0, 0, cssW, cssH * 0.3);
 
-    // Ember / steel motes drifting above the deck
+    if (this._themePulse > 0) {
+      ctx.fillStyle = withAlpha(atmo.pulse || moteWarm, this._themePulse * 0.12);
+      ctx.fillRect(0, 0, cssW, cssH);
+    }
+    if (this._bossVignette > 0.05) {
+      const bv = ctx.createRadialGradient(
+        cssW * 0.5,
+        cssH * 0.55,
+        cssH * 0.2,
+        cssW * 0.5,
+        cssH * 0.55,
+        cssH * 0.75
+      );
+      bv.addColorStop(0, "transparent");
+      bv.addColorStop(1, `rgba(40, 8, 12, ${0.35 * this._bossVignette})`);
+      ctx.fillStyle = bv;
+      ctx.fillRect(0, 0, cssW, cssH);
+    }
+
     const plate = this.sim ? this.cam.boardCorners() : null;
     if (plate) {
       const left = Math.min(plate[0].x, plate[3].x);
@@ -1454,14 +1556,13 @@ export class BoardView {
         const x = left + (right - left) * m.u + Math.sin(t * 0.7 + m.ph) * 6;
         const y = top + (bot - top) * m.v;
         const a = 0.1 + 0.12 * (0.5 + 0.5 * Math.sin(t * 2 + m.ph));
-        ctx.fillStyle = m.warm ? withAlpha(this.palette.accent, a) : withAlpha("#9eb0c0", a * 0.85);
+        ctx.fillStyle = m.warm ? withAlpha(moteWarm, a) : withAlpha(moteCool, a * 0.85);
         ctx.beginPath();
         ctx.arc(x, y, m.r, 0, Math.PI * 2);
         ctx.fill();
       }
     }
 
-    // Tiny film grain
     ctx.fillStyle = "rgba(255,245,220,0.018)";
     for (let i = 0; i < 28; i++) {
       const x = ((i * 97 + t * 55) | 0) % cssW;

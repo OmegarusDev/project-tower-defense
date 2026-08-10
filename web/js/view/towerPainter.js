@@ -498,6 +498,16 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
       ctx.fill();
       break;
     }
+    case "flak": {
+      // Short multi-tube burst pod
+      for (const dy of [-0.12, -0.04, 0.04, 0.12]) {
+        drawCannon(ctx, metal, tip, hubR * 0.35, s * dy, s * 0.32, s * 0.06, payload);
+      }
+      ctx.fillStyle = shade(metal, -0.15);
+      roundRect(ctx, -s * 0.08, -s * 0.18, s * 0.2, s * 0.36, 3);
+      ctx.fill();
+      break;
+    }
     case "single":
     default: {
       drawCannon(ctx, metal, tip, hubR * 0.55, 0, s * 0.46, s * 0.11, payload);

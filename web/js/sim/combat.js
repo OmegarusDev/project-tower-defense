@@ -298,13 +298,16 @@ export class CombatSystem {
       if ((base.pointBlankMult || 1) > 1 && dist <= (base.pointBlankRange || 0)) {
         raw *= base.pointBlankMult;
       }
-      if ((base.airDamageMult || 1) > 1 && e.flying) raw *= base.airDamageMult;
+      if ((plan.airDamageMult || 1) > 1 && e.flying) raw *= plan.airDamageMult;
+      else if ((base.airDamageMult || 1) > 1 && e.flying) raw *= base.airDamageMult;
       const thr = base.executeThreshold || 0;
       if ((base.executeMult || 1) > 1 && thr > 0 && e.maxHp > 0 && e.hp / e.maxHp <= thr) {
         raw *= base.executeMult;
       }
+    } else if ((plan.airDamageMult || 1) > 1 && e.flying) {
+      raw *= plan.airDamageMult;
     }
-    const armor = Math.max(0, (e.armorFlat || 0) - (e.shred || 0));
+    const armor = Math.max(0, (e.armorFlat || 0) - (e.shred || 0) - (plan.armorPierce || 0));
     const resist = (e.resist && e.resist[plan.damageType]) || 0;
     let dmg = Math.max(0, raw - armor) * (1 - Math.min(0.95, resist));
     if ((e.shieldHp || 0) > 0) {

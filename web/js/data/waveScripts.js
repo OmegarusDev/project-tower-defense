@@ -18,6 +18,7 @@ export const WAVE_PACKS = {
   mixed_mid: ["grub", "runner", "plate", "skiff", "aegis", "grub", "runner"],
   finale_a: ["plate", "aegis", "cluster", "skiff", "furnace", "leech", "overlord"],
   finale_b: ["wraith", "wraith", "cluster", "aegis", "plate", "furnace", "overlord"],
+  foundry_mix: ["furnace", "plate", "furnace", "grub", "aegis", "furnace", "leech"],
 };
 
 /**
@@ -37,11 +38,41 @@ export const ENDLESS_THEMES = [
   } },
 ];
 
+/** Named endless events — rare mutators that bias the pack. */
+export const ENDLESS_EVENTS = [
+  {
+    id: "sky_breach",
+    unlock: 5,
+    chance: 0.14,
+    kinds: { skiff: 0.45, wraith: 0.35, runner: 0.1, grub: 0.1 },
+  },
+  {
+    id: "foundry_night",
+    unlock: 7,
+    chance: 0.12,
+    kinds: { furnace: 0.4, plate: 0.3, aegis: 0.15, grub: 0.15 },
+  },
+];
+
 export function composeEndlessWave(wave, rand) {
   const w = Math.max(1, wave | 0);
-  const budget = 7 + w * 1.35 + Math.floor(w / 3) * 0.8 + rand() * (2 + w * 0.15);
+  let budget = 7 + w * 1.35 + Math.floor(w / 3) * 0.8 + rand() * (2 + w * 0.15);
   const unlocked = ENDLESS_THEMES.filter((t) => w >= t.unlock);
-  const theme = weightedPick(unlocked, rand);
+  let theme = weightedPick(unlocked, rand);
+  let event = "";
+  let kinds = theme.kinds;
+
+  // Rare event overrides (after theme pick)
+  if (w >= 5 && rand() < 0.18) {
+    const events = ENDLESS_EVENTS.filter((ev) => w >= ev.unlock && rand() < ev.chance + 0.08);
+    if (events.length) {
+      const ev = events[(rand() * events.length) | 0];
+      event = ev.id;
+      kinds = ev.kinds;
+      budget *= 1.08;
+    }
+  }
+
   const queue = [];
   let spent = 0;
   let guard = 0;
@@ -51,7 +82,7 @@ export function composeEndlessWave(wave, rand) {
   const wantBoss = w >= 8 && (w % 10 === 0 || rand() < bossChance);
 
   while (spent < budget && guard++ < 80) {
-    const kind = pickKind(theme.kinds, w, rand);
+    const kind = pickKind(kinds, w, rand);
     const cost = ENEMY_COST[kind] || 1;
     if (spent + cost > budget + 1.5 && queue.length > 3) break;
     // Pack streak: sometimes dump 2–4 of same kind
@@ -76,7 +107,7 @@ export function composeEndlessWave(wave, rand) {
   if (rand() < 0.55) fisherYates(queue, rand);
 
   const spawnGap = Math.max(0.18, 0.55 * Math.pow(0.965, w - 1) * (0.75 + rand() * 0.5));
-  return { queue, spawnGap, theme: theme.id };
+  return { queue, spawnGap, theme: theme.id, event };
 }
 
 function pickKind(table, wave, rand) {
