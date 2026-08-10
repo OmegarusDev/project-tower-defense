@@ -590,10 +590,10 @@ export class App {
       <div class="screen">
         <h1>Endless</h1>
         <button class="btn" data-act="newrun">New Run</button>
-        <button class="btn secondary" data-act="continue" ${canContinue ? "" : "disabled"}>Continue</button>
+        <button class="btn hub-continue" data-act="continue" ${canContinue ? "" : "disabled"}>Continue</button>
         <p>${canContinue ? `Resume wave ${blob.wave}` : "No checkpoint yet"}</p>
         <button class="btn" data-act="forge-from-hub">Forge</button>
-        <button class="btn secondary" data-act="main">Back</button>
+        <button class="btn secondary" data-act="main">Main Menu</button>
       </div>`;
     this.bindUi();
   }
