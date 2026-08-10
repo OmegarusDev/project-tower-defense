@@ -235,9 +235,9 @@ html, body {
   justify-content: center;
   gap: 8px;
   margin: 0 0 8px !important;
-  padding: 3px 10px;
+  padding: 4px 12px;
   font-family: var(--font-display);
-  font-size: 0.68rem !important;
+  font-size: 0.7rem !important;
   font-weight: 650;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -248,11 +248,25 @@ html, body {
   clip-path: var(--plate-clip-sm);
 }
 
-.title-mark::before,
-.title-mark::after {
+.title-screen .title-mark {
+  gap: 12px;
+  margin: 0 0 12px !important;
+  padding: 8px 22px;
+  font-size: 0.88rem !important;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #e07040 !important;
+  background: rgba(20, 24, 30, 0.65);
+  border: 2px solid rgba(100, 110, 122, 0.65);
+  box-shadow: var(--rim-brass);
+}
+
+.title-screen .title-mark::before,
+.title-screen .title-mark::after {
   content: "";
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
   background: linear-gradient(135deg, #9aa4b0, #4a5460);
   box-shadow: 0 0 0 1px rgba(10, 12, 16, 0.5);
 }
@@ -277,7 +291,7 @@ html, body {
 
 .title-brand-line.accent {
   margin-top: 0.02em;
-  background: linear-gradient(180deg, #e8a070 0%, #c45a28 55%, #8a3a18 100%);
+  background: linear-gradient(180deg, #ffc090 0%, #e87840 45%, #c45828 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -313,7 +327,7 @@ html, body {
 .title-actions .btn {
   width: 100%;
   border-radius: 0;
-  padding: 15px 18px;
+  padding: 15px 28px;
   font-size: 0.95rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1118,7 +1132,7 @@ html, body {
 
 .gain-pill {
   display: inline-block;
-  padding: 7px 14px;
+  padding: 10px 18px;
   border-radius: 999px;
   background: #1c2740;
   border: 1px solid #3a4f6a;
@@ -1146,12 +1160,14 @@ html, body {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .end-totals .chip {
-  font-size: 0.85rem;
-  padding: 6px 10px;
+  font-size: 0.9rem;
+  padding: 9px 16px;
+  gap: 7px;
+  min-height: 36px;
 }
 
 .end-note {
@@ -1175,8 +1191,8 @@ html, body {
 
 .end-actions .btn {
   width: 100%;
-  border-radius: 9px;
-  padding: 14px 18px;
+  border-radius: 0;
+  padding: 15px 28px;
   font-size: 0.92rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1219,14 +1235,14 @@ html, body {
   color: #fff6e8;
   font-size: 0.95rem;
   font-weight: 700;
-  padding: 13px 16px;
+  padding: 14px 28px;
   cursor: pointer;
   box-shadow: var(--shadow-btn);
   filter: var(--drop-btn);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
 }
 
-/* Corner rivets */
+/* Corner rivets — inset from clip edge, clear of label */
 .btn::before,
 .btn::after {
   content: "";
@@ -1237,11 +1253,11 @@ html, body {
   box-shadow: 0 0 0 1px rgba(10, 12, 16, 0.55);
   pointer-events: none;
   z-index: 2;
-  opacity: 0.75;
+  opacity: 0.7;
 }
 
-.btn::before { top: 6px; left: 7px; }
-.btn::after { top: 6px; right: 7px; }
+.btn::before { top: 5px; left: 6px; }
+.btn::after { top: 5px; right: 6px; }
 
 .btn:hover:not(:disabled),
 .btn:focus-visible:not(:disabled) {
@@ -2049,18 +2065,18 @@ html, body {
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 4px 9px;
+  gap: 6px;
+  padding: 8px 14px;
   border-radius: 0;
   clip-path: var(--plate-clip-sm);
   background: linear-gradient(165deg, rgba(36, 44, 58, 0.96), rgba(18, 24, 36, 0.94));
-  border: 1px solid #4a5e78;
+  border: 2px solid #5a6a7e;
   box-shadow:
     0 1px 0 rgba(232, 228, 220, 0.08) inset,
     0 2px 6px rgba(0, 0, 0, 0.28);
   font-family: var(--font-btn);
-  font-size: 0.64rem;
-  font-weight: 650;
+  font-size: 0.78rem;
+  font-weight: 700;
   letter-spacing: 0.03em;
   line-height: 1.2;
   white-space: nowrap;
@@ -2070,14 +2086,29 @@ html, body {
 
 .chip .k {
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 700;
+  font-style: normal;
   text-transform: uppercase;
-  font-size: 0.62rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+.chip .chip-ico-wrap {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
+
+.chip .chip-ico {
+  width: 14px;
+  height: 14px;
+  display: block;
 }
 
 .chip.coin .k { color: #d4b06a; }
-.chip.parts .k { color: #8aaf9a; }
-.chip.aether .k { color: #b89a6a; }
+.chip.parts .k,
+.chip.parts .tel-gear { color: #8aaf9a; }
+.chip.aether .k { color: #c9a06a; }
 .chip.wave .k, .chip.lives .k { color: var(--muted); }
 
 .status {
@@ -3339,7 +3370,8 @@ label.btn input {
 .load-chip {
   position: relative;
   border-width: 2px !important;
-  background-image: var(--tex-scratches), var(--tex-bolts) !important;
+  /* Scratches only — corner bolts sit too close to short labels */
+  background-image: var(--tex-scratches) !important;
   box-shadow: var(--rim-brass), 0 2px 0 #120e0a !important;
 }
 
@@ -3348,6 +3380,7 @@ label.btn input {
   clip-path: var(--plate-clip-sm);
   font-family: var(--font-btn);
   letter-spacing: 0.04em;
+  padding: 10px 18px !important;
 }
 
 .call-btn {

@@ -42,8 +42,13 @@ export class TitleView {
     const cssW = canvas.clientWidth || 360;
     const cssH = canvas.clientHeight || 640;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = Math.floor(cssW * dpr);
-    canvas.height = Math.floor(cssH * dpr);
+    const nextW = Math.floor(cssW * dpr);
+    const nextH = Math.floor(cssH * dpr);
+    // Avoid same-size width assigns — they clear the canvas and flash the page bg.
+    if (canvas.width !== nextW || canvas.height !== nextH) {
+      canvas.width = nextW;
+      canvas.height = nextH;
+    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const p = this.palette;

@@ -82,23 +82,45 @@ export class BoardView {
 
   setAtmosphere(id) {
     this.atmosphereId = id || "default";
-    this._themePulse = 0.55;
+    this._themePulse = 0;
     this.palette?.setAtmosphere?.(this.atmosphereId);
     this._staticDirty = true;
   }
 
-  handOffZoom(mult = 0.88) {
-    this._handOffT = 0.9;
-    this._handOffFrom = this.zoom;
-    this._handOffTo = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, (this.zoom || 1) * mult));
+  /** @deprecated kept for callers; entry zoom is settled in prepareEntry. */
+  handOffZoom(_mult = 0.88) {
+    this._handOffT = 0;
   }
 
   setSim(sim) {
     this.sim = sim;
     this._stains.length = 0;
     this.recoil.clear();
+    this.panX = 0;
+    this.panY = 0;
+    this.zoom = 1;
+    this._handOffT = 0;
+    this._themePulse = 0;
     this.invalidateStatic();
-    this.resetPan();
+    // Do not _fit here — resizing the canvas clears the buffer and flashes grey
+    // while the menu is still on screen. enterGame → prepareEntry fits once.
+  }
+
+  /**
+   * One-shot camera settle after HUD chrome mounts, then paint immediately
+   * so the cleared buffer never shows through for a frame.
+   */
+  prepareEntry() {
+    if (!this.sim) return;
+    this._handOffT = 0;
+    this._themePulse = 0;
+    this.panX = 0;
+    this.panY = 0;
+    this.zoom = 1;
+    void this.canvas.offsetHeight;
+    this._fitKey = "";
+    this._fit(true);
+    this.draw(0);
   }
 
   invalidateStatic() {
@@ -138,8 +160,9 @@ export class BoardView {
     this.panY = 0;
     this.panX = 0;
     this.zoom = 1;
+    this._handOffT = 0;
     this.invalidateStatic();
-    this._fit();
+    if (this.sim) this._fit();
   }
 
   setZoom(z) {
@@ -186,11 +209,19 @@ export class BoardView {
     if (!force && key === this._fitKey && this.canvas.width === Math.floor(cssW * dpr)) {
       return false;
     }
+    const nextW = Math.floor(cssW * dpr);
+    const nextH = Math.floor(cssH * dpr);
+    const resized = this.canvas.width !== nextW || this.canvas.height !== nextH;
+    const keyChanged = key !== this._fitKey;
     this._fitKey = key;
-    this.invalidateStatic();
-
-    this.canvas.width = Math.floor(cssW * dpr);
-    this.canvas.height = Math.floor(cssH * dpr);
+    // Reassigning canvas.width always clears the bitmap (even to the same size).
+    if (resized) {
+      this.canvas.width = nextW;
+      this.canvas.height = nextH;
+      this.invalidateStatic();
+    } else if (force || keyChanged) {
+      this.invalidateStatic();
+    }
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const sy = VIEW25.yScale;
@@ -1495,13 +1526,7 @@ export class BoardView {
     const moteCool = atmo.moteCool || "#9eb0c0";
     const bloomA = atmo.bloom ?? 0.35;
 
-    if (this._handOffT > 0) {
-      const u = 1 - this._handOffT / 0.9;
-      const z = (this._handOffFrom || 1) + ((this._handOffTo || 1) - (this._handOffFrom || 1)) * Math.min(1, u);
-      if (Math.abs(z - this.zoom) > 0.002) this.setZoom(z);
-      this._handOffT = Math.max(0, this._handOffT - 0.016);
-    }
-    if (this._themePulse > 0) this._themePulse = Math.max(0, this._themePulse - 0.02);
+    if (this._themePulse > 0) this._themePulse = Math.max(0, this._themePulse - 0.035);
     const bossOnField = this.sim?.enemies?.some((e) => e.boss);
     this._bossVignette += ((bossOnField ? 1 : 0) - this._bossVignette) * 0.08;
 

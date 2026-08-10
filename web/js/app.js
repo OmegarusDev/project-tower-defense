@@ -895,14 +895,24 @@ export class App {
         </div>
         <div class="end-card end-card-totals">
           <h3>Totals</h3>
-          <div class="end-totals">
-            <span class="chip parts"><span class="k">Parts</span>${this.meta.forge}</span>
-            <span class="chip aether"><span class="k">Aether</span>${this.meta.aether}</span>
-          </div>
+          <div class="end-totals">${this._vaultChipsHtml()}</div>
         </div>
         ${actions}
       </div>`;
     this.bindUi();
+  }
+
+  /** Vault chips — match in-run telemetry (gear / Æ); Gains keep full words. */
+  _vaultChipsHtml(bestWave = null) {
+    const gear = `<svg class="tel-ico chip-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.4.9h3.2l.25 1.45c.45.12.87.32 1.25.58l1.3-.7 1.6 1.6-.7 1.3c.26.38.46.8.58 1.25L15.1 6.4v3.2l-1.45.25a4.6 4.6 0 0 1-.58 1.25l.7 1.3-1.6 1.6-1.3-.7a4.6 4.6 0 0 1-1.25.58L9.6 15.1H6.4l-.25-1.45a4.6 4.6 0 0 1-1.25-.58l-1.3.7-1.6-1.6.7-1.3a4.6 4.6 0 0 1-.58-1.25L.9 9.6V6.4l1.45-.25c.12-.45.32-.87.58-1.25l-.7-1.3 1.6-1.6 1.3.7c.38-.26.8-.46 1.25-.58L6.4.9zm1.6 4.3a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z"/></svg>`;
+    const best =
+      bestWave == null
+        ? ""
+        : `<span class="chip wave" title="Best wave"><span class="k">Best</span>W${bestWave}</span>`;
+    return `
+      <span class="chip parts" title="Parts"><i class="chip-ico-wrap tel-gear">${gear}</i>${this.meta.forge}</span>
+      <span class="chip aether" title="Aether"><i class="k">Æ</i>${this.meta.aether}</span>
+      ${best}`;
   }
 
   showSettings() {
@@ -968,11 +978,7 @@ export class App {
         </div>
         <div class="end-card end-card-totals">
           <h3>Vault</h3>
-          <div class="end-totals">
-            <span class="chip parts"><span class="k">Parts</span>${this.meta.forge}</span>
-            <span class="chip aether"><span class="k">Aether</span>${this.meta.aether}</span>
-            <span class="chip wave"><span class="k">Best</span>W${best}</span>
-          </div>
+          <div class="end-totals">${this._vaultChipsHtml(best)}</div>
         </div>
         ${actions}
       </div>`;
@@ -1178,10 +1184,8 @@ export class App {
     this.placeConfirm = null;
     this.liveCompose = false;
     this.playtestFromEditor = false;
-    this.board.resetPan();
     this.board.setAtmosphere?.("default");
     this.palette.setAtmosphere?.("default");
-    this.board.handOffZoom?.(0.9);
     this.enterGame();
     this.toast(`Seed ${runSeed >>> 0}`);
   }
@@ -1207,7 +1211,6 @@ export class App {
     this.speed = 1;
     this.accum = 0;
     this.placeConfirm = null;
-    this.board.resetPan();
     this.enterGame();
     this.toast(`Checkpoint loaded — Call Wave ${savedWave || 1}`);
   }
@@ -1220,11 +1223,12 @@ export class App {
       return;
     }
     this.playtestFromEditor = false;
+    // Atmosphere before boot so the first game paint isn't a second theme flash.
+    this.board.setAtmosphere?.(lv.atmosphere || `campaign_${lv.id}`);
+    this.palette.setAtmosphere?.(lv.atmosphere || `campaign_${lv.id}`);
     this._bootLevel(lv);
     const slot = Math.max(0, Math.min(this.prepSlot | 0, (this.meta.slotCount | 0) - 1));
     this.slot = slot;
-    this.board.setAtmosphere?.(lv.atmosphere || `campaign_${lv.id}`);
-    this.palette.setAtmosphere?.(lv.atmosphere || `campaign_${lv.id}`);
     this.toast(`${lv.name}: portal locked. Call Wave 1 when ready.`);
   }
 
@@ -1261,8 +1265,6 @@ export class App {
     this.accum = 0;
     this.placeConfirm = null;
     this.liveCompose = false;
-    this.board.resetPan();
-    this.board.handOffZoom?.(0.85);
     this.enterGame();
   }
 
@@ -1280,6 +1282,8 @@ export class App {
     this.score.setEnabled(this.meta.settings?.music !== false);
     this.score.start();
     this.renderGameChrome();
+    // Single fit + immediate paint — no hand-off zoom, no deferred second refit.
+    this.board.prepareEntry?.();
     if (this.sim?.modeEndless) {
       this.toast("Build, then Deploy. Hold for 5×.");
     }
