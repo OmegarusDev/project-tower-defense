@@ -998,6 +998,7 @@ export class App {
       return {
         complete: false,
         btnLabel: `S${i + 1} · —`,
+        costLabel: "—",
         tip: "incomplete — set in Forge",
         total: 0,
         surcharge: 0,
@@ -1009,6 +1010,7 @@ export class App {
     return {
       complete: true,
       btnLabel: `S${i + 1} · ${q.total}`,
+      costLabel: `${q.total}`,
       tip: `${s.base}/${s.barrel}/${s.payload}${q.surcharge ? ` (+${q.surcharge} tax)` : ""}`,
       total: q.total,
       surcharge: q.surcharge,
@@ -1026,11 +1028,19 @@ export class App {
     const bits = [];
     for (let i = 0; i < MAX_ROSTER_SLOTS; i++) {
       if (i >= unlocked) {
-        bits.push(
-          `<button type="button" class="btn slot-locked" data-act="slot-locked:${i}" title="Unlock Slot ${
-            i + 1
-          } in Tech Tree → Roster">S${i + 1}</button>`
-        );
+        if (mode === "game") {
+          bits.push(
+            `<button type="button" class="slot-tile locked" data-act="slot-locked:${i}" title="Unlock Slot ${
+              i + 1
+            } in Tech Tree → Roster"><span class="slot-tile-idx">${i + 1}</span><span class="slot-tile-cost">lock</span></button>`
+          );
+        } else {
+          bits.push(
+            `<button type="button" class="btn slot-locked" data-act="slot-locked:${i}" title="Unlock Slot ${
+              i + 1
+            } in Tech Tree → Roster">S${i + 1}</button>`
+          );
+        }
         continue;
       }
       const s = roster[i] || makeSlot("", "", "", this.meta.levelCap);
@@ -1043,8 +1053,9 @@ export class App {
       } else {
         const active = this.tool === "tower" && i === this.slot ? "active" : "";
         const q = this._gameSlotQuote(i);
+        const empty = q.complete ? "" : " empty";
         bits.push(
-          `<button type="button" class="btn ${active}" data-act="slot:${i}" data-build-slot="${i}" title="${q.tip}">${q.btnLabel}</button>`
+          `<button type="button" class="slot-tile ${active}${empty}" data-act="slot:${i}" data-build-slot="${i}" title="${q.tip}"><span class="slot-tile-idx">${i + 1}</span><span class="slot-tile-cost">${q.costLabel}</span></button>`
         );
       }
     }
@@ -1063,37 +1074,43 @@ export class App {
     this.ui.innerHTML = `
       <div class="game-chrome">
         <header class="hud-bar">
-          <div class="speed-cluster" title="Game speed">
-            <button class="icon-btn ${this.speed === 1 ? "active" : ""}" data-act="spd:1">1x</button>
-            <button class="icon-btn ${this.speed === 2 ? "active" : ""}" data-act="spd:2">2x</button>
-            <button class="icon-btn ${this.speed === 3 ? "active" : ""}" data-act="spd:3">3x</button>
+          <div class="speed-seg" title="Game speed" role="group" aria-label="Speed">
+            <button type="button" class="speed-btn ${this.speed === 1 ? "active" : ""}" data-act="spd:1">1</button>
+            <button type="button" class="speed-btn ${this.speed === 2 ? "active" : ""}" data-act="spd:2">2</button>
+            <button type="button" class="speed-btn ${this.speed === 3 ? "active" : ""}" data-act="spd:3">3</button>
           </div>
-          <div class="hud-center">
-            <div class="stat-chips" id="statChips"></div>
-            <div class="status" id="status">${this.status}</div>
-          </div>
-          <div class="corner-actions">
-            <button class="icon-btn" data-act="menu" title="Menu" aria-label="Menu">☰</button>
-          </div>
+          <div class="telemetry" id="statChips"></div>
+          <button type="button" class="hud-menu" data-act="menu" title="Menu" aria-label="Menu">
+            <span></span><span></span><span></span>
+          </button>
         </header>
-        <aside class="cam-rail" title="Camera pitch">
-          <span class="cam-rail-label">Pitch</span>
-          <input id="pitchLive" class="cam-pitch" type="range" min="8" max="58" step="1" value="${pitch}" />
-          <span class="cam-rail-val" id="pitchLiveVal">${pitch}°</span>
-        </aside>
+        <div class="status-toast ${this.status ? "" : "empty"}" id="status">${this.status}</div>
         <div class="tower-overlay hidden" id="towerOverlay">
           <div class="meta" id="towerMeta"></div>
           <div class="xp-line" id="towerXp"></div>
           <button class="btn danger" data-act="sell">Sell</button>
         </div>
-        <div class="dock">
-          <div class="dock-meta" id="slotline"></div>
-          <div class="build-strip">${buildBtns}</div>
-          <div class="build-tools">
-            <button class="btn ${this.tool === "wall" ? "active" : ""}" data-act="tool:wall" id="wallBtn">Wall</button>
+        <footer class="dock">
+          <div class="dock-head">
+            <div class="dock-meta" id="slotline"></div>
+            <label class="dock-pitch" title="Camera pitch">
+              <span class="dock-pitch-k">Angle</span>
+              <input id="pitchLive" class="dock-pitch-range" type="range" min="8" max="58" step="1" value="${pitch}" />
+              <span class="dock-pitch-v" id="pitchLiveVal">${pitch}°</span>
+            </label>
           </div>
-          <button class="btn call-btn" data-act="call" id="callBtn">Call Wave</button>
-        </div>
+          <div class="arsenal">
+            <div class="arsenal-slots">${buildBtns}</div>
+            <button type="button" class="wall-tile ${this.tool === "wall" ? "active" : ""}" data-act="tool:wall" id="wallBtn" title="Place wall">
+              <span class="wall-tile-k">Wall</span>
+              <span class="wall-tile-cost" id="wallCost">—</span>
+            </button>
+          </div>
+          <button type="button" class="call-btn" data-act="call" id="callBtn">
+            <span class="call-kicker">Deploy</span>
+            <span class="call-label" id="callLabel">Wave 1</span>
+          </button>
+        </footer>
       </div>`;
     this.bindUi();
     this.ui.querySelector("#pitchLive")?.addEventListener("input", (e) => {
@@ -1111,23 +1128,31 @@ export class App {
     const chips = this.ui.querySelector("#statChips");
     const st = this.ui.querySelector("#status");
     const callBtn = this.ui.querySelector("#callBtn");
+    const callLabel = this.ui.querySelector("#callLabel");
+    const callKicker = this.ui.querySelector(".call-kicker");
     if (!chips) return;
 
     const waveLabel = !this.sim.modeEndless && this.sim.wavesToWin
       ? `${this.sim.waveIndex}/${this.sim.wavesToWin}`
       : `${this.sim.waveIndex}`;
+    const lvlBit = !this.sim.modeEndless
+      ? `<span class="tel"><i>Lv</i>${this.sim.campaignLevelId}</span><span class="tel-sep"></span>`
+      : "";
     chips.innerHTML = `
-      ${
-        !this.sim.modeEndless
-          ? `<span class="chip wave"><span class="k">Lvl</span>${this.sim.campaignLevelId}</span>`
-          : ""
-      }
-      <span class="chip wave"><span class="k">Wave</span>${waveLabel}</span>
-      <span class="chip lives"><span class="k">Lives</span>${this.sim.lives}</span>
-      <span class="chip coin"><span class="k">COIN</span>${this.sim.economy.battle}</span>
-      <span class="chip parts"><span class="k">Parts</span>${this.sim.economy.forge}</span>
-      <span class="chip aether"><span class="k">Aether</span>${this.sim.economy.aether}</span>`;
-    if (st) st.textContent = this.status;
+      ${lvlBit}
+      <span class="tel tel-wave"><i>Wave</i>${waveLabel}</span>
+      <span class="tel-sep"></span>
+      <span class="tel tel-lives"><i>HP</i>${this.sim.lives}</span>
+      <span class="tel-sep"></span>
+      <span class="tel tel-coin"><i>Coin</i>${this.sim.economy.battle}</span>
+      <span class="tel-sep"></span>
+      <span class="tel tel-parts"><i>Parts</i>${this.sim.economy.forge}</span>
+      <span class="tel-sep"></span>
+      <span class="tel tel-aether"><i>Æ</i>${this.sim.economy.aether}</span>`;
+    if (st) {
+      st.textContent = this.status;
+      st.classList.toggle("empty", !this.status);
+    }
 
     this._syncBuildDock();
 
@@ -1138,11 +1163,17 @@ export class App {
         this.sim.wavesToWin > 0 &&
         this.sim.waveIndex >= this.sim.wavesToWin;
       callBtn.disabled = busy || done;
-      callBtn.textContent = busy
-        ? "Wave in progress"
-        : done
-          ? "Level complete"
-          : `Call Wave ${this.sim.waveIndex + 1}`;
+      callBtn.classList.toggle("busy", busy);
+      if (callKicker) {
+        callKicker.textContent = busy ? "Engaged" : done ? "Clear" : "Deploy";
+      }
+      if (callLabel) {
+        callLabel.textContent = busy
+          ? "Wave live"
+          : done
+            ? "Complete"
+            : `Wave ${this.sim.waveIndex + 1}`;
+      }
     }
     this.syncTowerOverlay();
   }
@@ -1154,28 +1185,35 @@ export class App {
       const btn = this.ui.querySelector(`[data-build-slot="${i}"]`);
       if (!btn) continue;
       const q = this._gameSlotQuote(i);
-      btn.textContent = q.btnLabel;
+      const costEl = btn.querySelector(".slot-tile-cost");
+      if (costEl) costEl.textContent = q.costLabel;
       btn.title = q.tip;
+      btn.classList.toggle("active", this.tool === "tower" && i === this.slot);
+      btn.classList.toggle("empty", !q.complete);
     }
     const wallCost = this.sim.economy.wallCost(this.sim.playerWallCount());
     const wallBtn = this.ui.querySelector("#wallBtn");
-    if (wallBtn) wallBtn.textContent = `Wall · ${wallCost}`;
+    const wallCostEl = this.ui.querySelector("#wallCost");
+    if (wallCostEl) wallCostEl.textContent = `${wallCost}`;
+    if (wallBtn) {
+      wallBtn.classList.toggle("active", this.tool === "wall");
+      wallBtn.title = `Wall · ${wallCost} Coin`;
+    }
 
     const slotLine = this.ui.querySelector("#slotline");
     if (!slotLine) return;
     if (this.tool === "wall") {
-      slotLine.textContent = `Wall · ${wallCost} Coin`;
+      slotLine.innerHTML = `<span class="dock-meta-k">Wall</span><span class="dock-meta-v">${wallCost} Coin</span>`;
       return;
     }
     const q = this._gameSlotQuote(this.slot);
     if (!q.complete) {
-      slotLine.textContent = `Slot ${this.slot + 1} incomplete — set loadout in Forge before the run`;
+      slotLine.innerHTML = `<span class="dock-meta-k">Slot ${this.slot + 1}</span><span class="dock-meta-v warn">Set loadout in Forge</span>`;
       return;
     }
     const s = q.loadout;
-    slotLine.textContent = `Slot ${this.slot + 1}: ${partLabel(s.base)} / ${partLabel(s.barrel)} / ${partLabel(s.payload)} · ${q.total} Coin${
-      q.surcharge ? ` (incl. ${q.surcharge} tax)` : ""
-    }`;
+    const tax = q.surcharge ? ` · +${q.surcharge} tax` : "";
+    slotLine.innerHTML = `<span class="dock-meta-k">${partLabel(s.base)} · ${partLabel(s.barrel)} · ${partLabel(s.payload)}</span><span class="dock-meta-v">${q.total} Coin${tax}</span>`;
   }
 
   syncTowerOverlay() {

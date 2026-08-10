@@ -111,8 +111,8 @@ export class BoardView {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const sy = VIEW25.yScale;
-    const topPad = 102;
-    const bottomPad = 168;
+    const topPad = 72;
+    const bottomPad = 148;
     const viewH = Math.max(120, cssH - topPad - bottomPad);
     const sidePad = 12;
 
