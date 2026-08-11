@@ -26,6 +26,7 @@ import {
   spendTechCost,
   syncTechDerived,
   nextRosterSlotUnlock,
+  respecAllTech,
 } from "./data/techTree.js";
 import { BoardView } from "./view/boardView.js";
 import { ProcPalette } from "./view/palette.js";
@@ -90,6 +91,7 @@ export class App {
     this.status = "";
     this.placeConfirm = null;
     this.liveCompose = false;
+    this.undoStack = [];
     this.editor = null;
     this.prepLevelId = 0;
     this.prepSlot = 0;
@@ -149,11 +151,206 @@ export class App {
       else this.openPause();
       return;
     }
-    if (this.paused) return;
-    if (e.code !== "Space" && e.key !== " ") return;
-    e.preventDefault();
-    if (e.repeat) return;
-    this.unlockAudio().then(() => this.callEarly());
+    if (this.paused) {
+      // Speed keys work from pause sheet context too.
+      if (e.key === "1" || e.key === "2" || e.key === "3") {
+        if (!e.altKey && !e.metaKey && !e.ctrlKey) {
+          // Digit keys also pick slots when unpaused; while paused set speed.
+          e.preventDefault();
+          this.setSpeed(+e.key);
+        }
+      }
+      return;
+    }
+
+    const key = e.key;
+    const code = e.code;
+
+    if (code === "Space" || key === " ") {
+      e.preventDefault();
+      if (e.repeat) return;
+      this.unlockAudio().then(() => this.callEarly());
+      return;
+    }
+
+    // Slot hotkeys: 1–9 → slots 0–8, 0 → slot 9, -/= → 10–11
+    if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+      let slotIdx = -1;
+      if (key >= "1" && key <= "9") slotIdx = +key - 1;
+      else if (key === "0") slotIdx = 9;
+      else if (key === "-" || code === "Minus") slotIdx = 10;
+      else if (key === "=" || code === "Equal") slotIdx = 11;
+      if (slotIdx >= 0) {
+        e.preventDefault();
+        this.selectBuildSlot(slotIdx);
+        return;
+      }
+      if (key === "w" || key === "W") {
+        e.preventDefault();
+        this.tool = "wall";
+        this.clearPlaceConfirm();
+        this.refreshHud();
+        return;
+      }
+      if (key === "b" || key === "B") {
+        e.preventDefault();
+        this.toggleLiveCompose();
+        return;
+      }
+      if (key === "x" || key === "X") {
+        e.preventDefault();
+        this.sellSelected();
+        return;
+      }
+      if (key === "u" || key === "U") {
+        e.preventDefault();
+        this.spendLevelPointSelected();
+        return;
+      }
+      if (key === "z" || key === "Z") {
+        e.preventDefault();
+        this.undoLast();
+        return;
+      }
+    }
+  }
+
+  setSpeed(n) {
+    const s = Math.max(1, Math.min(3, n | 0 || 1));
+    this._endFastForward();
+    this.speed = s;
+    this.score.setSpeed(s);
+    this.refreshHud();
+    if (this.paused) this._renderPauseSheet();
+  }
+
+  selectBuildSlot(i) {
+    const unlocked = this.meta.slotCount | 0;
+    if (!this.sim || i < 0 || i >= unlocked) {
+      this.toast(`Unlock Slot ${i + 1} in Tech Tree → Roster`);
+      return;
+    }
+    if ((this.sim.roster?.length | 0) < unlocked) this._syncSimFromMeta(this.sim);
+    this.slot = i;
+    this.tool = "tower";
+    this.clearPlaceConfirm();
+    this.selectedTowerId = -1;
+    this.selectedWallId = -1;
+    this.renderGameChrome();
+  }
+
+  clearUndoStack() {
+    this.undoStack = [];
+  }
+
+  pushUndo(entry) {
+    this.undoStack.push(entry);
+    if (this.undoStack.length > 24) this.undoStack.shift();
+  }
+
+  undoLast() {
+    if (!this.sim || this.paused) return;
+    const entry = this.undoStack.pop();
+    if (!entry) {
+      this.toast("Nothing to undo");
+      return;
+    }
+    if (entry.type === "place_tower") {
+      const t = this.sim.towers.find((x) => x.id === entry.id);
+      if (!t) {
+        this.toast("Undo expired");
+        return;
+      }
+      // Full refund of paid Coin (undo ≠ sell).
+      this.sim.economy.addBattle(t.paid | 0);
+      this.sim.grid.setBlocked(t.cell.x, t.cell.y, false);
+      this.sim.towers = this.sim.towers.filter((x) => x.id !== t.id);
+      this.sim.grid.recompute();
+      this.sim.combat.dirtyAuras();
+      this.selectedTowerId = -1;
+      this.board?.invalidateStatic?.();
+      this.toast("Undid tower place");
+      this.refreshHud();
+      return;
+    }
+    if (entry.type === "place_wall") {
+      const w = this.sim.walls.find((x) => x.id === entry.id);
+      if (!w || w.preplaced) {
+        this.toast("Undo expired");
+        return;
+      }
+      this.sim.economy.addBattle(w.paid | 0);
+      this.sim.grid.setBlocked(w.cell.x, w.cell.y, false);
+      this.sim.walls = this.sim.walls.filter((x) => x.id !== w.id);
+      this.sim.grid.recompute();
+      this.selectedWallId = -1;
+      this.board?.invalidateStatic?.();
+      this.toast("Undid wall place");
+      this.refreshHud();
+      return;
+    }
+    if (entry.type === "sell_tower" && entry.tower) {
+      const t = structuredClone(entry.tower);
+      if (!this.sim.grid.isBuildable(t.cell.x, t.cell.y)) {
+        this.toast("Can't undo — cell blocked");
+        this.undoStack.push(entry);
+        return;
+      }
+      if ((this.sim.economy.battle | 0) < (entry.refund | 0)) {
+        this.toast("Need Coin to undo sell");
+        this.undoStack.push(entry);
+        return;
+      }
+      this.sim.economy.spendBattle(entry.refund | 0);
+      this.sim.grid.setBlocked(t.cell.x, t.cell.y, true);
+      this.sim.towers.push(t);
+      this.sim.grid.recompute();
+      this.sim.combat.dirtyAuras();
+      this.board?.invalidateStatic?.();
+      this.toast("Undid tower sell");
+      this.refreshHud();
+      return;
+    }
+    if (entry.type === "sell_wall" && entry.wall) {
+      const w = structuredClone(entry.wall);
+      if (!this.sim.grid.isBuildable(w.cell.x, w.cell.y)) {
+        this.toast("Can't undo — cell blocked");
+        this.undoStack.push(entry);
+        return;
+      }
+      if ((this.sim.economy.battle | 0) < (entry.refund | 0)) {
+        this.toast("Need Coin to undo sell");
+        this.undoStack.push(entry);
+        return;
+      }
+      this.sim.economy.spendBattle(entry.refund | 0);
+      this.sim.grid.setBlocked(w.cell.x, w.cell.y, true);
+      this.sim.walls.push(w);
+      this.sim.grid.recompute();
+      this.board?.invalidateStatic?.();
+      this.toast("Undid wall sell");
+      this.refreshHud();
+    }
+  }
+
+  spendLevelPointSelected() {
+    if (!this.sim || this.selectedTowerId < 0) {
+      this.toast("Select a tower first");
+      return;
+    }
+    const res = this.sim.trySpendLevelPoint(this.selectedTowerId);
+    if (!res.ok) {
+      const map = {
+        no_points: "No level-up points",
+        at_cap: "At level cap — raise Cap in Tech",
+        missing: "Tower gone",
+      };
+      this.toast(map[res.reason] || "Can't level");
+      return;
+    }
+    this.synth.play("confirm");
+    this.toast(`Level ${res.level} · ${res.points} point${res.points === 1 ? "" : "s"} left`);
+    this.syncTowerOverlay();
   }
 
   openPause() {
@@ -237,10 +434,19 @@ export class App {
         ? "Abandon this campaign run and return to the Campaign menu?"
         : "Return to the Endless menu? Your checkpoint is saved.";
     if (!confirm(msg)) return;
+    // Between waves: persist post-clear board so Continue keeps towers/Coin.
+    // Mid-wave: leave the wave-start checkpoint (GDD Continue = start of last wave).
+    if (this.sim.modeEndless && !fromEditor) {
+      if (!this.waveBusy()) {
+        this.sim.checkpointPhase = "betweenWaves";
+        saveEndless(this.sim.checkpoint());
+      }
+    }
     this._endFastForward();
     this.paused = false;
     this.selectedTowerId = -1;
     this.selectedWallId = -1;
+    this.clearUndoStack();
     this.sim = null;
     this.playtestFromEditor = false;
     if (fromEditor) this.showEditor();
@@ -254,6 +460,14 @@ export class App {
     const endless = !!this.sim.modeEndless;
     const wave = this.sim.waveIndex | 0;
     const quitLabel = endless ? "Endless Menu" : "Campaign Menu";
+    const between = endless && !this.waveBusy();
+    const note = this.playtestFromEditor
+      ? "Editor playtest"
+      : endless
+        ? between
+          ? `Between waves — board saved. Continue keeps towers; Call starts wave ${wave + 1}.`
+          : `Mid-wave — Continue rolls back to the start of wave ${wave}.`
+        : `Campaign level ${this.sim.campaignLevelId}`;
     const sheet = document.createElement("div");
     sheet.id = "pauseSheet";
     sheet.className = "pause-sheet";
@@ -262,13 +476,12 @@ export class App {
       <div class="pause-card" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
         <p class="pause-mark">Paused</p>
         <h2 id="pauseTitle">Wave ${wave}</h2>
-        <p class="pause-note">${
-          this.playtestFromEditor
-            ? "Editor playtest"
-            : endless
-              ? "Checkpoint saved at wave start."
-              : `Campaign level ${this.sim.campaignLevelId}`
-        }</p>
+        <p class="pause-note">${note}</p>
+        <div class="pause-speeds" role="group" aria-label="Speed">
+          <button type="button" class="btn secondary ${this.speed === 1 ? "equipped" : ""}" data-act="speed:1">1×</button>
+          <button type="button" class="btn secondary ${this.speed === 2 ? "equipped" : ""}" data-act="speed:2">2×</button>
+          <button type="button" class="btn secondary ${this.speed === 3 ? "equipped" : ""}" data-act="speed:3">3×</button>
+        </div>
         <p class="pause-hint">Hold Deploy for 5× · seed ${this.sim.runSeed >>> 0}</p>
         <button type="button" class="btn title-cta" data-act="resume">Resume</button>
         <button type="button" class="btn secondary" data-act="quit-run">${
@@ -281,6 +494,7 @@ export class App {
         const act = el.getAttribute("data-act");
         if (act === "resume") this.resumeGame();
         else if (act === "quit-run") this.quitToMenu();
+        else if (act?.startsWith("speed:")) this.setSpeed(+act.slice(6));
       });
     });
   }
@@ -631,10 +845,32 @@ export class App {
         <div class="tech-body">
           ${this._techTreeHtml(tree)}
           <p class="tech-gift">${giftLine}</p>
+          <button type="button" class="btn secondary" data-act="tech-respec">Respec tree (full refund)</button>
         </div>
         ${overlay}
       </div>`;
     this.bindUi();
+  }
+
+  respecTechTree() {
+    const ranks = Object.keys(this.meta.tech || {}).length;
+    if (!ranks) {
+      this.toast("No tech ranks to refund");
+      return;
+    }
+    if (!confirm("Refund all Foundations + Arsenal ranks and reset the tree?")) return;
+    const { aether, forge } = respecAllTech(this.meta);
+    this.meta.roster = normalizeRoster(
+      this.meta.roster,
+      this.meta.slotCount,
+      this.meta.levelCap
+    );
+    this.persistMeta();
+    if (this.sim) this._syncSimFromMeta(this.sim, { seedVault: true });
+    this.synth.play("confirm");
+    this.status = `Respec · +${aether} Æ · +${forge} Parts`;
+    if (this.screen === "settings") this.showSettings();
+    else this.showUpgrade();
   }
 
   /** Flat list of purchasable nodes under a group (preserves child nesting). */
@@ -1168,6 +1404,10 @@ export class App {
       else if (act === "resume") this.resumeGame();
       else if (act === "quit-run") this.quitToMenu();
       else if (act === "sell") this.sellSelected();
+      else if (act === "level-up") this.spendLevelPointSelected();
+      else if (act === "undo") this.undoLast();
+      else if (act === "tech-respec") this.respecTechTree();
+      else if (act?.startsWith("speed:")) this.setSpeed(+act.slice(6));
       else if (act === "tool:wall") {
         this.tool = "wall";
         this.clearPlaceConfirm();
@@ -1254,7 +1494,7 @@ export class App {
     });
     sim.setSellRefundMult(this.meta.sellRefundMult ?? 0.5);
     sim.setRoster(structuredClone(this.meta.roster));
-    sim.runLevelCap = this.meta.levelCap | 0 || 2;
+    sim.runLevelCap = this.meta.levelCap | 0 || 1;
     for (const t of sim.towers || []) {
       t.levelCap = Math.max(t.levelCap | 0, sim.runLevelCap);
     }
@@ -1278,6 +1518,7 @@ export class App {
     this._applyRunTech(this.sim, { battleBase: BASE_START_CASH });
     this.fx.clear();
     this._ghost = null;
+    this.clearUndoStack();
     this.wireSim();
     this.tool = "tower";
     this.slot = 0;
@@ -1300,13 +1541,22 @@ export class App {
     if (!blob) return this.showEndlessHub();
     this.sim = new SimWorld();
     this.sim.loadCheckpoint(blob);
-    // Checkpoint is written at wave *start* after waveIndex increments.
-    // Roll back one so Call Wave starts that same wave again (mid-wave progress is lost).
     const savedWave = blob.wave | 0;
-    if (savedWave > 0) this.sim.waveIndex = savedWave - 1;
-    // Loadouts/caps/mods from meta; keep checkpoint Coin + lives.
-    this._syncSimFromMeta(this.sim);
+    const phase = blob.phase === "betweenWaves" ? "betweenWaves" : "inWave";
+    // inWave: Continue = start of last wave started (roll back so Call restarts it).
+    // betweenWaves: keep post-clear board; Call starts the next wave.
+    if (phase === "inWave" && savedWave > 0) {
+      this.sim.waveIndex = savedWave - 1;
+    }
+    // Meta currencies are vault truth — inject current meta, not stale checkpoint forge/aether.
+    this._syncSimFromMeta(this.sim, { seedVault: true });
+    // Align applied-gains cursor so syncMetaProgress won't re-credit runWaveGains.
+    this.sim.metaAppliedGains = {
+      parts: this.sim.economy.runWaveGains.parts | 0,
+      aether: this.sim.economy.runWaveGains.aether | 0,
+    };
     this.fx.clear();
+    this.clearUndoStack();
     this.wireSim();
     this.tool = "tower";
     this.slot = 0;
@@ -1317,7 +1567,11 @@ export class App {
     this.accum = 0;
     this.placeConfirm = null;
     this.enterGame();
-    this.toast(`Checkpoint loaded — Call Wave ${savedWave || 1}`);
+    if (phase === "betweenWaves") {
+      this.toast(`Between waves — Call Wave ${(savedWave | 0) + 1}`);
+    } else {
+      this.toast(`Checkpoint loaded — Call Wave ${savedWave || 1}`);
+    }
   }
 
   startCampaignLevel(levelId) {
@@ -1360,6 +1614,7 @@ export class App {
     this.sim.applyPreWalls(lv.preWalls || []);
     this.fx.clear();
     this._ghost = null;
+    this.clearUndoStack();
     this.wireSim();
     this.tool = "tower";
     this.slot = 0;
@@ -1522,11 +1777,15 @@ export class App {
         <div class="tower-overlay hidden" id="towerOverlay">
           <div class="meta" id="towerMeta"></div>
           <div class="xp-line" id="towerXp"></div>
-          <button class="btn danger" data-act="sell">Sell</button>
+          <div class="tower-overlay-acts">
+            <button class="btn" data-act="level-up" id="levelUpBtn">Level Up</button>
+            <button class="btn danger" data-act="sell">Sell</button>
+          </div>
         </div>
         <footer class="dock">
           <div class="dock-head">
             <div class="dock-meta" id="slotline"></div>
+            <button type="button" class="btn secondary undo-btn" data-act="undo" title="Undo (Z)" aria-label="Undo">Undo</button>
           </div>
           <div class="arsenal">
             <div class="arsenal-slots">${buildBtns}</div>
@@ -1803,6 +2062,7 @@ export class App {
     const overlay = this.ui.querySelector("#towerOverlay");
     const meta = this.ui.querySelector("#towerMeta");
     const xpEl = this.ui.querySelector("#towerXp");
+    const levelBtn = this.ui.querySelector("#levelUpBtn");
     if (!overlay || !this.sim) return;
 
     const t = this.sim.towers.find((x) => x.id === this.selectedTowerId);
@@ -1818,23 +2078,39 @@ export class App {
 
     overlay.classList.remove("hidden");
     const cell = t ? t.cell : wall.cell;
+    const rate = this.sim.sellRefundMult > 0 ? this.sim.sellRefundMult : 0.5;
     if (t) {
       const cap = t.levelCap || 1;
       const need = t.xpToPoint || 55;
+      const pts = t.levelPoints | 0;
       const atCap = (t.level || 1) >= cap;
+      const refund = (t.paid * rate) | 0;
       if (meta) {
         const doc = doctrineLabel(PARTS.bases[t.base]?.doctrine);
         meta.textContent = `${partLabel(t.base)} · ${doc} · L${t.level}/${cap}`;
       }
       if (xpEl) {
+        const ptLine = pts > 0 ? ` · ${pts} pt${pts === 1 ? "" : "s"}` : "";
         xpEl.textContent = atCap
-          ? "Max level"
-          : `XP ${t.xp | 0}/${need} · auto levels`;
+          ? pts > 0
+            ? `Max level · ${pts} pt banked`
+            : "Max level"
+          : `XP ${t.xp | 0}/${need}${ptLine}`;
       }
+      if (levelBtn) {
+        levelBtn.classList.toggle("hidden", false);
+        levelBtn.disabled = pts <= 0 || atCap;
+        levelBtn.textContent = atCap ? "At Cap" : pts > 0 ? `Level Up (${pts})` : "Level Up";
+      }
+      const sellBtn = overlay.querySelector('[data-act="sell"]');
+      if (sellBtn) sellBtn.textContent = `Sell · ${refund}`;
     } else {
-      const refund = (wall.paid * 0.5) | 0;
+      const refund = (wall.paid * rate) | 0;
       if (meta) meta.textContent = "Wall";
       if (xpEl) xpEl.textContent = `Sell for ${refund} Coin`;
+      if (levelBtn) levelBtn.classList.add("hidden");
+      const sellBtn = overlay.querySelector('[data-act="sell"]');
+      if (sellBtn) sellBtn.textContent = `Sell · ${refund}`;
     }
 
     const c = this.board.cellScreenCenter(cell.x, cell.y);
@@ -1989,8 +2265,20 @@ export class App {
   }
 
   syncMetaProgress() {
-    this.meta.aether = this.sim.economy.aether;
-    this.meta.forge = this.sim.economy.forge;
+    // Delta-merge run gains only — never clobber meta with a stale sim vault
+    // (hub spends + Continue would otherwise restore spent Forge/Aether).
+    const gains = this.sim.economy.runWaveGains || { parts: 0, aether: 0 };
+    const applied = this.sim.metaAppliedGains || { parts: 0, aether: 0 };
+    const dParts = (gains.parts | 0) - (applied.parts | 0);
+    const dAether = (gains.aether | 0) - (applied.aether | 0);
+    if (dParts > 0) this.meta.forge = (this.meta.forge | 0) + dParts;
+    if (dAether > 0) this.meta.aether = (this.meta.aether | 0) + dAether;
+    this.sim.metaAppliedGains = {
+      parts: gains.parts | 0,
+      aether: gains.aether | 0,
+    };
+    // Keep sim vault aligned with meta after merge (display + further clears).
+    this.sim.economy.injectMeta(this.meta.forge, this.meta.aether);
     // Endless progress only — campaign clears must not unlock endless wave gifts.
     if (this.sim.modeEndless) {
       this.meta.bestWave = Math.max(this.meta.bestWave | 0, this.sim.waveIndex);
@@ -2004,7 +2292,11 @@ export class App {
   onSimEvent(e) {
     switch (e.kind) {
       case "wave_checkpoint":
-        if (this.sim.modeEndless) saveEndless(this.sim.checkpoint());
+        this.clearUndoStack();
+        if (this.sim.modeEndless) {
+          this.sim.checkpointPhase = "inWave";
+          saveEndless(this.sim.checkpoint());
+        }
         break;
       case "wave_composition": {
         const theme = e.theme || "";
@@ -2037,7 +2329,15 @@ export class App {
         if (e.enemy?.boss) this.board?.punch?.(3.5);
         break;
       case "tower_placed":
+        if (e.tower?.id != null) this.pushUndo({ type: "place_tower", id: e.tower.id });
+        this.board?.invalidateStatic?.();
+        this.refreshHud();
+        break;
       case "wall_placed":
+        if (e.wall?.id != null) this.pushUndo({ type: "place_wall", id: e.wall.id });
+        this.board?.invalidateStatic?.();
+        this.refreshHud();
+        break;
       case "tower_sold":
       case "wall_sold":
         this.board?.invalidateStatic?.();
@@ -2085,6 +2385,8 @@ export class App {
         {
           const gained = this.syncMetaProgress();
           this.sim.running = false;
+          this.sim.checkpointPhase = "betweenWaves";
+          if (this.sim.modeEndless) saveEndless(this.sim.checkpoint());
           const won =
             !this.sim.modeEndless &&
             this.sim.wavesToWin > 0 &&
@@ -2124,6 +2426,9 @@ export class App {
         this.toast(`${partLabel(e.tower?.base)} → L${e.level}`);
         this.syncTowerOverlay();
         break;
+      case "level_point_gained":
+        this.syncTowerOverlay();
+        break;
       default:
         break;
     }
@@ -2137,9 +2442,11 @@ export class App {
       cleared.add(id);
       this.meta.campaign = { cleared: [...cleared].sort((a, b) => a - b) };
     }
-    this.meta.aether = this.sim.economy.aether;
-    this.meta.forge = this.sim.economy.forge;
-    if (first && id > 0) this.meta.aether += 8;
+    this.syncMetaProgress();
+    if (first && id > 0) {
+      this.meta.aether = (this.meta.aether | 0) + 8;
+      this.sim.economy.injectMeta(this.meta.forge, this.meta.aether);
+    }
     this.persistMeta();
     this.score.stop();
     this.status = first && id > 0 ? "First clear · +8 Aether" : "Level cleared";
@@ -2163,10 +2470,15 @@ export class App {
     this.clearPlaceConfirm();
     this.paused = false;
     const earlyBonus = 4 + Math.floor(this.sim.waveIndex * 0.5);
-    this.sim.startWave({ earlyBonus });
+    const res = this.sim.startWave({ earlyBonus });
     this.synth.play("wave");
     this.score.setWave(this.sim.waveIndex);
-    this.toast(`Wave ${this.sim.waveIndex} · +${earlyBonus} Coin early`);
+    const got = res?.earlyBonus | 0;
+    this.toast(
+      got > 0
+        ? `Wave ${this.sim.waveIndex} · +${got} Coin early`
+        : `Wave ${this.sim.waveIndex}`
+    );
     this.renderGameChrome();
   }
 
@@ -2314,8 +2626,10 @@ export class App {
   sellSelected() {
     if (!this.sim) return;
     if (this.selectedTowerId >= 0) {
+      const snap = this.sim.towers.find((x) => x.id === this.selectedTowerId);
       const res = this.sim.trySellTower(this.selectedTowerId);
       if (res.ok) {
+        if (snap) this.pushUndo({ type: "sell_tower", tower: structuredClone(snap), refund: res.refund | 0 });
         this.selectedTowerId = -1;
         this.synth.play("sell");
         this.toast(`Sold (+${res.refund} Coin)`);
@@ -2323,8 +2637,10 @@ export class App {
       return;
     }
     if (this.selectedWallId >= 0) {
+      const snap = this.sim.walls.find((w) => w.id === this.selectedWallId);
       const res = this.sim.trySellWall(this.selectedWallId);
       if (res.ok) {
+        if (snap) this.pushUndo({ type: "sell_wall", wall: structuredClone(snap), refund: res.refund | 0 });
         this.selectedWallId = -1;
         this.synth.play("sell");
         this.toast(`Wall sold (+${res.refund} Coin)`);

@@ -100,6 +100,7 @@ export const PARTS = {
       pierce: 1,
       speed: 12,
       airCapable: true,
+      homing: false,
       cost: 18,
       forgeCost: 6,
       blurb: "Long pierce; hits air",
@@ -242,9 +243,36 @@ export const WAVE_UNLOCKS = [
   { bestWave: 26, payloads: ["emp"], label: "EMP payload" },
 ];
 
-/** Soft roster size — matches roster_slots tech (3→6). */
+/** Soft roster size — matches roster_slots tech (3→12). */
 export const MIN_ROSTER_SLOTS = 3;
-export const MAX_ROSTER_SLOTS = 6;
+export const MAX_ROSTER_SLOTS = 12;
+
+/**
+ * Count owned paid Forge purchases (forgeCost>0), excluding starters and
+ * wave-gift unlocks already granted by bestWave. Used to backfill forgeBuys.
+ */
+export function estimateForgeBuys(owned, bestWave = 0) {
+  const o = normalizeOwned(owned);
+  const gifted = applyWaveUnlocks(defaultOwned(), bestWave | 0).owned;
+  const giftSet = new Set([
+    ...gifted.bases.map((id) => `base:${id}`),
+    ...gifted.barrels.map((id) => `barrel:${id}`),
+    ...gifted.payloads.map((id) => `payload:${id}`),
+  ]);
+  let n = 0;
+  const tally = (kind, key, table) => {
+    for (const id of o[key] || []) {
+      const row = table[id];
+      if (!row || (row.forgeCost | 0) <= 0) continue;
+      if (giftSet.has(`${kind}:${id}`)) continue;
+      n += 1;
+    }
+  };
+  tally("base", "bases", PARTS.bases);
+  tally("barrel", "barrels", PARTS.barrels);
+  tally("payload", "payloads", PARTS.payloads);
+  return n;
+}
 
 /** Old save ids → current ids (dropped parts omitted). */
 const PART_MIGRATE = {

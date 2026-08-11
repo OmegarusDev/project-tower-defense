@@ -130,7 +130,8 @@ export class CombatSystem {
         speed: plan.projectileSpeed,
         damage: plan.damage,
         damageType: plan.damageType,
-        pierce: plan.pierce,
+        pierce: plan.pierce | 0,
+        hitIds: new Set(),
         homing: ballistic ? false : plan.homing,
         aoeRadius: plan.aoeRadius,
         aoeFalloff: plan.aoeFalloff,
@@ -167,7 +168,24 @@ export class CombatSystem {
       }
       const target = w.enemies.find((e) => e.id === p.targetId);
       if (!target && p.homing) {
-        w.projectiles.splice(i, 1);
+        // H11: target died — AoE detonates at last pos; else coast on last velocity.
+        if ((p.aoeRadius || 0) > 0) {
+          this._detonateAt(p, p.pos);
+          w.projectiles.splice(i, 1);
+          continue;
+        }
+        p.homing = false;
+        p.targetId = -1;
+        const sp = p.speed || 8;
+        p.vx = p._lastVx != null ? p._lastVx : 0;
+        p.vy = p._lastVy != null ? p._lastVy : -sp;
+        const rem = Math.max(0.75, (p.maxRange || 4) - (p.traveled || 0));
+        p.maxRange = (p.traveled || 0) + rem;
+        if (this._tickBallistic(p)) {
+          w.projectiles.splice(i, 1);
+          continue;
+        }
+        i++;
         continue;
       }
       const dest = target ? target.pos : p.pos;
@@ -175,13 +193,31 @@ export class CombatSystem {
       const dx = dest.x - p.pos.x;
       const dy = dest.y - p.pos.y;
       const len = Math.hypot(dx, dy);
+      if (len > 1e-4) {
+        p._lastVx = (dx / len) * p.speed;
+        p._lastVy = (dy / len) * p.speed;
+      }
       if (len <= vel || len < 1e-4) {
-        if (target) this._onHit(p, target);
-        w.projectiles.splice(i, 1);
+        if (target) {
+          if (this._onHit(p, target)) {
+            w.projectiles.splice(i, 1);
+            continue;
+          }
+          // Pierce remaining — convert to ballistic through the pack.
+          p.homing = false;
+          p.targetId = -1;
+          p.vx = p._lastVx != null ? p._lastVx : p.speed;
+          p.vy = p._lastVy != null ? p._lastVy : 0;
+        } else {
+          w.projectiles.splice(i, 1);
+          continue;
+        }
+        i++;
         continue;
       }
       p.pos.x += (dx / len) * vel;
       p.pos.y += (dy / len) * vel;
+      p.traveled = (p.traveled || 0) + vel;
       i++;
     }
   }
@@ -208,7 +244,9 @@ export class CombatSystem {
     const hitR = 0.4;
     let best = null;
     let bestD = hitR;
+    if (!p.hitIds) p.hitIds = new Set();
     for (const e of w.enemies) {
+      if (p.hitIds.has(e.id)) continue;
       if (e.flying && !p.airCapable) continue;
       const d = Math.hypot(e.pos.x - p.pos.x, e.pos.y - p.pos.y);
       if (d < bestD) {
@@ -217,14 +255,48 @@ export class CombatSystem {
       }
     }
     if (best) {
-      this._onHit(p, best);
-      return true;
+      return this._onHit(p, best);
     }
     return false;
   }
 
+  /** Launcher (etc.): explode AoE at a world position with no primary target. */
+  _detonateAt(p, pos) {
+    const plan = {
+      damageType: p.damageType,
+      status: p.status,
+      aoeRadius: p.aoeRadius,
+      aoeFalloff: p.aoeFalloff,
+      chainJumps: 0,
+      chainFalloff: p.chainFalloff,
+      chainRange: p.chainRange || 2.5,
+      airCapable: p.airCapable,
+      armorPierce: p.armorPierce || 0,
+      emp: !!p.emp,
+    };
+    const tower = this.world.towers.find((t) => t.id === p.towerId);
+    if ((plan.aoeRadius || 0) <= 0) return;
+    for (const e of this.world.enemies) {
+      if (e.flying && !plan.airCapable) continue;
+      const d = Math.hypot(e.pos.x - pos.x, e.pos.y - pos.y);
+      if (d <= plan.aoeRadius) {
+        let dmg = p.damage;
+        if (plan.aoeFalloff) dmg *= 1 - 0.5 * (d / plan.aoeRadius);
+        this._applyHit(e, dmg, plan, tower, { pressure: true });
+      }
+    }
+  }
+
+  /**
+   * Apply projectile impact. Returns true when the projectile should despawn.
+   * Pierce: decrement and keep flying (skip already-hit ids).
+   */
   _onHit(p, target) {
-    if (target.flying && !p.airCapable) return;
+    if (target.flying && !p.airCapable) return false;
+    if (!p.hitIds) p.hitIds = new Set();
+    if (p.hitIds.has(target.id)) return false;
+    p.hitIds.add(target.id);
+
     const plan = {
       damageType: p.damageType,
       status: p.status,
@@ -256,6 +328,13 @@ export class CombatSystem {
     if ((plan.chainJumps || 0) > 0) {
       this._doChain(target, p.damage, plan, tower, new Set([target.id]), plan.chainJumps);
     }
+
+    // Pierce: keep the shot alive until pierces are exhausted.
+    if ((p.pierce | 0) > 0) {
+      p.pierce = (p.pierce | 0) - 1;
+      return false;
+    }
+    return true;
   }
 
   _doChain(fromEnemy, damage, plan, tower, hit, jumps) {
@@ -398,27 +477,30 @@ export class CombatSystem {
   }
 
   _grantXp(tower, amount) {
-    const cap = tower.levelCap || 1;
-    if (tower.level >= cap) {
-      tower.xp = tower.xpToPoint || 55;
-      return;
-    }
+    const cap = Math.max(1, tower.levelCap || 1);
+    // At cap: bank points only when meta later raises the cap; still earn XP→points.
     tower.xp = (tower.xp || 0) + amount;
     const need = tower.xpToPoint || 55;
-    while (tower.xp >= need && tower.level < cap) {
+    let gained = 0;
+    while (tower.xp >= need) {
       tower.xp -= need;
-      tower.level += 1;
-      this.dirtyAuras();
-      this.world.emit("tower_leveled", {
+      tower.levelPoints = (tower.levelPoints | 0) + 1;
+      gained += 1;
+      // Soft cap on banked points so endless farms don't explode the UI.
+      if ((tower.levelPoints | 0) >= 99) {
+        tower.xp = need - 1;
+        break;
+      }
+    }
+    if (gained > 0) {
+      this.world.emit("level_point_gained", {
         tower,
-        level: tower.level,
+        points: tower.levelPoints | 0,
+        gained,
+        atCap: (tower.level | 0) >= cap,
         x: tower.cell.x + 0.5,
         y: tower.cell.y + 0.5,
       });
-      if (tower.level >= cap) {
-        tower.xp = need;
-        break;
-      }
     }
   }
 

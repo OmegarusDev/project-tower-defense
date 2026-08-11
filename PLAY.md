@@ -17,17 +17,18 @@ Details: [`web/README.md`](web/README.md)
 
 | Action | How |
 |--------|-----|
-| Campaign | Main → **Campaign** — 3× 8×8 levels with pre-walls; clear N waves to win |
+| Campaign | Main → **Campaign** — Act I (7 linear levels) |
 | Forge | Main / Endless / Campaign → **Forge** — compose + unlock parts |
-| Upgrades | Forge → **Upgrades** — spend **Aether** (slots, level cap, lives) |
-| Place tower | Bottom slots, tap empty cell (**Coin**) |
-| Place wall | Bottom Wall, tap empty cell (**Coin**) |
-| Tower menu | Tap a placed tower → Level Up / Sell |
-| Start wave | **Call Wave** (bottom) or **Space** |
-| Wave clear | Coin bonus on clear (not on call) |
-| Speed | 1x / 2x / 3x top-left |
-| Undo / Menu | Top-right icons |
-| Continue | Endless hub → Continue |
+| Tech Tree | Forge → **Tech Tree** — Aether / Parts (slots, level cap, lives, …); Respec refunds ranks |
+| Place tower | Bottom slots (`1`–`9`/`0`/`-`/`=`), tap empty cell (**Coin**) |
+| Place wall | Bottom Wall or `W`, tap empty cell (**Coin**) |
+| Tower menu | Tap tower → Level Up (`U`) / Sell (`X`) |
+| Undo | HUD **Undo** or `Z` (since wave start) |
+| Start wave | **Deploy** or **Space** (Call Early Coin once per wave) |
+| Speed | Pause → 1× / 2× / 3×; hold Deploy for 5× |
+| Pause | `Esc` or pause button |
+| Compose | `B` (Endless live compose) |
+| Continue | Endless hub → Continue (mid-wave → wave start; between waves → keep board) |
 
 ## Design docs
 

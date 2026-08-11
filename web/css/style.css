@@ -2046,6 +2046,17 @@ html, body {
   color: var(--muted) !important;
 }
 
+.pause-speeds {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
+.pause-speeds .btn {
+  flex: 1;
+  width: auto !important;
+}
+
 .pause-hint {
   margin: 0 0 6px !important;
   font-size: 0.74rem !important;
@@ -2341,6 +2352,13 @@ html, body {
   gap: 6px 10px;
   font-size: 0.7rem;
   line-height: 1.25;
+}
+
+.undo-btn {
+  flex: 0 0 auto;
+  padding: 4px 10px !important;
+  font-size: 0.68rem !important;
+  min-height: 0;
 }
 
 .dock-meta-k {
@@ -2735,6 +2753,12 @@ html, body {
 .tower-overlay .btn {
   padding: 8px 10px;
   font-size: 0.8rem;
+}
+
+.tower-overlay-acts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .tower-overlay .btn.danger {

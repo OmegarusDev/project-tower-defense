@@ -8,13 +8,23 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-// Checkpoint is saved after waveIndex increments; resume must roll back one.
+// Checkpoint is saved after waveIndex increments; inWave resume must roll back one.
 {
   const savedWave = 4;
-  const resumeIndex = Math.max(0, savedWave - 1);
-  assert(resumeIndex === 3, "resume rolls back so Call starts saved wave");
+  const phase = "inWave";
+  const resumeIndex = phase === "inWave" ? Math.max(0, savedWave - 1) : savedWave;
+  assert(resumeIndex === 3, "inWave resume rolls back so Call starts saved wave");
   const afterCall = resumeIndex + 1;
   assert(afterCall === savedWave, "Call Wave after continue starts the saved wave");
+}
+
+// betweenWaves: no rollback — Call starts next wave with board intact.
+{
+  const savedWave = 4;
+  const phase = "betweenWaves";
+  const resumeIndex = phase === "inWave" ? Math.max(0, savedWave - 1) : savedWave;
+  assert(resumeIndex === 4, "betweenWaves keeps cleared index");
+  assert(resumeIndex + 1 === 5, "Call starts wave 5");
 }
 
 // setStartLives can update budget without healing.

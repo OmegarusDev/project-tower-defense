@@ -20,7 +20,7 @@ export class SimWorld {
     this.enemies = [];
     this.projectiles = [];
     this.roster = [];
-    this.runLevelCap = 2;
+    this.runLevelCap = 1;
     this.partUpgrades = {};
     this.globalMods = { damage: 1, range: 1, rof: 1 };
     this.tickIndex = 0;
@@ -34,6 +34,12 @@ export class SimWorld {
     this.runSeed = 1;
     this.campaignWaves = null;
     this.actionLog = [];
+    /** Wave index that already received Call Early Coin (prevents Continue double-dip). */
+    this.earlyBonusWave = 0;
+    /** `inWave` | `betweenWaves` — endless checkpoint semantics. */
+    this.checkpointPhase = "betweenWaves";
+    /** Meta forge/aether gains already merged from runWaveGains. */
+    this.metaAppliedGains = { parts: 0, aether: 0 };
     this._nextId = 1;
     this._listeners = new Map();
   }
@@ -78,8 +84,11 @@ export class SimWorld {
     this.sellRefundMult = 0.5;
     this.waveIndex = 0;
     this.running = false;
+    this.earlyBonusWave = 0;
+    this.checkpointPhase = "betweenWaves";
+    this.metaAppliedGains = { parts: 0, aether: 0 };
     this._nextId = 1;
-    this.roster = defaultSlots(3, 2);
+    this.roster = defaultSlots(3, 1);
     this.partUpgrades = {};
     this.globalMods = { damage: 1, range: 1, rof: 1 };
   }
@@ -148,10 +157,40 @@ export class SimWorld {
 
   startWave({ earlyBonus = 0 } = {}) {
     this.running = true;
-    if (earlyBonus > 0) this.economy.addBattle(earlyBonus);
+    const nextWave = (this.waveIndex | 0) + 1;
+    let applied = 0;
+    // Skip if this wave already claimed early bonus (Continue → Call double-dip).
+    if (earlyBonus > 0 && this.earlyBonusWave !== nextWave) {
+      this.economy.addBattle(earlyBonus);
+      this.earlyBonusWave = nextWave;
+      applied = earlyBonus;
+    }
     this.waves.startNextWave();
-    this.logAction("call", { wave: this.waveIndex, earlyBonus });
-    this.emit("wave_started", { wave: this.waveIndex, earlyBonus });
+    this.checkpointPhase = "inWave";
+    this.logAction("call", { wave: this.waveIndex, earlyBonus: applied });
+    this.emit("wave_started", { wave: this.waveIndex, earlyBonus: applied });
+    return { wave: this.waveIndex, earlyBonus: applied };
+  }
+
+  /** Spend one banked level-up point on a tower (GDD: XP → point → spend). */
+  trySpendLevelPoint(towerId) {
+    const t = this.towers.find((x) => x.id === towerId);
+    if (!t) return { ok: false, reason: "missing" };
+    const cap = Math.max(1, t.levelCap | 0, this.runLevelCap | 0);
+    t.levelCap = cap;
+    if ((t.levelPoints | 0) <= 0) return { ok: false, reason: "no_points" };
+    if ((t.level | 0) >= cap) return { ok: false, reason: "at_cap" };
+    t.levelPoints = (t.levelPoints | 0) - 1;
+    t.level = (t.level | 0) + 1;
+    this.combat.dirtyAuras();
+    this.logAction("level_up", { id: towerId, level: t.level });
+    this.emit("tower_leveled", {
+      tower: t,
+      level: t.level,
+      x: t.cell.x + 0.5,
+      y: t.cell.y + 0.5,
+    });
+    return { ok: true, level: t.level, points: t.levelPoints | 0 };
   }
 
   growSouth(n) {
@@ -253,11 +292,14 @@ export class SimWorld {
   checkpoint() {
     return {
       wave: this.waveIndex,
+      phase: this.checkpointPhase || "inWave",
+      earlyBonusWave: this.earlyBonusWave | 0,
       lives: this.lives,
       battle: this.economy.battle,
       forge: this.economy.forge,
       aether: this.economy.aether,
       runWaveGains: structuredClone(this.economy.runWaveGains),
+      metaAppliedGains: structuredClone(this.metaAppliedGains || { parts: 0, aether: 0 }),
       towers: structuredClone(this.towers),
       walls: structuredClone(this.walls),
       roster: structuredClone(this.roster),
@@ -282,8 +324,20 @@ export class SimWorld {
       parts: blob.runWaveGains?.parts | 0,
       aether: blob.runWaveGains?.aether | 0,
     };
+    // Old checkpoints: treat all run gains as already merged so Continue won't re-apply.
+    const applied = blob.metaAppliedGains;
+    this.metaAppliedGains = {
+      parts: applied ? applied.parts | 0 : this.economy.runWaveGains.parts | 0,
+      aether: applied ? applied.aether | 0 : this.economy.runWaveGains.aether | 0,
+    };
     this.lives = blob.lives ?? 3;
     this.waveIndex = blob.wave ?? 0;
+    this.checkpointPhase = blob.phase === "betweenWaves" ? "betweenWaves" : "inWave";
+    this.earlyBonusWave = blob.earlyBonusWave | 0;
+    // Legacy: earlyBonusClaimed boolean meant the saved in-wave already got the bonus.
+    if (blob.earlyBonusClaimed && !this.earlyBonusWave && this.waveIndex > 0) {
+      this.earlyBonusWave = this.waveIndex;
+    }
     this.roster = (blob.roster || defaultSlots()).map((s) =>
       makeSlot(s.base, s.barrel, s.payload, s.levelCap || 1)
     );
@@ -297,6 +351,7 @@ export class SimWorld {
       t.barrel = migratePartId("barrel", t.barrel) || "single";
       t.payload = migratePartId("payload", t.payload) || "kinetic";
       if (!Number.isFinite(t.aimAngle)) t.aimAngle = -Math.PI / 2;
+      t.levelPoints = t.levelPoints | 0;
       this.grid.setBlocked(t.cell.x, t.cell.y, true);
     }
     for (const w of this.walls) this.grid.setBlocked(w.cell.x, w.cell.y, true);
@@ -305,7 +360,7 @@ export class SimWorld {
     this.running = false;
     this.waves.waveActive = false;
     this.waves.toSpawn = 0;
-    this.emit("checkpoint_loaded", { wave: this.waveIndex });
+    this.emit("checkpoint_loaded", { wave: this.waveIndex, phase: this.checkpointPhase });
   }
 
   _tickEnemies() {

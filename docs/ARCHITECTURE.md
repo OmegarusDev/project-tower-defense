@@ -26,10 +26,12 @@ PLAY.html        # thin launcher → GitHub Pages
 |--------|------|
 | `BoardGrid` | Exit BFS distance fields (ground + air); enemies follow gradient |
 | `AttackPlan` | `(base,barrel,payload,level)` → pattern/damage/aura — one resolver |
-| `combat` | Targeting, auras, projectiles/pulses/status/XP |
+| `combat` | Targeting, auras, projectiles (pierce / ballistic / homing coast), pulses, status, XP→level points |
 | `ProcPalette` | Colors + colorblind LUT (default off) |
 | `SynthBank` | Bake SFX PCM at boot; play by id |
 | `ScoreEngine` | Stubbed — music off until a later ambient pass |
+
+Endless checkpoints store `phase` (`inWave` | `betweenWaves`), `earlyBonusWave`, and `metaAppliedGains`. Meta Forge/Aether merge via run-gain deltas only; Continue re-seeds the sim vault from current meta.
 
 ## Run
 
@@ -44,4 +46,6 @@ cd web && python3 -m http.server 8080
 cd web
 node js/tests/boardGrid.test.mjs
 node js/tests/attackPlan.test.mjs
+node js/tests/auditFixes.test.mjs
+# or: for f in js/tests/*.mjs; do node "$f"; done
 ```

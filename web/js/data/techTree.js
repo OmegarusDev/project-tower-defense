@@ -113,16 +113,26 @@ export const TECH_TREES = [
           {
             id: "level_cap",
             name: "Level Cap",
-            blurb: "Towers reach L3 / L4 / L5",
-            maxRank: 3,
-            costs: [{ aether: 20 }, { aether: 40 }, { aether: 70 }],
+            blurb: "Towers reach L2 / L3 / L4 / L5",
+            maxRank: 4,
+            costs: [{ aether: 12 }, { aether: 20 }, { aether: 40 }, { aether: 70 }],
           },
           {
             id: "roster_slots",
             name: "Roster Slots",
-            blurb: "Unlock 4th / 5th / 6th loadout",
-            maxRank: 3,
-            costs: [{ aether: 28 }, { aether: 50 }, { aether: 85 }],
+            blurb: "Unlock loadout slots 4→12",
+            maxRank: 9,
+            costs: [
+              { aether: 28 },
+              { aether: 50 },
+              { aether: 85 },
+              { aether: 110 },
+              { aether: 140 },
+              { aether: 175 },
+              { aether: 215 },
+              { aether: 260 },
+              { aether: 310 },
+            ],
           },
         ],
       },
@@ -280,8 +290,14 @@ export function livesFromIronGuardRank(rank) {
   return IRON_GUARD_LIVES[r];
 }
 
-export function ironGuardRankFromLives(lives) {
+export function ironGuardRankFromLives(lives, { roundUp = false } = {}) {
   const hp = lives | 0;
+  if (roundUp && hp > 0) {
+    for (let i = 0; i < IRON_GUARD_LIVES.length; i++) {
+      if (IRON_GUARD_LIVES[i] >= hp) return i;
+    }
+    return IRON_GUARD_LIVES.length - 1;
+  }
   let best = 0;
   for (let i = 0; i < IRON_GUARD_LIVES.length; i++) {
     if (hp >= IRON_GUARD_LIVES[i]) best = i;
@@ -318,27 +334,36 @@ export function migrateTechRanks(rawMeta) {
   }
   if ((tech.shock_edge | 0) > 0) bump("shock_power", tech.shock_edge | 0);
 
-  // Legacy nested level-cap nodes → condensed multi-rank
+  // Legacy nested level-cap nodes → condensed multi-rank (new: cap = 1 + rank).
+  // Old formula was 2 + rank — map absolute caps so nobody is demoted.
   const cap = rawMeta?.levelCap | 0;
-  if ((tech.cap5 | 0) >= 1 || cap >= 5) bump("level_cap", 3);
-  else if ((tech.cap4 | 0) >= 1 || cap >= 4) bump("level_cap", 2);
-  else if ((tech.cap3 | 0) >= 1 || cap >= 3) bump("level_cap", 1);
+  const oldCapRank = tech.level_cap | 0;
+  if ((tech.cap5 | 0) >= 1 || cap >= 5) bump("level_cap", 4);
+  else if ((tech.cap4 | 0) >= 1 || cap >= 4) bump("level_cap", 3);
+  else if ((tech.cap3 | 0) >= 1 || cap >= 3) bump("level_cap", 2);
+  else if (cap >= 2) bump("level_cap", 1);
+  else if (oldCapRank > 0) {
+    // Old ranks meant 2+rank; convert to new 1+rank equivalent.
+    bump("level_cap", Math.min(4, oldCapRank + 1));
+  }
 
-  // Legacy nested slot nodes → condensed multi-rank
+  // Legacy nested slot nodes → condensed multi-rank (3 + rank, max 12).
   const slots = rawMeta?.slotCount | 0;
-  if ((tech.slot6 | 0) >= 1 || slots >= 6) bump("roster_slots", 3);
+  if ((tech.slot6 | 0) >= 1 || slots >= 6) bump("roster_slots", Math.max(3, slots - 3));
   else if ((tech.slot5 | 0) >= 1 || slots >= 5) bump("roster_slots", 2);
   else if ((tech.slot4 | 0) >= 1 || slots >= 4) bump("roster_slots", 1);
+  if (slots > 6) bump("roster_slots", Math.min(9, slots - 3));
 
   // Iron Guard: prefer already-migrated ranks; else map from startLives / old 5+rank.
+  // roundUp so mid-ladder old totals (e.g. 8 from 5+3) never demote.
   const lives = rawMeta?.startLives | 0;
   const oldLivesRank = tech.lives | 0;
   if (oldLivesRank > 3 || (oldLivesRank > 0 && lives === livesFromIronGuardRank(oldLivesRank))) {
     tech.lives = Math.min(6, oldLivesRank);
   } else if (lives > 0) {
-    tech.lives = ironGuardRankFromLives(lives);
+    tech.lives = ironGuardRankFromLives(lives, { roundUp: true });
   } else if (oldLivesRank > 0) {
-    tech.lives = ironGuardRankFromLives(5 + oldLivesRank);
+    tech.lives = ironGuardRankFromLives(5 + oldLivesRank, { roundUp: true });
   } else {
     delete tech.lives;
   }
@@ -428,8 +453,8 @@ export function syncTechDerived(meta) {
   const tech = meta.tech || {};
   const rank = (id) => tech[id] | 0;
 
-  const levelCap = 2 + rank("level_cap"); // 2..5
-  const slotCount = 3 + rank("roster_slots"); // 3..6
+  const levelCap = 1 + rank("level_cap"); // 1..5
+  const slotCount = 3 + rank("roster_slots"); // 3..12
 
   const startLives = livesFromIronGuardRank(rank("lives"));
   const cashRanks = rank("cash");
@@ -522,6 +547,31 @@ export function canAffordTech(meta, cost) {
 export function spendTechCost(meta, cost) {
   meta.aether = (meta.aether | 0) - (cost.aether | 0);
   meta.forge = (meta.forge | 0) - (cost.forge | 0);
+}
+
+/**
+ * Full Foundations + Arsenal respec: refund Aether/Parts spent on ranks, clear ranks.
+ * Returns { aether, forge } refunded.
+ */
+export function respecAllTech(meta) {
+  let aether = 0;
+  let forge = 0;
+  const tech = meta.tech || {};
+  for (const node of allTechNodes()) {
+    const r = tech[node.id] | 0;
+    if (r <= 0) continue;
+    for (let i = 0; i < r; i++) {
+      const c = node.costs?.[i];
+      if (!c) continue;
+      aether += c.aether | 0;
+      forge += c.forge | 0;
+    }
+  }
+  meta.tech = {};
+  meta.aether = (meta.aether | 0) + aether;
+  meta.forge = (meta.forge | 0) + forge;
+  syncTechDerived(meta);
+  return { aether, forge };
 }
 
 /** Default endless / campaign base Coin before War Chest bonus. */

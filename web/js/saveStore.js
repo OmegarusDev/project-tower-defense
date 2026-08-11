@@ -4,6 +4,7 @@ import {
   normalizeOwned,
   normalizeRoster,
   applyWaveUnlocks,
+  estimateForgeBuys,
 } from "./data/parts.js";
 import { migrateTechRanks, syncTechDerived } from "./data/techTree.js";
 
@@ -50,11 +51,15 @@ export function normalizeMeta(m) {
   // Carry legacy fields into migrateTechRanks via `m`; sync writes derived.
   syncTechDerived(draft);
 
-  draft.slotCount = Math.max(3, Math.min(6, draft.slotCount | 0 || 3));
-  draft.levelCap = Math.max(2, Math.min(5, draft.levelCap | 0 || 2));
+  draft.slotCount = Math.max(3, Math.min(12, draft.slotCount | 0 || 3));
+  draft.levelCap = Math.max(1, Math.min(5, draft.levelCap | 0 || 1));
   draft.startLives = Math.max(3, Math.min(25, draft.startLives | 0 || 3));
   draft.startCashBonus = Math.max(0, draft.startCashBonus | 0);
-  draft.forgeBuys = Math.max(0, m.forgeBuys | 0);
+  let forgeBuys = Math.max(0, m.forgeBuys | 0);
+  if (forgeBuys === 0) {
+    forgeBuys = estimateForgeBuys(owned, bestWave);
+  }
+  draft.forgeBuys = forgeBuys;
   draft.forgeCostMult = 1;
   draft.towerCostMult = clampMult(draft.towerCostMult, 1);
   draft.wallCostMult = clampMult(draft.wallCostMult, 1);

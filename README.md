@@ -29,12 +29,14 @@ Open [http://localhost:8080](http://localhost:8080)
 
 | Action | How |
 |--------|-----|
-| Campaign | Main → **Campaign** |
+| Campaign | Main → **Campaign** (Act I · 7 levels) |
 | Forge | Compose + unlock parts |
-| Tech Tree | Permanent Aether / Parts upgrades |
-| Place tower / wall | Bottom dock → tap cell (**Coin**) |
-| Call wave | **Call Wave** or **Space** |
-| Speed | 1x / 2x / 3x |
+| Tech Tree | Permanent Aether / Parts upgrades (Respec available) |
+| Place tower / wall | Bottom dock → tap cell (**Coin**); `1`–`0` / `-`/`=` slots; `W` wall |
+| Call wave | **Deploy** or **Space** |
+| Level up / sell | Select tower → button or `U` / `X` |
+| Undo | HUD or `Z` |
+| Speed | Pause sheet 1×/2×/3×; hold Deploy for 5× |
 
 More detail: [`PLAY.md`](PLAY.md) · [`web/README.md`](web/README.md)
 

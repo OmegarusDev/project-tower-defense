@@ -28,6 +28,11 @@ assert(scatter.spreadDeg >= 30, "scatter arc");
 assert(scatter.homing === false, "scatter ballistic");
 assert(scatter.damage < 10, "scatter damage mult");
 
+const rail = buildAttackPlan("sentry", "rail", "kinetic", 1);
+assert(rail.homing === false, "rail ballistic for pierce");
+assert(rail.pierce >= 1, "rail pierce");
+assert(rail.airCapable, "rail air");
+
 assert(doctrineLabel("flying") === "Air → First", "label");
 
 console.log("ALL attackPlan tests passed");

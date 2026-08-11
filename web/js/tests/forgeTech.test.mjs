@@ -44,13 +44,14 @@ function assert(cond, msg) {
 }
 
 {
-  assert(getTechNode("level_cap")?.maxRank === 3, "level cap condensed");
-  assert(getTechNode("roster_slots")?.maxRank === 3, "slots condensed");
+  assert(getTechNode("level_cap")?.maxRank === 4, "level cap to L5");
+  assert(getTechNode("roster_slots")?.maxRank === 9, "slots to 12");
   assert(!getTechNode("cap3"), "legacy cap3 removed");
   assert(!getTechNode("slot4"), "legacy slot4 removed");
 
   const meta = { tech: {}, aether: 100, forge: 0 };
   syncTechDerived(meta);
+  assert(meta.levelCap === 1, "base level cap 1");
   const next = nextRosterSlotUnlock(meta);
   assert(next?.nextSlotCount === 4, "next unlock is 4th slot");
   assert(next?.cost?.aether === 28, "slot cost matches tech");
@@ -58,7 +59,7 @@ function assert(cond, msg) {
 
 {
   const tech = migrateTechRanks({ tech: { cap3: 1, cap4: 1, slot4: 1 }, levelCap: 4, slotCount: 4, startLives: 5 });
-  assert(tech.level_cap === 2, "migrates nested caps");
+  assert(tech.level_cap === 3, "migrates nested caps to rank 3 (L4)");
   assert(tech.roster_slots === 1, "migrates nested slots");
   assert(tech.lives === 1, "preserves 5 lives as Iron Guard rank 1");
 }

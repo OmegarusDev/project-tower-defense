@@ -46,23 +46,27 @@
 ## 4. Endless
 
 - Hub: **New Run** (confirm overwrite), **Continue**, best wave
-- Infinite waves; checkpoint at **each wave start**; Continue = that checkpoint
+- Infinite waves; dual checkpoint phases:
+  - **inWave** (at each wave start): Continue mid-wave → start of that wave (board/Coin as of wave start; mid-wave progress discarded — by design)
+  - **betweenWaves** (on wave clear + quit-to-menu between waves): Continue keeps post-clear towers/walls/Coin; Call starts the next wave
 - Compose overlay **during play**, does **not** pause
-- Forge shop and Aether tech: **Main Menu only** (not mid-run)
+- Forge shop and Aether tech: **Main Menu only** (not mid-run); meta Forge/Aether never overwritten by a stale run vault
 - Game over: keep Aether + Forge; discard Battle + board
 - Plain square grid; no pre-walls
 - Grid grows every **5 waves**, up to **22 rows**, **south from top** (spawn fixed; exit moves down)
 - Starts compact (**9×8**); drag / scroll the board when the field is taller than the screen
+- Base start: **3 lives / 75 Coin** (Iron Guard tech raises lives 3→5→7→10→15→20→25)
 - Kick drum tempo rises each wave; no music gap between waves
 
 ## 5. Campaign
 
-- 3 campaigns: **5 / 10 / 25** levels; unlock **linear** (clear prior campaign)
+- **Current slice (shipped):** Act I — **7 linear levels** (clear prior to unlock next)
+- **PINNED / future:** 3 campaigns of **5 / 10 / 25** levels (40 total) — do not invent the full slate yet
 - Level = multiple waves; later waves/levels harder (more waves on later levels)
 - Victory: clear required waves and/or boss (per level data)
 - **Prep** between levels (no timer): compose, Forge, Aether → **Start Level**
 - During level: roster **frozen**; no compose / Forge / tech
-- May place/sell/walls, spend level-up points, targeting, speed, undo, Call Early
+- May place/sell/walls, spend level-up points, speed, undo, Call Early
 - Pre-wave placement allowed until first wave starts
 - Maps: procedural from **predefined seed per level** + valid pre-walls
 - Game over → Prep; meta kept; Battle for that level discarded; level not cleared
@@ -85,11 +89,10 @@ Main Menu entry at launch: grid, spawn/exit, pre-walls, wave scripts or formula,
 
 **Start of run/level:** Battle grant only. Forge and Aether balances carry from meta (may be 0). No Forge/Aether start grant.
 
-**Starter ownership (free, no Forge):** `watchtower`, `single`, `pellet`. Slot 1 pre-equipped with that triad. Other parts locked until purchased/unlocked.
+**Starter ownership (free, no Forge):** `sentry`, `single`, `kinetic`. Slot 1 pre-equipped with that triad. Other parts locked until purchased/unlocked (Forge) or gifted by endless best-wave milestones.
 
-**Place cost:** sum of part costs after discounts, paid in Battle.  
-**Sell tower:** 50% of Battle paid for that tower (place cost only; level-up points not refunded).  
-**Sell wall:** 50% of **that wall’s recorded purchase price** (not the current shop tier price).
+**Place cost:** sum of part costs after discounts, paid in Battle. Optional board-density surcharge after the first towers.  
+**Sell tower/wall:** Salvager tech sets refund **50% / 60% / 75%** of **that instance’s recorded Battle paid** (level-up points not refunded).
 
 ---
 
@@ -139,15 +142,17 @@ Starter free parts: **Sentry + Single + Kinetic**.
 | Single | One projectile |
 | Twin | Alternating dual |
 | Scatter | Cone multi |
-| Rail | Long pierce; air-capable |
+| Rail | Long pierce (ballistic); air-capable |
 | Pulse | Self-centered area ticks |
 | Launcher | Lob; **blast on impact** (explosion is barrel, not payload) |
+| Flak | Shotgun cone; air-capable |
 
 ### Payloads (elements)
 
-Kinetic, Pyro (burn), Shock (yellow chain — Forge-upgradeable), Frost (slow), Poison (purple mild DoT + light slow), Acid (green armor shred).  
+Kinetic, Pyro (burn), Shock (yellow chain — Forge-upgradeable), Frost (slow), Poison (purple mild DoT + light slow), Acid (green armor shred), Breach (armor pierce), EMP (strip energy block / shields).  
 Flat armor + % resist + immunities; DoT stacks; slow cap; 100% = freeze.  
-AoE falloff from Launcher/Pulse; never damages towers. No DoT XP.
+AoE falloff from Launcher/Pulse; never damages towers. No DoT XP.  
+If launcher target dies in flight: detonate AoE at last position; other homing shots coast on last velocity.
 
 ### In-run levels
 
@@ -182,8 +187,8 @@ Leak damage by type. Abilities data-driven. Formula waves default; editor script
 
 ## 12. Meta
 
-- Aether: full refundable tech graph (slots, caps, economy, lives path, discounts, perks, …)
-- Forge: part buy/upgrade
+- Aether: full refundable tech graph (slots, caps, economy, lives path, discounts, perks, …) — **Respec tree** refunds all Foundations + Arsenal ranks
+- Forge: part buy/upgrade (escalating Parts price via `forgeBuys`)
 - Prestige/endgame: out of scope for v1
 - No tutorial — self-explanatory UI
 
@@ -197,12 +202,12 @@ Boot → Main → Endless Hub | Campaign Select → Prep | Build/Forge | Tech | 
 
 InGame Endless (live compose) | InGame Campaign (frozen roster) | Pause | Tower selected | Game Over | Victory | Confirms  
 
-HUD Endless: Lives, Battle, Forge/Aether readouts, Wave, Speed, Call Early, Compose, Undo, Wall, Pause, selection (spend point / sell / target / XP).  
+HUD Endless: Lives, Battle, Forge/Aether readouts, Wave, Call Early (hold for 5×), Compose, Undo, Wall, Pause, selection (spend point / sell / XP).  
 HUD Campaign: same without compose/Forge/tech.  
 
-Pause: Resume, Speed, Settings subset, Quit (confirm).  
-Settings: volumes, particles, colorblind, reset, credits, IAP stub.  
-Desktop hotkeys: `1`–`9`/`0` slots (slots 11–12 on HUD), `Space` Call Early, `Esc` pause, `U` spend level-up point, `X` sell, `W` wall, `B` compose (Endless).
+Pause: Resume, Speed 1/2/3, Quit (confirm). Pause copy distinguishes mid-wave vs between-wave checkpoint.  
+Settings: volumes, particles, colorblind, camera pitch, tech respec, IAP stub.  
+Desktop hotkeys: `1`–`9`/`0` slots 1–10, `-`/`=` slots 11–12, `Space` Call Early, `Esc` pause, `U` spend level-up point, `X` sell, `W` wall, `B` compose (Endless), `Z` undo.
 
 ---
 
