@@ -7,7 +7,11 @@
  */
 
 export const VIEW25 = {
-  /** Camera tilt from top-down, degrees. 0 = flat, ~50 = steep. Slider-ready. */
+  /**
+   * Camera tilt from top-down, degrees (slider 8–58).
+   * Low ≈ above / top-down; high ≈ flat / side-on (foreshortened board).
+   * (Older comment said "0 = flat" meaning untilted top-down — opposite of UI language.)
+   */
   pitchDeg: 24,
   /** How strongly pitch narrows the far edge (0–1). */
   trap: 0.42,
@@ -21,8 +25,14 @@ export const VIEW25 = {
   /**
    * Turret mount lift above cell center (× sprite size).
    * Base pad stays on the cell; barrel hub sits this far above it.
+   * Grows with pitch so side-on reads taller stacks.
    */
-  rise: 0.22,
+  rise: 0.24,
+  /**
+   * Vertical exaggeration for tower/wall extrusions (not cell projection).
+   * <1 squat when above; >1 taller when flat/side-on. Deck ellipse ry stays on deckRatio.
+   */
+  vExag: 1.09,
   /** Soft depth fog strength (0–1), rises with pitch. */
   depthFog: 0.22,
 };
@@ -40,8 +50,10 @@ export function syncCamera() {
   VIEW25.deckRatio = Math.max(0.42, cos);
   VIEW25.farScale = Math.max(0.35, 1 - sin * VIEW25.trap);
   VIEW25.nearScale = 1;
-  // More pitch → deck ellipses read taller; keep the hub a bit higher
-  VIEW25.rise = 0.18 + 0.12 * sin;
+  // Side-on (high pitch): taller sprites; above (low pitch): squat footprints
+  // sin≈0.14@8°, 0.41@24°, 0.85@58°
+  VIEW25.vExag = 0.72 + 0.92 * sin;
+  VIEW25.rise = 0.13 + 0.28 * sin;
   VIEW25.boxSkew = 0.1 + 0.14 * sin;
   VIEW25.shadowSkew = 0.012 + 0.05 * sin;
   VIEW25.depthFog = 0.12 + 0.38 * sin;

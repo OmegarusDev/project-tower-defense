@@ -1026,7 +1026,7 @@ export class BoardView {
     const body = [left, right, rightB, leftB].map((p) => ({ x: p.x, y: p.y + flinch }));
 
     // Extruded face under the rampart
-    const rise = Math.max(4, this.cell * 0.14);
+    const rise = Math.max(4, this.cell * 0.14 * VIEW25.vExag);
     const face = [
       { x: leftB.x, y: leftB.y },
       { x: rightB.x, y: rightB.y },
@@ -1099,9 +1099,10 @@ export class BoardView {
       const s = top.s;
       ctx.fillStyle = shade(accent, 0.12);
       ctx.beginPath();
+      const merlonH = 5 * s * VIEW25.vExag;
       ctx.moveTo(top.x - 4 * s, top.y + 1);
-      ctx.lineTo(top.x - 2.2 * s, top.y - 5 * s);
-      ctx.lineTo(top.x + 2.2 * s, top.y - 5 * s);
+      ctx.lineTo(top.x - 2.2 * s, top.y - merlonH);
+      ctx.lineTo(top.x + 2.2 * s, top.y - merlonH);
       ctx.lineTo(top.x + 4 * s, top.y + 1);
       ctx.closePath();
       ctx.fill();
@@ -1142,7 +1143,7 @@ export class BoardView {
     const trim = p.wallTrim || p.accent;
     const q = this.cam.cellQuad(x, y, 1);
     const sAvg = (q[0].s + q[2].s) / 2;
-    const rise = Math.max(5, this.cell * 0.22 * sAvg);
+    const rise = Math.max(5, this.cell * 0.22 * sAvg * VIEW25.vExag);
 
     // Ground contact shadow
     this._fillQuad(
@@ -1267,8 +1268,8 @@ export class BoardView {
     const barW = s * 0.55;
     const barH = Math.max(3, s * 0.06);
     const bx = px + (s - barW) / 2;
-    // Clear of the level badge (top-right) and well above the base pad
-    const by = py + s * 0.28;
+    // Sit above the pitch-linked turret hub (never across the base / cell edge)
+    const by = py + s * (0.5 - VIEW25.rise) - Math.max(5, s * 0.12);
     ctx.fillStyle = "rgba(20,16,12,0.8)";
     ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
     ctx.fillStyle = "rgba(60,55,45,0.9)";

@@ -7,6 +7,11 @@ import { shade, withAlpha, roundRect, facePoly, matsFrom } from "./drawUtil.js";
 const BASE_SCALE = 1.22;
 const BARREL_SCALE = 0.8;
 
+/** Pitch-linked vertical measure — footprint radii stay unscaled. */
+function vz(s, k) {
+  return s * k * VIEW25.vExag;
+}
+
 export function drawComposedTower(ctx, palette, t, px, py, s, selected, opts = {}) {
   const cx = px + s / 2;
   // Cell center = base pad / footprint. Turret hub lifts above by VIEW25.rise.
@@ -19,6 +24,7 @@ export function drawComposedTower(ctx, palette, t, px, py, s, selected, opts = {
 
   drawGroundShadow(ctx, cx, groundY, baseS);
   drawBase(ctx, palette, t.base, cx, groundY, baseS);
+  drawTurretStem(ctx, palette, t.barrel, cx, groundY, hubY, baseS);
   drawTurret(ctx, palette, t.barrel, t.payload, cx, hubY, barrelS, angle);
 
   if (showBadge) {
@@ -68,12 +74,14 @@ function drawGroundShadow(ctx, cx, groundY, s) {
  * Bases share the board's high-angle camera (VIEW25).
  * `groundY` is the cell-center footprint — keep pad mass on/above it so
  * foreshortened ellipses don't spill into the next row.
+ * Vertical stack offsets / extrusions use vz() so pitch can stretch height
+ * without changing footprint radii or deckRy foreshortening.
  */
 function drawBase(ctx, palette, base, cx, groundY, s) {
   const col = palette.baseColor(base);
   const mats = matsFrom(col);
   // Deck pad sits on the cell center; body stacks upward from there
-  const deckY = groundY - s * 0.02;
+  const deckY = groundY - vz(s, 0.02);
 
   switch (base) {
     case "bulwark":
@@ -98,43 +106,63 @@ function drawBase(ctx, palette, base, cx, groundY, s) {
   }
 }
 
+/** Thin column bridging pad crown → turret hub when rise clears the base. */
+function drawTurretStem(ctx, palette, barrel, cx, groundY, hubY, baseS) {
+  // Approximate tallest pad crown (spire/sentry stack); only fill air above it
+  const crownY = groundY - vz(baseS, 0.2);
+  const topY = hubY + Math.max(1, baseS * 0.015);
+  const rise = crownY - topY;
+  if (rise < 3) return;
+  const metal = palette.barrelColor(barrel);
+  cyl25(
+    ctx,
+    cx,
+    topY,
+    baseS * 0.05,
+    rise,
+    shade(metal, 0.08),
+    shade(metal, -0.12),
+    shade(metal, -0.28)
+  );
+}
+
 /** Round keep — wide drum + collar ring + vent slits. */
 function drawBaseSentry(ctx, cx, deckY, s, m) {
-  cyl25(ctx, cx, deckY + s * 0.02, s * 0.3, s * 0.05, m.sideDark, m.sideDeep, m.rim);
-  cyl25(ctx, cx, deckY - s * 0.08, s * 0.25, s * 0.12, m.top, m.side, m.sideDark);
+  cyl25(ctx, cx, deckY + vz(s, 0.02), s * 0.3, vz(s, 0.05), m.sideDark, m.sideDeep, m.rim);
+  cyl25(ctx, cx, deckY - vz(s, 0.08), s * 0.25, vz(s, 0.12), m.top, m.side, m.sideDark);
   // Side vents
   ctx.strokeStyle = withAlpha(m.sideDeep, 0.7);
   ctx.lineWidth = Math.max(1, s * 0.02);
   for (const ox of [-s * 0.16, s * 0.16]) {
     ctx.beginPath();
-    ctx.moveTo(cx + ox, deckY - s * 0.04);
-    ctx.lineTo(cx + ox, deckY - s * 0.12);
+    ctx.moveTo(cx + ox, deckY - vz(s, 0.04));
+    ctx.lineTo(cx + ox, deckY - vz(s, 0.12));
     ctx.stroke();
   }
-  ring25(ctx, cx, deckY - s * 0.1, s * 0.22, withAlpha(m.rim, 0.55));
-  cyl25(ctx, cx, deckY - s * 0.14, s * 0.16, s * 0.06, m.topHi, m.accent, m.sideDark);
+  ring25(ctx, cx, deckY - vz(s, 0.1), s * 0.22, withAlpha(m.rim, 0.55));
+  cyl25(ctx, cx, deckY - vz(s, 0.14), s * 0.16, vz(s, 0.06), m.topHi, m.accent, m.sideDark);
   ctx.strokeStyle = withAlpha(m.topHi, 0.55);
   ctx.lineWidth = 1.25;
   ctx.beginPath();
-  ctx.ellipse(cx, deckY - s * 0.14, s * 0.14, deckRy(s * 0.14), 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, deckY - vz(s, 0.14), s * 0.14, deckRy(s * 0.14), 0, 0, Math.PI * 2);
   ctx.stroke();
-  rivetRing(ctx, cx, deckY - s * 0.14, s * 0.12, 6, m.rim);
+  rivetRing(ctx, cx, deckY - vz(s, 0.14), s * 0.12, 6, m.rim);
 }
 
 /** Armored bunker — chunky iso box with bevelled top. */
 function drawBaseBulwark(ctx, cx, deckY, s, m) {
   const w = s * 0.58;
   const d = s * 0.3;
-  const h = s * 0.12;
-  box25(ctx, cx, deckY - s * 0.12, w, d, h, m);
+  const h = vz(s, 0.12);
+  box25(ctx, cx, deckY - vz(s, 0.12), w, d, h, m);
   // Armor seam across the front lip
   ctx.strokeStyle = withAlpha(m.rim, 0.55);
   ctx.lineWidth = 1.2;
   ctx.beginPath();
-  ctx.moveTo(cx - w * 0.35, deckY - s * 0.02);
-  ctx.lineTo(cx + w * 0.35, deckY - s * 0.02);
+  ctx.moveTo(cx - w * 0.35, deckY - vz(s, 0.02));
+  ctx.lineTo(cx + w * 0.35, deckY - vz(s, 0.02));
   ctx.stroke();
-  box25(ctx, cx, deckY - s * 0.18, w * 0.72, d * 0.72, s * 0.06, {
+  box25(ctx, cx, deckY - vz(s, 0.18), w * 0.72, d * 0.72, vz(s, 0.06), {
     top: m.topHi,
     side: m.accent,
     sideDark: m.sideDark,
@@ -148,23 +176,23 @@ function drawBaseBulwark(ctx, cx, deckY, s, m) {
     [0, -d * 0.02],
   ]) {
     ctx.beginPath();
-    ctx.arc(cx + ox, deckY - s * 0.18 + oy, s * 0.024, 0, Math.PI * 2);
+    ctx.arc(cx + ox, deckY - vz(s, 0.18) + oy, s * 0.024, 0, Math.PI * 2);
     ctx.fill();
   }
 }
 
 /** Tall tapered stack — sniper pedestal. */
 function drawBaseSpire(ctx, cx, deckY, s, m) {
-  cyl25(ctx, cx, deckY - s * 0.02, s * 0.28, s * 0.04, m.sideDark, m.sideDeep, m.rim);
-  rivetRing(ctx, cx, deckY - s * 0.02, s * 0.22, 8, m.rim);
-  frustum25(ctx, cx, deckY - s * 0.14, s * 0.22, s * 0.13, s * 0.12, m);
+  cyl25(ctx, cx, deckY - vz(s, 0.02), s * 0.28, vz(s, 0.04), m.sideDark, m.sideDeep, m.rim);
+  rivetRing(ctx, cx, deckY - vz(s, 0.02), s * 0.22, 8, m.rim);
+  frustum25(ctx, cx, deckY - vz(s, 0.14), s * 0.22, s * 0.13, vz(s, 0.12), m);
   // Observation band
-  ring25(ctx, cx, deckY - s * 0.16, s * 0.15, withAlpha(m.accent, 0.65));
-  cyl25(ctx, cx, deckY - s * 0.22, s * 0.1, s * 0.1, m.topHi, m.side, m.sideDark);
-  cyl25(ctx, cx, deckY - s * 0.28, s * 0.13, s * 0.04, m.top, m.accent, m.sideDark);
+  ring25(ctx, cx, deckY - vz(s, 0.16), s * 0.15, withAlpha(m.accent, 0.65));
+  cyl25(ctx, cx, deckY - vz(s, 0.22), s * 0.1, vz(s, 0.1), m.topHi, m.side, m.sideDark);
+  cyl25(ctx, cx, deckY - vz(s, 0.28), s * 0.13, vz(s, 0.04), m.top, m.accent, m.sideDark);
   ctx.fillStyle = withAlpha(m.topHi, 0.55);
   ctx.beginPath();
-  ctx.ellipse(cx - s * 0.03, deckY - s * 0.3, s * 0.04, deckRy(s * 0.03), -0.4, 0, Math.PI * 2);
+  ctx.ellipse(cx - s * 0.03, deckY - vz(s, 0.3), s * 0.04, deckRy(s * 0.03), -0.4, 0, Math.PI * 2);
   ctx.fill();
 }
 
@@ -173,79 +201,79 @@ function drawBaseAerie(ctx, cx, deckY, s, m) {
   for (const ang of [-0.9, 0.9, 3.14]) {
     const fx = cx + Math.cos(ang) * s * 0.18;
     const fy = deckY + Math.sin(ang) * s * 0.02;
-    cyl25(ctx, fx, fy - s * 0.02, s * 0.06, s * 0.04, m.side, m.sideDark, m.rim);
+    cyl25(ctx, fx, fy - vz(s, 0.02), s * 0.06, vz(s, 0.04), m.side, m.sideDark, m.rim);
   }
   ctx.fillStyle = m.sideDark;
   for (const ang of [-0.9, 0.9, 3.14]) {
     const fx = cx + Math.cos(ang) * s * 0.16;
     const x0 = cx + Math.cos(ang) * s * 0.05;
     ctx.beginPath();
-    ctx.moveTo(x0 - 2, deckY - s * 0.08);
+    ctx.moveTo(x0 - 2, deckY - vz(s, 0.08));
     ctx.lineTo(fx - 2, deckY);
     ctx.lineTo(fx + 2, deckY);
-    ctx.lineTo(x0 + 2, deckY - s * 0.08);
+    ctx.lineTo(x0 + 2, deckY - vz(s, 0.08));
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = withAlpha(m.rim, 0.4);
     ctx.lineWidth = 1;
     ctx.stroke();
   }
-  cyl25(ctx, cx, deckY - s * 0.1, s * 0.24, s * 0.07, m.top, m.side, m.sideDark);
-  ring25(ctx, cx, deckY - s * 0.1, s * 0.2, withAlpha(m.accent, 0.45));
+  cyl25(ctx, cx, deckY - vz(s, 0.1), s * 0.24, vz(s, 0.07), m.top, m.side, m.sideDark);
+  ring25(ctx, cx, deckY - vz(s, 0.1), s * 0.2, withAlpha(m.accent, 0.45));
   ctx.fillStyle = m.sideDeep;
   ctx.beginPath();
-  ctx.ellipse(cx, deckY - s * 0.1, s * 0.14, deckRy(s * 0.14), 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, deckY - vz(s, 0.1), s * 0.14, deckRy(s * 0.14), 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = m.topHi;
   ctx.beginPath();
-  ctx.ellipse(cx, deckY - s * 0.12, s * 0.11, deckRy(s * 0.11), 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, deckY - vz(s, 0.12), s * 0.11, deckRy(s * 0.11), 0, 0, Math.PI * 2);
   ctx.fill();
-  rivetRing(ctx, cx, deckY - s * 0.12, s * 0.08, 5, m.rim);
+  rivetRing(ctx, cx, deckY - vz(s, 0.12), s * 0.08, 5, m.rim);
 }
 
 /** Keep with peaked roof. */
 function drawBaseWarden(ctx, cx, deckY, s, m) {
   const w = s * 0.48;
   const d = s * 0.28;
-  const h = s * 0.11;
-  box25(ctx, cx, deckY - s * 0.1, w, d, h, m);
+  const h = vz(s, 0.11);
+  box25(ctx, cx, deckY - vz(s, 0.1), w, d, h, m);
   // Window slits
   ctx.fillStyle = withAlpha(m.sideDeep, 0.85);
   for (const ox of [-w * 0.14, w * 0.14]) {
-    roundRect(ctx, cx + ox - s * 0.018, deckY - s * 0.08, s * 0.036, s * 0.05, 1);
+    roundRect(ctx, cx + ox - s * 0.018, deckY - vz(s, 0.08), s * 0.036, vz(s, 0.05), 1);
     ctx.fill();
   }
-  const roofH = s * 0.11;
-  const topY = deckY - s * 0.14;
+  const roofH = vz(s, 0.11);
+  const topY = deckY - vz(s, 0.14);
   const hw = w * 0.4;
   ctx.fillStyle = m.sideDark;
   ctx.beginPath();
   ctx.moveTo(cx, topY - roofH);
   ctx.lineTo(cx + hw, topY);
-  ctx.lineTo(cx + hw, topY + s * 0.04);
-  ctx.lineTo(cx, topY + s * 0.04 - roofH * 0.15);
+  ctx.lineTo(cx + hw, topY + vz(s, 0.04));
+  ctx.lineTo(cx, topY + vz(s, 0.04) - roofH * 0.15);
   ctx.closePath();
   ctx.fill();
   ctx.fillStyle = m.side;
   ctx.beginPath();
   ctx.moveTo(cx, topY - roofH);
   ctx.lineTo(cx - hw, topY);
-  ctx.lineTo(cx - hw, topY + s * 0.04);
-  ctx.lineTo(cx, topY + s * 0.04 - roofH * 0.15);
+  ctx.lineTo(cx - hw, topY + vz(s, 0.04));
+  ctx.lineTo(cx, topY + vz(s, 0.04) - roofH * 0.15);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = m.topHi;
   ctx.lineWidth = 1.25;
   ctx.beginPath();
   ctx.moveTo(cx, topY - roofH);
-  ctx.lineTo(cx, topY + s * 0.02);
+  ctx.lineTo(cx, topY + vz(s, 0.02));
   ctx.stroke();
   ctx.fillStyle = withAlpha(m.accent, 0.7);
   ctx.beginPath();
   ctx.arc(cx, topY - roofH + 1, s * 0.02, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = m.sideDeep;
-  roundRect(ctx, cx - s * 0.05, deckY - s * 0.02, s * 0.1, s * 0.07, 2);
+  roundRect(ctx, cx - s * 0.05, deckY - vz(s, 0.02), s * 0.1, vz(s, 0.07), 2);
   ctx.fill();
   ctx.strokeStyle = withAlpha(m.rim, 0.5);
   ctx.stroke();
@@ -253,19 +281,19 @@ function drawBaseWarden(ctx, cx, deckY, s, m) {
 
 /** Angular claw pedestal — diamond footprint extruded. */
 function drawBaseTalon(ctx, cx, deckY, s, m) {
-  cyl25(ctx, cx, deckY - s * 0.02, s * 0.26, s * 0.04, m.sideDark, m.sideDeep, m.rim);
-  rivetRing(ctx, cx, deckY - s * 0.02, s * 0.2, 6, m.rim);
-  diamondPrism25(ctx, cx, deckY - s * 0.12, s * 0.24, s * 0.12, m);
+  cyl25(ctx, cx, deckY - vz(s, 0.02), s * 0.26, vz(s, 0.04), m.sideDark, m.sideDeep, m.rim);
+  rivetRing(ctx, cx, deckY - vz(s, 0.02), s * 0.2, 6, m.rim);
+  diamondPrism25(ctx, cx, deckY - vz(s, 0.12), s * 0.24, vz(s, 0.12), m);
   // Claw tip accents
   ctx.strokeStyle = withAlpha(m.accent, 0.55);
   ctx.lineWidth = 1.2;
   for (const a of [-0.7, 0.7, 2.4, -2.4]) {
     ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a) * s * 0.06, deckY - s * 0.12 + Math.sin(a) * s * 0.04);
-    ctx.lineTo(cx + Math.cos(a) * s * 0.2, deckY - s * 0.12 + Math.sin(a) * s * 0.1);
+    ctx.moveTo(cx + Math.cos(a) * s * 0.06, deckY - vz(s, 0.12) + Math.sin(a) * s * 0.04);
+    ctx.lineTo(cx + Math.cos(a) * s * 0.2, deckY - vz(s, 0.12) + Math.sin(a) * s * 0.1);
     ctx.stroke();
   }
-  diamondPrism25(ctx, cx, deckY - s * 0.18, s * 0.13, s * 0.06, {
+  diamondPrism25(ctx, cx, deckY - vz(s, 0.18), s * 0.13, vz(s, 0.06), {
     top: m.topHi,
     side: m.accent,
     sideDark: m.sideDark,

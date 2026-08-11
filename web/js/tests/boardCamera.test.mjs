@@ -37,6 +37,17 @@ const steepFar = VIEW25.farScale;
 setPitch(12);
 const flatFar = VIEW25.farScale;
 assert(steepFar < flatFar, "steeper pitch should narrow the far edge more");
+
+// Vertical exaggeration: high pitch (side-on) taller than low pitch (above)
+setPitch(12);
+const aboveExag = VIEW25.vExag;
+const aboveRise = VIEW25.rise;
+setPitch(48);
+const flatExag = VIEW25.vExag;
+const flatRise = VIEW25.rise;
+assert(flatExag > aboveExag * 1.15, `vExag side-on (${flatExag}) should exceed above (${aboveExag})`);
+assert(flatRise > aboveRise * 1.15, `rise side-on (${flatRise}) should exceed above (${aboveRise})`);
+assert(VIEW25.vExag > 1, "side-on vExag should stretch taller than authored stack");
 setPitch(flatPitch);
 
 console.log("ALL boardCamera tests passed");
