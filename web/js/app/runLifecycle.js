@@ -142,8 +142,12 @@ export function enterGame(app) {
   app.clearPlaceConfirm();
   app.score.setWave(app.sim?.waveIndex || 1);
   app.score.setSpeed(app.speed || 1);
+  app.score.setPhase(app.sim?.checkpointPhase || "betweenWaves");
+  app.score.setPaused(!!app.paused);
   app.score.setEnabled(app.meta.settings?.music !== false);
+  app.score.setMusicVolume(app.meta.settings?.musicVolume ?? 0.4);
   app.score.start();
+  app.unlockAudio();
   app.renderGameChrome();
   // Single fit + immediate paint — no hand-off zoom, no deferred second refit.
   app.board.prepareEntry?.();

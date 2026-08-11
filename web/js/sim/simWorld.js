@@ -172,25 +172,41 @@ export class SimWorld {
     return { wave: this.waveIndex, earlyBonus: applied };
   }
 
-  /** Spend one banked level-up point on a tower (GDD: XP → point → spend). */
-  trySpendLevelPoint(towerId) {
+  /**
+   * Spend one pending branch pick after an auto-level.
+   * @param {'damage'|'rof'|'range'} branch
+   */
+  tryChooseLevelBranch(towerId, branch) {
     const t = this.towers.find((x) => x.id === towerId);
     if (!t) return { ok: false, reason: "missing" };
-    const cap = Math.max(1, t.levelCap | 0, this.runLevelCap | 0);
-    t.levelCap = cap;
-    if ((t.levelPoints | 0) <= 0) return { ok: false, reason: "no_points" };
-    if ((t.level | 0) >= cap) return { ok: false, reason: "at_cap" };
-    t.levelPoints = (t.levelPoints | 0) - 1;
-    t.level = (t.level | 0) + 1;
+    if (branch !== "damage" && branch !== "rof" && branch !== "range") {
+      return { ok: false, reason: "bad_branch" };
+    }
+    if ((t.pendingPicks | 0) <= 0) return { ok: false, reason: "no_picks" };
+    t.pendingPicks = (t.pendingPicks | 0) - 1;
+    if (!t.branch) t.branch = { damage: 0, rof: 0, range: 0 };
+    t.branch[branch] = (t.branch[branch] | 0) + 1;
     this.combat.dirtyAuras();
-    this.logAction("level_up", { id: towerId, level: t.level });
-    this.emit("tower_leveled", {
+    this.logAction("level_branch", {
+      id: towerId,
+      branch,
+      ranks: { ...t.branch },
+      pendingPicks: t.pendingPicks | 0,
+    });
+    this.emit("level_branch", {
       tower: t,
-      level: t.level,
+      branch,
+      ranks: { ...t.branch },
+      pendingPicks: t.pendingPicks | 0,
       x: t.cell.x + 0.5,
       y: t.cell.y + 0.5,
     });
-    return { ok: true, level: t.level, points: t.levelPoints | 0 };
+    return {
+      ok: true,
+      branch,
+      pendingPicks: t.pendingPicks | 0,
+      ranks: { ...t.branch },
+    };
   }
 
   growSouth(n) {
@@ -243,7 +259,8 @@ export class SimWorld {
       level: 1,
       xp: 0,
       xpToPoint: 55,
-      levelPoints: 0,
+      pendingPicks: 0,
+      branch: { damage: 0, rof: 0, range: 0 },
       levelCap: Math.max(loadout.levelCap | 0, this.runLevelCap | 0, 1),
       cooldown: 0,
       targetId: -1,
@@ -356,7 +373,22 @@ export class SimWorld {
       t.barrel = migratePartId("barrel", t.barrel) || "single";
       t.payload = migratePartId("payload", t.payload) || "kinetic";
       if (!Number.isFinite(t.aimAngle)) t.aimAngle = -Math.PI / 2;
-      t.levelPoints = t.levelPoints | 0;
+      if (!t.branch) t.branch = { damage: 0, rof: 0, range: 0 };
+      t.branch.damage = t.branch.damage | 0;
+      t.branch.rof = t.branch.rof | 0;
+      t.branch.range = t.branch.range | 0;
+      t.pendingPicks = t.pendingPicks | 0;
+      // Migrate legacy banked levelPoints → auto-levels + pending branch picks.
+      let pts = t.levelPoints | 0;
+      if (pts > 0) {
+        const cap = Math.max(1, t.levelCap | 0, this.runLevelCap | 0);
+        while (pts > 0 && (t.level | 0) < cap) {
+          pts -= 1;
+          t.level = (t.level | 0) + 1;
+          t.pendingPicks = (t.pendingPicks | 0) + 1;
+        }
+        t.levelPoints = 0;
+      }
       this.grid.setBlocked(t.cell.x, t.cell.y, true);
       this.grid.setTower(t.cell.x, t.cell.y, true);
     }

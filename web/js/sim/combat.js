@@ -464,29 +464,46 @@ export class CombatSystem {
   }
 
   _grantXp(tower, amount) {
-    const cap = Math.max(1, tower.levelCap || 1);
-    // At cap: bank points only when meta later raises the cap; still earn XP→points.
+    const cap = Math.max(1, tower.levelCap || 1, this.world.runLevelCap | 0);
+    tower.levelCap = cap;
+    // At cap: freeze bar — no endless banked points.
+    if ((tower.level | 0) >= cap) {
+      const need = tower.xpToPoint || 55;
+      tower.xp = Math.min(tower.xp || 0, need - 1);
+      return;
+    }
     tower.xp = (tower.xp || 0) + amount;
     const need = tower.xpToPoint || 55;
     let gained = 0;
-    while (tower.xp >= need) {
+    while (tower.xp >= need && (tower.level | 0) < cap) {
       tower.xp -= need;
-      tower.levelPoints = (tower.levelPoints | 0) + 1;
+      tower.level = (tower.level | 0) + 1;
+      tower.pendingPicks = (tower.pendingPicks | 0) + 1;
       gained += 1;
-      // Soft cap on banked points so endless farms don't explode the UI.
-      if ((tower.levelPoints | 0) >= 99) {
-        tower.xp = need - 1;
-        break;
-      }
-    }
-    if (gained > 0) {
-      this.world.emit("level_point_gained", {
+      this.dirtyAuras();
+      this.world.emit("tower_leveled", {
         tower,
-        points: tower.levelPoints | 0,
-        gained,
-        atCap: (tower.level | 0) >= cap,
+        level: tower.level,
+        pendingPicks: tower.pendingPicks | 0,
         x: tower.cell.x + 0.5,
         y: tower.cell.y + 0.5,
+      });
+      this.world.emit("level_pick_ready", {
+        tower,
+        pendingPicks: tower.pendingPicks | 0,
+        x: tower.cell.x + 0.5,
+        y: tower.cell.y + 0.5,
+      });
+    }
+    if ((tower.level | 0) >= cap) {
+      tower.xp = Math.min(tower.xp, need - 1);
+    }
+    if (gained > 0) {
+      this.world.logAction("auto_level", {
+        id: tower.id,
+        level: tower.level,
+        gained,
+        pendingPicks: tower.pendingPicks | 0,
       });
     }
   }

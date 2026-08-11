@@ -66,7 +66,7 @@
 - Victory: clear required waves and/or boss (per level data)
 - **Prep** between levels (no timer): compose, Forge, Aether → **Start Level**
 - During level: roster **frozen**; no compose / Forge / tech
-- May place/sell/walls, spend level-up points, speed, undo, Call Early
+- May place/sell/walls, spend branch picks, speed, undo, Call Early
 - Pre-wave placement allowed until first wave starts
 - Maps: procedural from **predefined seed per level** + valid pre-walls
 - Game over → Prep; meta kept; Battle for that level discarded; level not cleared
@@ -92,7 +92,7 @@ Main Menu entry at launch: grid, spawn/exit, pre-walls, wave scripts or formula,
 **Starter ownership (free, no Forge):** `sentry`, `single`, `kinetic`. Slot 1 pre-equipped with that triad. Other parts locked until purchased/unlocked (Forge) or gifted by endless best-wave milestones.
 
 **Place cost:** sum of part costs after discounts, paid in Battle. Optional board-density surcharge after the first towers.  
-**Sell tower/wall:** Salvager tech sets refund **50% / 60% / 75%** of **that instance’s recorded Battle paid** (level-up points not refunded).
+**Sell tower/wall:** Salvager tech sets refund **50% / 60% / 75%** of **that instance’s recorded Battle paid** (levels/branch ranks not refunded).
 
 ---
 
@@ -160,11 +160,11 @@ If launcher target dies in flight: detonate AoE at last position; other homing s
 ### In-run levels
 
 - Cap starts at **1**, unlock to **5** via Aether
-- Hits (projectile + pulse tick) fill XP bar → **1 level-up point** on that tower (carry XP remainder)
-- Spend level-up point → +1 level (under cap)
+- Hits (projectile + pulse tick) fill XP bar → **auto +1 level** under cap (carry XP remainder) and **+1 pending branch pick**
+- Overlay: choose **Damage / ROF / Range** for a small extra bump to that stat; picks bank/stack
 - **No Battle purchase of levels** — Battle is place/walls only
-- Level effect: general power-up **by tower type** (data curves per base/combo)
-- Points at cap stay banked until meta raises cap
+- Each auto-level slightly buffs damage, ROF, and range together; branch ranks stack on top
+- At cap: XP bar freezes — no endless banked points
 
 ## 10. Upgrade orthogonality
 
@@ -205,12 +205,12 @@ Boot → Main → Endless Hub | Campaign Select → Prep | Build/Forge | Tech | 
 
 InGame Endless (live compose) | InGame Campaign (frozen roster) | Pause | Tower selected | Game Over | Victory | Confirms  
 
-HUD Endless: HP, Coin, Forge/Aether readouts, Wave, Call Early (hold for 5×), Compose, Undo, Wall, Pause, selection (spend point / sell / XP).  
+HUD Endless: HP, Coin, Forge/Aether readouts, Wave, Call Early (hold for 5×), Compose, Undo, Wall, Pause, selection (branch pick / sell / XP).  
 HUD Campaign: same without compose/Forge/tech.  
 
 Pause: Resume, Speed 1/2/3, Quit (confirm). Pause copy distinguishes mid-wave vs between-wave checkpoint.  
 Settings: volumes, particles, colorblind, camera pitch, tech respec, IAP stub.  
-Desktop hotkeys: `1`–`9`/`0` slots 1–10, `-`/`=` slots 11–12, `Space` Call Early, `Esc` pause, `U` spend level-up point, `X` sell, `W` wall, `B` compose (Endless), `Z` undo.
+Desktop hotkeys: `1`–`9`/`0` slots 1–10, `-`/`=` slots 11–12, `Space` Call Early, `Esc` pause, `U` pending branch as Damage, `X` sell, `W` wall, `B` compose (Endless), `Z` undo.
 
 ---
 

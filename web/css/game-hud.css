@@ -1019,6 +1019,21 @@
   gap: 6px;
 }
 
+.tower-branch-row {
+  display: flex;
+  gap: 4px;
+}
+
+.tower-branch-row .branch-btn {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 0.72rem;
+}
+
+.tower-branch-row.hidden {
+  display: none;
+}
+
 .tower-overlay .btn.danger {
   background: var(--btn-danger);
   border-color: var(--btn-danger-border);

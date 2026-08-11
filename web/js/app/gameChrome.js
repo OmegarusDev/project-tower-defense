@@ -150,8 +150,12 @@ export function renderGameChrome(app) {
       <div class="tower-overlay hidden" id="towerOverlay">
         <div class="meta" id="towerMeta"></div>
         <div class="xp-line" id="towerXp"></div>
+        <div class="tower-branch-row hidden" id="towerBranchRow" role="group" aria-label="Level branch">
+          <button type="button" class="btn secondary branch-btn" data-act="level-branch:damage">Dmg</button>
+          <button type="button" class="btn secondary branch-btn" data-act="level-branch:rof">ROF</button>
+          <button type="button" class="btn secondary branch-btn" data-act="level-branch:range">Rng</button>
+        </div>
         <div class="tower-overlay-acts">
-          <button class="btn" data-act="level-up" id="levelUpBtn">Level Up</button>
           <button class="btn danger" data-act="sell">Sell</button>
         </div>
       </div>
@@ -410,7 +414,7 @@ export function syncTowerOverlay(app) {
   const overlay = app.ui.querySelector("#towerOverlay");
   const meta = app.ui.querySelector("#towerMeta");
   const xpEl = app.ui.querySelector("#towerXp");
-  const levelBtn = app.ui.querySelector("#levelUpBtn");
+  const branchRow = app.ui.querySelector("#towerBranchRow");
   if (!overlay || !app.sim) return;
 
   const t = app.sim.towers.find((x) => x.id === app.selectedTowerId);
@@ -430,7 +434,7 @@ export function syncTowerOverlay(app) {
   if (t) {
     const cap = t.levelCap || 1;
     const need = t.xpToPoint || 55;
-    const pts = t.levelPoints | 0;
+    const picks = t.pendingPicks | 0;
     const atCap = (t.level || 1) >= cap;
     const refund = (t.paid * rate) | 0;
     if (meta) {
@@ -438,17 +442,19 @@ export function syncTowerOverlay(app) {
       meta.textContent = `${partLabel(t.base)} · ${doc} · L${t.level}/${cap}`;
     }
     if (xpEl) {
-      const ptLine = pts > 0 ? ` · ${pts} pt${pts === 1 ? "" : "s"}` : "";
+      const pickLine =
+        picks > 0 ? ` · ${picks} pick${picks === 1 ? "" : "s"}` : "";
       xpEl.textContent = atCap
-        ? pts > 0
-          ? `Max level · ${pts} pt banked`
+        ? picks > 0
+          ? `Max level · ${picks} pick${picks === 1 ? "" : "s"}`
           : "Max level"
-        : `XP ${t.xp | 0}/${need}${ptLine}`;
+        : `XP ${t.xp | 0}/${need}${pickLine}`;
     }
-    if (levelBtn) {
-      levelBtn.classList.toggle("hidden", false);
-      levelBtn.disabled = pts <= 0 || atCap;
-      levelBtn.textContent = atCap ? "At Cap" : pts > 0 ? `Level Up (${pts})` : "Level Up";
+    if (branchRow) {
+      branchRow.classList.toggle("hidden", picks <= 0);
+      branchRow.querySelectorAll("button").forEach((btn) => {
+        btn.disabled = picks <= 0;
+      });
     }
     const sellBtn = overlay.querySelector('[data-act="sell"]');
     if (sellBtn) sellBtn.textContent = `Sell · ${refund}`;
@@ -456,7 +462,7 @@ export function syncTowerOverlay(app) {
     const refund = (wall.paid * rate) | 0;
     if (meta) meta.textContent = "Wall";
     if (xpEl) xpEl.textContent = `Sell for ${refund} Coin`;
-    if (levelBtn) levelBtn.classList.add("hidden");
+    if (branchRow) branchRow.classList.add("hidden");
     const sellBtn = overlay.querySelector('[data-act="sell"]');
     if (sellBtn) sellBtn.textContent = `Sell · ${refund}`;
   }

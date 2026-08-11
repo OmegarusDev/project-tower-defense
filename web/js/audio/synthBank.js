@@ -1,4 +1,4 @@
-/** Boot-baked PCM via Web Audio — no audio files. SFX only; no music. */
+/** Boot-baked PCM via Web Audio — SFX + Music buses on one AudioContext. */
 
 export class SynthBank {
   constructor() {
@@ -6,10 +6,16 @@ export class SynthBank {
     this.buffers = {};
     this.ready = false;
     this.sfxVolume = 0.35;
+    this.musicVolume = 0.4;
+    this.masterGain = null;
+    this.sfxGain = null;
+    this.musicGain = null;
     this._onVisibility = () => {
       if (!this.ctx) return;
       if (document.hidden) {
         if (this.ctx.state === "running") this.ctx.suspend().catch(() => {});
+      } else {
+        if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
       }
     };
     document.addEventListener("visibilitychange", this._onVisibility);
@@ -17,12 +23,30 @@ export class SynthBank {
 
   setVolume(v) {
     this.sfxVolume = Math.max(0, Math.min(1, Number(v) || 0));
+    if (this.sfxGain) this.sfxGain.gain.value = this.sfxVolume;
+  }
+
+  setMusicVolume(v) {
+    this.musicVolume = Math.max(0, Math.min(1, Number(v) || 0));
+    if (this.musicGain) this.musicGain.gain.value = this.musicVolume;
   }
 
   async ensure() {
     if (this.ready) return;
     const Ctx = window.AudioContext || window.webkitAudioContext;
     this.ctx = new Ctx();
+    this.masterGain = this.ctx.createGain();
+    this.masterGain.gain.value = 1;
+    this.masterGain.connect(this.ctx.destination);
+
+    this.sfxGain = this.ctx.createGain();
+    this.sfxGain.gain.value = this.sfxVolume;
+    this.sfxGain.connect(this.masterGain);
+
+    this.musicGain = this.ctx.createGain();
+    this.musicGain.gain.value = this.musicVolume;
+    this.musicGain.connect(this.masterGain);
+
     const rate = this.ctx.sampleRate;
     this.buffers.ui = this._tone(rate, 880, 0.05, "square");
     this.buffers.confirm = this._tone(rate, 660, 0.07, "triangle");
@@ -35,8 +59,14 @@ export class SynthBank {
     this.ready = true;
   }
 
+  /** Resume context after a user gesture / tab focus. */
+  async resume() {
+    await this.ensure();
+    if (this.ctx.state === "suspended") await this.ctx.resume();
+  }
+
   async play(name, rate = 1) {
-    if (document.hidden) return;
+    if (typeof document !== "undefined" && document.hidden) return;
     await this.ensure();
     if (this.ctx.state === "suspended") await this.ctx.resume();
     const buf = this.buffers[name];
@@ -46,8 +76,8 @@ export class SynthBank {
     src.loop = false;
     src.playbackRate.value = rate;
     const g = this.ctx.createGain();
-    g.gain.value = this.sfxVolume;
-    src.connect(g).connect(this.ctx.destination);
+    g.gain.value = 1;
+    src.connect(g).connect(this.sfxGain);
     src.start();
   }
 

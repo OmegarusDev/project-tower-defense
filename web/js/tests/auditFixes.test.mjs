@@ -194,7 +194,7 @@ function placeOpen(sim, slot = 0) {
   assert(sim.combat._onHit(p, e1) === false, "skip already-hit id");
 }
 
-// ——— H1: level points banked, spend via trySpendLevelPoint ———
+// ——— H1: XP auto-levels; branch picks via tryChooseLevelBranch ———
 {
   const sim = new SimWorld();
   sim.setup(11, 14, 3, true);
@@ -203,18 +203,24 @@ function placeOpen(sim, slot = 0) {
     { base: "sentry", barrel: "single", payload: "kinetic", complete: true, placeCost: 20, levelCap: 3 },
   ]);
   const t = placeOpen(sim);
-  assert(t.level === 1 && t.levelPoints === 0, "starts L1");
+  assert(t.level === 1 && (t.pendingPicks | 0) === 0, "starts L1");
   t.xpToPoint = 5;
   for (let i = 0; i < 12; i++) sim.combat._grantXp(t, 1);
-  assert(t.level === 1, "XP does not auto-level");
-  assert(t.levelPoints >= 2, `banked points (got ${t.levelPoints})`);
-  const r = sim.trySpendLevelPoint(t.id);
-  assert(r.ok && r.level === 2, "spend point → L2");
-  assert(t.levelPoints >= 1, "remainder banked");
-  t.level = 3;
-  t.levelPoints = 2;
-  const capped = sim.trySpendLevelPoint(t.id);
-  assert(!capped.ok && capped.reason === "at_cap", "respects levelCap");
+  assert(t.level === 3, `auto-levels to cap (got L${t.level})`);
+  assert((t.pendingPicks | 0) >= 2, `pending picks (got ${t.pendingPicks})`);
+  const r = sim.tryChooseLevelBranch(t.id, "damage");
+  assert(r.ok && r.ranks.damage === 1, "branch Damage");
+  assert((t.pendingPicks | 0) >= 1, "remainder pending");
+  t.pendingPicks = 0;
+  const none = sim.tryChooseLevelBranch(t.id, "rof");
+  assert(!none.ok && none.reason === "no_picks", "no picks when empty");
+  // At cap: further XP does not bank endless points
+  const xpBefore = t.xp | 0;
+  sim.combat._grantXp(t, 50);
+  assert(t.level === 3, "stays at cap");
+  assert((t.pendingPicks | 0) === 0, "no new picks at cap");
+  assert((t.xp | 0) <= (t.xpToPoint || 55) - 1, "XP bar frozen under full");
+  void xpBefore;
 }
 
 // ——— H3: level cap starts at 1 ———

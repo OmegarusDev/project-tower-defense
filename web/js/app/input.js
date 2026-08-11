@@ -65,7 +65,8 @@ export function onKeyDown(app, e) {
     }
     if (key === "u" || key === "U") {
       e.preventDefault();
-      app.spendLevelPointSelected();
+      // Default branch pick = Damage when a tower has pending picks.
+      app.chooseLevelBranchSelected("damage");
       return;
     }
     if (key === "z" || key === "Z") {

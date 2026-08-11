@@ -99,6 +99,7 @@ export function onSimEvent(app, e) {
     case "wave_cleared":
       app.synth.play("confirm");
       app.score.setWave(app.sim.waveIndex);
+      app.score.setPhase("betweenWaves");
       {
         const gained = app.syncMetaProgress();
         app.sim.running = false;
@@ -143,7 +144,8 @@ export function onSimEvent(app, e) {
       app.toast(`${partLabel(e.tower?.base)} → L${e.level}`);
       app.syncTowerOverlay();
       break;
-    case "level_point_gained":
+    case "level_pick_ready":
+    case "level_branch":
       app.syncTowerOverlay();
       break;
     default:
@@ -192,6 +194,7 @@ export function callEarly(app) {
   const res = app.sim.startWave({ earlyBonus });
   app.synth.play("wave");
   app.score.setWave(app.sim.waveIndex);
+  app.score.setPhase("inWave");
   const got = res?.earlyBonus | 0;
   app.toast(
     got > 0

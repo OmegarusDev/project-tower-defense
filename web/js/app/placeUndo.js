@@ -97,23 +97,27 @@ export function undoLast(app) {
   
 }
 
-export function spendLevelPointSelected(app) {
+export function chooseLevelBranchSelected(app, branch) {
   if (!app.sim || app.selectedTowerId < 0) {
     app.toast("Select a tower first");
     return;
   }
-  const res = app.sim.trySpendLevelPoint(app.selectedTowerId);
+  const res = app.sim.tryChooseLevelBranch(app.selectedTowerId, branch);
   if (!res.ok) {
     const map = {
-      no_points: "No level-up points",
-      at_cap: "At level cap — raise Cap in Tech",
+      no_picks: "No branch picks",
+      bad_branch: "Pick Damage, ROF, or Range",
       missing: "Tower gone",
     };
-    app.toast(map[res.reason] || "Can't level");
+    app.toast(map[res.reason] || "Can't branch");
     return;
   }
+  const label = branch === "damage" ? "Damage" : branch === "rof" ? "ROF" : "Range";
   app.synth.play("confirm");
-  app.toast(`Level ${res.level} · ${res.points} point${res.points === 1 ? "" : "s"} left`);
+  const left = res.pendingPicks | 0;
+  app.toast(
+    `${label} +${res.ranks[branch]} · ${left} pick${left === 1 ? "" : "s"} left`
+  );
   app.syncTowerOverlay();
   
 }

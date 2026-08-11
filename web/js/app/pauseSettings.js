@@ -22,6 +22,7 @@ export function openPause(app) {
   if (app.screen !== "game" || !app.sim) return;
   app._endFastForward();
   app.paused = true;
+  app.score.setPaused(true);
   app.clearPlaceConfirm();
   renderPauseSheet(app);
   
@@ -29,6 +30,8 @@ export function openPause(app) {
 
 export function resumeGame(app) {
   app.paused = false;
+  app.score.setPaused(false);
+  app.unlockAudio();
   app.ui.querySelector("#pauseSheet")?.remove();
   
 }

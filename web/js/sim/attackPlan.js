@@ -62,26 +62,26 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
     plan.pattern = Pattern.HYBRID;
   }
 
+  // Auto-level: uniform Dmg / ROF / Range buffs (player branch picks add extra).
   const lvl = Math.max(0, level - 1);
-  const lvlMult = 1 + 0.12 * lvl;
-  switch (base.levelBias) {
-    case "range":
-      plan.rangeCells *= 1 + 0.08 * lvl;
-      plan.damage *= lvlMult;
-      break;
-    case "rof":
-      plan.fireInterval /= 1 + 0.08 * lvl;
-      plan.damage *= lvlMult * 0.9;
-      break;
-    case "aura":
-      plan.auraDamageMult *= 1 + 0.05 * lvl;
-      plan.auraRofMult *= 1 + 0.05 * lvl;
-      plan.damage *= lvlMult * 0.85;
-      break;
-    default:
-      plan.damage *= lvlMult;
-      plan.rangeCells *= 1 + 0.03 * lvl;
+  if (lvl > 0) {
+    plan.damage *= 1 + 0.04 * lvl;
+    plan.fireInterval /= 1 + 0.03 * lvl;
+    plan.rangeCells *= 1 + 0.03 * lvl;
   }
+  // Light aura flavor for aura bases (not the main power curve).
+  if (base.levelBias === "aura" && lvl > 0) {
+    plan.auraDamageMult *= 1 + 0.03 * lvl;
+    plan.auraRofMult *= 1 + 0.03 * lvl;
+  }
+
+  const branch = opts.branch || {};
+  const bDmg = Math.max(0, branch.damage | 0);
+  const bRof = Math.max(0, branch.rof | 0);
+  const bRange = Math.max(0, branch.range | 0);
+  if (bDmg > 0) plan.damage *= 1 + 0.05 * bDmg;
+  if (bRof > 0) plan.fireInterval /= 1 + 0.05 * bRof;
+  if (bRange > 0) plan.rangeCells *= 1 + 0.05 * bRange;
 
   // Shock lightning: base jumps + tower levels + tech chain ranks
   if (payload.chainUpgradeable || (payload.chainJumps || 0) > 0) {
@@ -131,9 +131,10 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
 export function planOptsFromParts(partUpgrades, globalMods, triad) {
   const up = partUpgrades || {};
   const g = globalMods || {};
-  const payload = up[triad.payload] || {};
-  const base = up[triad.base] || {};
-  const barrel = up[triad.barrel] || {};
+  const payload = up[triad?.payload] || {};
+  const base = up[triad?.base] || {};
+  const barrel = up[triad?.barrel] || {};
+  const br = triad?.branch || {};
   return {
     chainRank: payload.chain | 0,
     powerRank: payload.power | 0,
@@ -146,6 +147,11 @@ export function planOptsFromParts(partUpgrades, globalMods, triad) {
     globalDamage: g.damage || 1,
     globalRange: g.range || 1,
     globalRof: g.rof || 1,
+    branch: {
+      damage: br.damage | 0,
+      rof: br.rof | 0,
+      range: br.range | 0,
+    },
   };
 }
 

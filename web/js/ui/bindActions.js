@@ -84,8 +84,9 @@ export function handleUiAction(app, act, _ev) {
   else if (act === "resume") app.resumeGame();
   else if (act === "quit-run") app.quitToMenu();
   else if (act === "sell") app.sellSelected();
-  else if (act === "level-up") app.spendLevelPointSelected();
-  else if (act === "undo") app.undoLast();
+  else if (act?.startsWith("level-branch:")) {
+    app.chooseLevelBranchSelected(act.slice("level-branch:".length));
+  } else if (act === "undo") app.undoLast();
   else if (act === "tech-respec") app.respecTechTree();
   else if (act?.startsWith("speed:")) app.setSpeed(+act.slice(6));
   else if (act === "tool:wall") {

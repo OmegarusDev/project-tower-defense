@@ -211,7 +211,9 @@ export function paintForgePreview(app) {
     barrel: slot.barrel,
     payload: slot.payload,
     aimAngle: app.forgeAim,
-    levelPoints: 0,
+    level: 1,
+    pendingPicks: 0,
+    branch: { damage: 0, rof: 0, range: 0 },
   };
   const size = 72;
   const px = (css - size) / 2;

@@ -18,7 +18,7 @@ Conversation reconciliations (later answer wins). Kept out of the final GDD for 
 | Meta vault sync | Absolute assign from sim → **delta-merge** run gains only |
 | Call Early | Claimed once per wave (checkpointed) |
 | Grid growth | South from top |
-| XP auto-level | XP → level-up point → spend |
+| XP auto-level | XP fills → auto-level (+branch pick); overlay Damage/ROF/Range |
 | Battle buys levels | Removed — Battle is place/walls only |
 | Campaign map RNG | Predefined seed per level |
 | Campaign scope | Shipped **7 Act I levels**; 5/10/25×3 PINNED |

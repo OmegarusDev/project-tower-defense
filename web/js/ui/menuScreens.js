@@ -56,6 +56,7 @@ export function renderSettings(app) {
   app.screen = "settings";
   const pitch = app.meta.settings?.cameraPitch ?? VIEW25.pitchDeg;
   const vol = Math.round((app.meta.settings?.sfxVolume ?? 0.35) * 100);
+  const musicVol = Math.round((app.meta.settings?.musicVolume ?? 0.4) * 100);
   app.ui.innerHTML = `
     <div class="screen scroll meta-screen meta-enter">
       <header class="meta-hero">
@@ -79,6 +80,13 @@ export function renderSettings(app) {
           <span>Ambience</span>
           <input type="checkbox" id="music" ${app.meta.settings?.music !== false ? "checked" : ""}/>
         </label>
+        <div class="set-block">
+          <div class="set-head">
+            <h3>Music</h3>
+            <span id="musicVolLabel">${musicVol}%</span>
+          </div>
+          <input id="musicVol" type="range" min="0" max="100" step="1" value="${musicVol}" />
+        </div>
         <div class="set-block">
           <div class="set-head">
             <h3>SFX</h3>
@@ -119,6 +127,15 @@ export function wireSettings(app) {
     app.meta.settings = app.meta.settings || {};
     app.meta.settings.music = e.target.checked;
     app.score.setEnabled(e.target.checked);
+    save();
+  });
+  app.ui.querySelector("#musicVol")?.addEventListener("input", (e) => {
+    const v = (+e.target.value || 0) / 100;
+    app.meta.settings = app.meta.settings || {};
+    app.meta.settings.musicVolume = v;
+    app.score.setMusicVolume(v);
+    const lab = app.ui.querySelector("#musicVolLabel");
+    if (lab) lab.textContent = `${e.target.value}%`;
     save();
   });
   app.ui.querySelector("#sfxVol")?.addEventListener("input", (e) => {

@@ -64,7 +64,7 @@ Sell tower/wall = Salvager **50%/60%/75%** of **recorded** Battle paid for that 
 - **Payload** = element only (Kinetic/Pyro/Shock/Frost/Poison/Acid/Breach/EMP)
 - Twin barrel = **1.75× ROF** vs Single with reduced range; base+barrel range/ROF mults stack; Arsenal Range/ROF ranks on all bases/barrels
 - Bases: Sentry(first), Bulwark(closest), Spire(strongest), Aerie(air→first), Warden(last), Talon(weakest)
-- XP bar → level-up **point** → spend (`U` / overlay) for +1 level; buffs by tower type; respect levelCap
+- XP bar → **auto-level** under cap (+pending branch pick); overlay Damage/ROF/Range (`U` = Damage); uniform Dmg/ROF/Range + branch ranks; respect levelCap
 - Damage types; armor flat+%+immunity; DoT; slow cap; freeze at 100%
 - AoE falloff; no FF on towers; chain/motion upgrade paths
 - Flying: ignore walls/towers; Aerie or Rail/Flak (etc.) for air hits
@@ -80,7 +80,7 @@ Spawn top, exit bottom; no diagonals; ground shortest path with soft tower-avoid
 
 ## UX
 
-Drag+tap place with confirm; undo (`Z` / HUD); speed 1/2/3 (pause sheet); Call Early; auto-pause on background; particles default on; colorblind default **off**; **no tutorial**. Tech tree full respec. Menus per GDD §14. Hotkeys: `1`–`9`/`0`/`-`/`=` slots, `Space` Call, `Esc` pause, `U` level point, `X` sell, `W` wall, `B` compose.
+Drag+tap place with confirm; undo (`Z` / HUD); speed 1/2/3 (pause sheet); Call Early; auto-pause on background; particles default on; colorblind default **off**; **no tutorial**. Tech tree full respec. Menus per GDD §14. Hotkeys: `1`–`9`/`0`/`-`/`=` slots, `Space` Call, `Esc` pause, `U` branch Damage, `X` sell, `W` wall, `B` compose.
 
 ---
 

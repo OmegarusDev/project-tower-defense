@@ -70,7 +70,9 @@ export class App {
     this._last = 0;
 
     this.synth.setVolume(this.meta.settings?.sfxVolume ?? 0.35);
+    this.synth.setMusicVolume(this.meta.settings?.musicVolume ?? 0.4);
     this.score.setEnabled(this.meta.settings?.music !== false);
+    this.score.setMusicVolume(this.meta.settings?.musicVolume ?? 0.4);
 
     this.board.onTap = (cell) => this.onCellTap(cell);
     window.addEventListener("resize", () => this.board._fit(true));
@@ -126,6 +128,7 @@ export class App {
       }
       if (!this.paused) this.fx.tick(dt * this.speed);
       this.score.setDensity(this.sim.enemies.length);
+      this.score.setPhase(this.sim.checkpointPhase || "betweenWaves");
       this.board.tool = this.tool;
       this.board.selectedTowerId = this.selectedTowerId;
       this._syncGhostPlan();
@@ -167,7 +170,10 @@ export class App {
   }
 
   async unlockAudio() {
-    // SFX unlock lazily inside SynthBank.play — do not start music here.
+    await this.synth.resume();
+    if (this.screen === "game" && this.meta.settings?.music !== false) {
+      await this.score.start();
+    }
   }
 
   toast(msg) {
@@ -281,7 +287,8 @@ export class App {
   clearUndoStack() { return place.clearUndoStack(this); }
   pushUndo(e) { return place.pushUndo(this, e); }
   undoLast() { return place.undoLast(this); }
-  spendLevelPointSelected() { return place.spendLevelPointSelected(this); }
+  spendLevelPointSelected() { return place.chooseLevelBranchSelected(this, "damage"); }
+  chooseLevelBranchSelected(b) { return place.chooseLevelBranchSelected(this, b); }
   onCellTap(c) { return place.onCellTap(this, c); }
   beginPlaceConfirm(x, y) { return place.beginPlaceConfirm(this, x, y); }
   clearPlaceConfirm() { return place.clearPlaceConfirm(this); }

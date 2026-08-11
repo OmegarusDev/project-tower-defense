@@ -44,6 +44,7 @@ export function normalizeMeta(m) {
       particles: m.settings?.particles !== false,
       music: m.settings?.music !== false,
       sfxVolume: clampVol(m.settings?.sfxVolume),
+      musicVolume: clampVol(m.settings?.musicVolume ?? 0.4),
       cameraPitch: clampPitch(m.settings?.cameraPitch),
     },
   };

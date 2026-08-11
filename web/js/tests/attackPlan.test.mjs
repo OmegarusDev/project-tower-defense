@@ -69,13 +69,15 @@ assert(doctrineLabel("flying") === "Air → First", "label");
 }
 
 {
-  assert(getTechNode("base_sentry_range")?.key === "range", "base range arsenal node");
-  assert(getTechNode("barrel_twin_rof")?.key === "rof", "barrel ROF arsenal node");
-  const breach = buildAttackPlan("sentry", "single", "breach", 1);
-  assert(breach.armorPierce >= 4, "breach AP");
-  assert(!breach.status?.shred, "breach distinct from acid shred");
-  const acid = buildAttackPlan("sentry", "single", "acid", 1);
-  assert(acid.status?.shred, "acid keeps shred");
+  const L1 = buildAttackPlan("sentry", "single", "kinetic", 1);
+  const L3 = buildAttackPlan("sentry", "single", "kinetic", 3);
+  assert(L3.damage > L1.damage * 1.07, "auto-level buffs damage");
+  assert(L3.fireInterval < L1.fireInterval, "auto-level buffs ROF");
+  assert(L3.rangeCells > L1.rangeCells, "auto-level buffs range");
+  const branched = buildAttackPlan("sentry", "single", "kinetic", 3, {
+    branch: { damage: 2, rof: 0, range: 0 },
+  });
+  assert(branched.damage > L3.damage * 1.09, "branch Damage stacks");
 }
 
 console.log("ALL attackPlan tests passed");
