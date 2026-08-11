@@ -28,6 +28,15 @@ export function generatePreWalls(cols, rows, seed, count) {
 }
 
 /**
+ * Start Coin by decade of campaign progress:
+ * levels 1–10 → 50, 11–20 → 75, 21–30 → 100, …
+ */
+export function campaignCoinGrant(levelId) {
+  const id = Math.max(1, levelId | 0);
+  return 50 + 25 * Math.floor((id - 1) / 10);
+}
+
+/**
  * Campaign ops against the Vein Claim.
  * Each wave may set speedMult (authored pace — not endless ramp).
  */
@@ -40,7 +49,6 @@ const LEVEL_DEFS = [
     rows: 8,
     seed: 1001,
     wallCount: 6,
-    coinGrant: 100,
     atmosphere: "campaign_1",
     waves: [
       { pack: "mite_line", spawnGap: 0.52, speedMult: 0.85 },
@@ -70,7 +78,6 @@ const LEVEL_DEFS = [
     rows: 8,
     seed: 2048,
     wallCount: 8,
-    coinGrant: 110,
     atmosphere: "campaign_2",
     waves: [
       { pack: "couriers", spawnGap: 0.36, speedMult: 1.05 },
@@ -101,7 +108,6 @@ const LEVEL_DEFS = [
     rows: 8,
     seed: 3333,
     wallCount: 10,
-    coinGrant: 120,
     atmosphere: "campaign_3",
     waves: [
       { pack: "mixed_mid", spawnGap: 0.34, speedMult: 1 },
@@ -125,7 +131,6 @@ const LEVEL_DEFS = [
     rows: 9,
     seed: 4400,
     wallCount: 12,
-    coinGrant: 130,
     atmosphere: "campaign_4",
     waves: [
       { pack: "heat", spawnGap: 0.34, speedMult: 0.9 },
@@ -150,7 +155,6 @@ const LEVEL_DEFS = [
     rows: 10,
     seed: 5555,
     wallCount: 14,
-    coinGrant: 140,
     atmosphere: "campaign_5",
     waves: [
       { pack: "ward_wall", spawnGap: 0.32, speedMult: 0.92 },
@@ -175,7 +179,6 @@ const LEVEL_DEFS = [
     rows: 10,
     seed: 6060,
     wallCount: 12,
-    coinGrant: 145,
     atmosphere: "campaign_6",
     waves: [
       { pack: "air_cut", spawnGap: 0.28, speedMult: 1.08 },
@@ -208,7 +211,6 @@ const LEVEL_DEFS = [
     rows: 10,
     seed: 7070,
     wallCount: 15,
-    coinGrant: 155,
     atmosphere: "campaign_7",
     waves: [
       { pack: "heat", spawnGap: 0.32, speedMult: 0.9 },
@@ -233,6 +235,7 @@ const LEVEL_DEFS = [
 
 export const CAMPAIGN_LEVELS = LEVEL_DEFS.map((def) => ({
   ...def,
+  coinGrant: campaignCoinGrant(def.id),
   wavesToWin: def.waves.length,
   preWalls: generatePreWalls(def.cols, def.rows, def.seed, def.wallCount),
 }));

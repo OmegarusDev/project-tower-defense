@@ -25,6 +25,7 @@ import {
   canAffordTech,
   spendTechCost,
   syncTechDerived,
+  nextRosterSlotUnlock,
 } from "./data/techTree.js";
 import { BoardView } from "./view/boardView.js";
 import { ProcPalette } from "./view/palette.js";
@@ -387,6 +388,96 @@ export class App {
     this.bindUi();
   }
 
+  _forgePartBtnHtml(kind, id, slot) {
+    const have = ownsPart(this.meta.owned, kind, id);
+    const equipped = slot[kind] === id;
+    const table = kind === "base" ? PARTS.bases : kind === "barrel" ? PARTS.barrels : PARTS.payloads;
+    const tip = table[id]?.blurb || "";
+    const extra =
+      kind === "base" && table[id]?.doctrine
+        ? ` · ${doctrineLabel(table[id].doctrine)}`
+        : "";
+    if (have) {
+      const cls = `btn part-btn part-chip ${equipped ? "equipped" : ""}`.trim();
+      return `<button class="${cls}" data-act="forge-part:${kind}:${id}" title="${tip}">${partLabel(id)}${extra}</button>`;
+    }
+    const cost = this._forgeCost(kind, id);
+    const can = this.meta.forge >= cost;
+    const cls = `btn part-btn part-chip locked ${can ? "" : "cant-afford"}`.trim();
+    return `<button class="${cls}" data-act="buy:${kind}:${id}" title="${tip} — unlock for ${cost} Forge parts">${partLabel(id)}${extra}<br/><span style="opacity:0.75">${cost} Parts</span></button>`;
+  }
+
+  _forgePartGridHtml(slot) {
+    const col = (title, kind, ids) =>
+      `<div><h4>${title}</h4>${ids.map((id) => this._forgePartBtnHtml(kind, id, slot)).join("")}</div>`;
+    return `
+      ${col("Base", "base", Object.keys(PARTS.bases))}
+      ${col("Barrel", "barrel", Object.keys(PARTS.barrels))}
+      ${col("Payload", "payload", Object.keys(PARTS.payloads))}`;
+  }
+
+  /** Patch the open Forge screen without wiping scroll / replaying enter anim. */
+  _refreshForgeUi({ rebuildParts = false, flashPreview = true } = {}) {
+    const root = this.ui.querySelector(".forge-screen");
+    if (this.screen !== "forge" || !root) {
+      this.showForge();
+      return;
+    }
+    root.classList.remove("meta-enter");
+    this.meta.roster = normalizeRoster(
+      this.meta.roster,
+      this.meta.slotCount,
+      this.meta.levelCap
+    );
+    if (this.forgeSlot >= this.meta.roster.length) this.forgeSlot = 0;
+    const slot = this.meta.roster[this.forgeSlot] || makeSlot();
+
+    const status = root.querySelector("#status");
+    if (status) {
+      status.textContent = this.status || "";
+      status.hidden = !this.status;
+    }
+
+    const stats = root.querySelector(".tech-stats");
+    if (stats) {
+      stats.innerHTML = `
+            <span><i>Parts</i>${this.meta.forge}</span>
+            <span><i>Æ</i>${this.meta.aether}</span>
+            <span><i>Cap</i>L${this.meta.levelCap}</span>
+            <span><i>Slots</i>${this.meta.slotCount}</span>`;
+    }
+
+    const strip = root.querySelector(".build-strip");
+    if (strip) strip.innerHTML = this._rosterSlotButtons("forge");
+
+    const heading = root.querySelector(".forge-summary h3");
+    if (heading) heading.textContent = `Slot ${this.forgeSlot + 1}`;
+    const loadout = root.querySelector("#forgeLoadout");
+    if (loadout) loadout.innerHTML = forgePlanSummary(slot);
+
+    if (rebuildParts) {
+      const grid = root.querySelector(".forge-part-grid");
+      if (grid) grid.innerHTML = this._forgePartGridHtml(slot);
+    } else {
+      for (const btn of root.querySelectorAll("[data-act^='forge-part:']")) {
+        const [, kind, id] = btn.getAttribute("data-act").split(":");
+        btn.classList.toggle("equipped", slot[kind] === id);
+      }
+    }
+
+    if (flashPreview) this._flashForgePreview();
+    else this.paintForgePreview();
+  }
+
+  _flashForgePreview() {
+    const canvas = this.ui.querySelector("#forgePreview");
+    if (!canvas || this.screen !== "forge") return;
+    canvas.classList.remove("forge-preview-flash");
+    void canvas.offsetWidth;
+    canvas.classList.add("forge-preview-flash");
+    this.paintForgePreview();
+  }
+
   showForge(returnTo) {
     if (returnTo) this.forgeReturn = returnTo;
     if (!this.forgeReturn) this.forgeReturn = "main";
@@ -398,7 +489,6 @@ export class App {
     );
     if (this.forgeSlot >= this.meta.roster.length) this.forgeSlot = 0;
     const slot = this.meta.roster[this.forgeSlot] || makeSlot();
-    const owned = this.meta.owned;
     const backAct =
       this.forgeReturn === "hub"
         ? "hub"
@@ -407,24 +497,6 @@ export class App {
           : this.forgeReturn === "prep"
             ? `prep:${this.prepLevelId || 1}`
             : "main";
-    const partBtn = (kind, id) => {
-      const have = ownsPart(owned, kind, id);
-      const equipped = slot[kind] === id;
-      const table = kind === "base" ? PARTS.bases : kind === "barrel" ? PARTS.barrels : PARTS.payloads;
-      const tip = table[id]?.blurb || "";
-      const extra =
-        kind === "base" && table[id]?.doctrine
-          ? ` · ${doctrineLabel(table[id].doctrine)}`
-          : "";
-      if (have) {
-        const cls = `btn part-btn part-chip ${equipped ? "equipped" : ""}`.trim();
-        return `<button class="${cls}" data-act="forge-part:${kind}:${id}" title="${tip}">${partLabel(id)}${extra}</button>`;
-      }
-      const cost = this._forgeCost(kind, id);
-      const can = this.meta.forge >= cost;
-      const cls = `btn part-btn part-chip locked ${can ? "" : "cant-afford"}`.trim();
-      return `<button class="${cls}" data-act="buy:${kind}:${id}" title="${tip} — unlock for ${cost} Forge parts">${partLabel(id)}${extra}<br/><span style="opacity:0.75">${cost} Parts</span></button>`;
-    };
     const slotBtns = this._rosterSlotButtons("forge");
     this.ui.innerHTML = `
       <div class="screen scroll meta-screen forge-screen meta-enter">
@@ -439,47 +511,33 @@ export class App {
             <span><i>Parts</i>${this.meta.forge}</span>
             <span><i>Æ</i>${this.meta.aether}</span>
             <span><i>Cap</i>L${this.meta.levelCap}</span>
+            <span><i>Slots</i>${this.meta.slotCount}</span>
           </div>
-          <div class="status tech-status" id="status">${this.status}</div>
+          <div class="status tech-status forge-status" id="status"${this.status ? "" : " hidden"}>${this.status || ""}</div>
         </header>
         <div class="row build-strip">${slotBtns}</div>
         <div class="forge-preview-wrap">
-          <canvas id="forgePreview" width="160" height="160" aria-label="Tower preview"></canvas>
+          <canvas id="forgePreview" class="forge-preview-flash" width="160" height="160" aria-label="Tower preview"></canvas>
           <div class="forge-summary">
             <h3>Slot ${this.forgeSlot + 1}</h3>
             <p id="forgeLoadout">${forgePlanSummary(slot)}</p>
             <button class="btn secondary part-chip" data-act="forge-clear" style="margin-top:8px">Clear slot</button>
           </div>
         </div>
-        <div class="cols forge-part-grid">
-          <div>
-            <h4>Base</h4>
-            ${Object.keys(PARTS.bases)
-              .map((id) => partBtn("base", id))
-              .join("")}
-          </div>
-          <div>
-            <h4>Barrel</h4>
-            ${Object.keys(PARTS.barrels)
-              .map((id) => partBtn("barrel", id))
-              .join("")}
-          </div>
-          <div>
-            <h4>Payload</h4>
-            ${Object.keys(PARTS.payloads)
-              .map((id) => partBtn("payload", id))
-              .join("")}
-          </div>
-        </div>
+        <div class="cols forge-part-grid">${this._forgePartGridHtml(slot)}</div>
         <button class="btn warn" data-act="upgrade">Tech Tree</button>
-        <p class="end-note">Locked parts cost Parts. Wave gifts are free. Tech Tree is permanent.</p>
+        <p class="end-note">Locked parts cost Parts (price rises with each purchase). Wave gifts are free. Unlock slots with Æ here or in Tech.</p>
       </div>`;
     this.bindUi();
     this.paintForgePreview();
+    // Drop enter anim so later DOM patches never replay a full-screen fade.
+    requestAnimationFrame(() => {
+      this.ui.querySelector(".forge-screen")?.classList.remove("meta-enter");
+    });
   }
 
   _forgeCost(kind, id) {
-    return forgeBuyCost(kind, id);
+    return forgeBuyCost(kind, id, this.meta);
   }
 
   paintForgePreview() {
@@ -564,7 +622,7 @@ export class App {
             <span><i>Parts</i>${this.meta.forge}</span>
             <span><i>Lvl Cap</i>L${this.meta.levelCap}</span>
             <span><i>Slots</i>${this.meta.slotCount}</span>
-            <span><i>Lives</i>${this.meta.startLives || 5}</span>
+            <span><i>Lives</i>${this.meta.startLives || 3}</span>
             <span><i>Start</i>${cash}</span>
           </div>
           <div class="status tech-status" id="status">${this.status}</div>
@@ -647,6 +705,7 @@ export class App {
     const cost = techNextCost(def, rank);
     const costLabel = formatTechCost(cost);
     const selected = this.techSelectedId === def.id ? " selected" : "";
+    const arsenal = def.treeId === "arsenal";
     let state = "open";
     if (maxed) state = "maxed";
     else if (!prereq) state = "locked";
@@ -660,14 +719,15 @@ export class App {
       meta = "Locked";
     } else if (!partOk && def.requiresPart) {
       const pc = this._forgeCost(def.requiresPart.kind, def.requiresPart.id);
-      meta = pc > 0 ? `${pc} Parts` : "Unlock";
+      meta = pc > 0 ? `Unlock · ${pc} Parts` : "Unlock · Free";
     } else if (costLabel) {
       meta = def.maxRank > 1 ? `${rank}/${def.maxRank} · ${costLabel}` : costLabel;
     } else {
       meta = def.maxRank > 1 ? `${rank}/${def.maxRank}` : "—";
     }
 
-    return `<button type="button" class="ttree-node ${state}${selected}" data-act="tech-select:${def.id}">
+    const kindHint = arsenal && def.partKind ? ` data-part-kind="${def.partKind}"` : "";
+    return `<button type="button" class="ttree-node ${state}${selected}" data-act="tech-select:${def.id}"${kindHint}>
       <span class="ttree-node-name">${def.name}</span>
       <span class="ttree-node-meta">${meta}</span>
     </button>`;
@@ -731,7 +791,7 @@ export class App {
 
     let action;
     if (maxed) {
-      action = `<button class="btn secondary" disabled>Maxed</button>`;
+      action = `<button class="btn secondary" disabled>Maxed · ${rank}/${def.maxRank}</button>`;
     } else if (!prereq) {
       action = `<button class="btn secondary" disabled>Requires prior tech</button>`;
     } else if (!partOk && def.requiresPart) {
@@ -744,11 +804,13 @@ export class App {
       action = canBuyPart
         ? `<button class="btn title-cta" data-act="tech-unlock-part:${kind}:${partId}">${unlockLabel}</button>
            <p class="tech-sheet-next">Then buy mastery${costLabel ? ` · ${costLabel}` : ""}</p>`
-        : `<button class="btn cant-afford" disabled>Need ${partCost} Parts for ${partLabelTxt}</button>`;
+        : `<button class="btn cant-afford" disabled>Need ${partCost} Parts for ${partLabelTxt}</button>
+           <p class="tech-sheet-next">Earn Parts from waves, then unlock this piece</p>`;
     } else if (!canAffordTech(this.meta, cost)) {
       action = `<button class="btn cant-afford" disabled>Need ${costLabel}</button>`;
     } else {
-      action = `<button class="btn title-cta" data-act="tech-buy:${def.id}">Buy · ${costLabel}</button>`;
+      const buyVerb = def.maxRank > 1 ? `Buy rank ${rank + 1}` : "Unlock";
+      action = `<button class="btn title-cta" data-act="tech-buy:${def.id}">${buyVerb} · ${costLabel}</button>`;
     }
 
     const rankLine =
@@ -760,6 +822,11 @@ export class App {
             ? `Locked · ${costLabel}`
             : "Locked";
 
+    const currencyHint =
+      def.treeId === "arsenal"
+        ? `<p class="tech-sheet-currency">Spends Parts · own the piece first</p>`
+        : "";
+
     return `<div class="tech-overlay">
       <button type="button" class="tech-backdrop" data-act="tech-close" aria-label="Dismiss"></button>
       <div class="tech-sheet" role="dialog" aria-modal="true" aria-labelledby="tech-sheet-title">
@@ -768,6 +835,7 @@ export class App {
         <h2 id="tech-sheet-title">${def.name}</h2>
         <p class="tech-sheet-blurb">${def.blurb || ""}</p>
         <p class="tech-sheet-rank">${rankLine}</p>
+        ${currencyHint}
         ${
           reqBits.length
             ? `<div class="tech-sheet-reqs"><span class="k">Requires</span>${reqBits.join("")}</div>`
@@ -908,11 +976,27 @@ export class App {
     const best =
       bestWave == null
         ? ""
-        : `<span class="chip wave" title="Best wave"><span class="k">Best</span>W${bestWave}</span>`;
+        : `<span class="chip wave" title="Best wave"><span class="k">Best</span><span class="chip-v">W${bestWave}</span></span>`;
     return `
-      <span class="chip parts" title="Parts"><i class="chip-ico-wrap tel-gear">${gear}</i>${this.meta.forge}</span>
-      <span class="chip aether" title="Aether"><i class="k">Æ</i>${this.meta.aether}</span>
+      <span class="chip parts" title="Parts"><i class="chip-ico-wrap tel-gear">${gear}</i><span class="chip-v">${this.meta.forge}</span></span>
+      <span class="chip aether" title="Aether"><i class="k">Æ</i><span class="chip-v">${this.meta.aether}</span></span>
       ${best}`;
+  }
+
+  /** Endless new personal best — double Parts/Aether earned this run (once, at death). */
+  _applyEndlessBestBonus(prevBest) {
+    if (!this.sim?.modeEndless) return null;
+    const wave = this.sim.waveIndex | 0;
+    if (wave <= (prevBest | 0)) return null;
+    const g = this.sim.economy.runWaveGains;
+    const bonusParts = g.parts | 0;
+    const bonusAether = g.aether | 0;
+    if (!bonusParts && !bonusAether) return { parts: 0, aether: 0, wave };
+    this.sim.economy.forge += bonusParts;
+    this.sim.economy.aether += bonusAether;
+    g.parts = bonusParts * 2;
+    g.aether = bonusAether * 2;
+    return { parts: bonusParts, aether: bonusAether, wave };
   }
 
   showSettings() {
@@ -930,10 +1014,16 @@ export class App {
     const lv = campaign ? getCampaignLevel(this.sim.campaignLevelId) : null;
     const wave = this.sim?.waveIndex ?? 0;
     const best = this.meta.bestWave | 0;
-    const isBest = endless && wave > 0 && wave >= best;
+    const bonus = this._endBestBonus;
+    const isBest = endless && !!bonus;
     const gains = this.sim?.economy?.runWaveGains || { coin: 0, parts: 0, aether: 0 };
-    const gainLine = (n, label, kind = "") =>
-      `<span class="gain-pill ${kind}${n > 0 ? "" : " muted"}">${n > 0 ? "+" : ""}${n} ${label}</span>`;
+    const gainLine = (n, label, kind = "") => {
+      const muted = !(n > 0);
+      const x2 = isBest && n > 0 && (kind === "parts" || kind === "aether");
+      return `<span class="gain-pill ${kind}${muted ? " muted" : ""}${x2 ? " is-x2" : ""}">${
+        n > 0 ? "+" : ""
+      }${n}&nbsp;${label}${x2 ? `<span class="gain-x2">×2</span>` : ""}</span>`;
+    };
     const seed = this.sim?.runSeed >>> 0;
     const actions = endless
       ? `<div class="end-actions">
@@ -961,11 +1051,16 @@ export class App {
           <p class="end-sub">${lv ? `${lv.name} · ` : ""}Wave</p>
           <div class="end-wave${isBest ? " is-best" : ""}">
             <span class="end-wave-num">${wave}</span>
-            ${isBest ? `<span class="end-best-tag">Best</span>` : ""}
+            ${isBest ? `<span class="end-best-tag">New best</span>` : ""}
           </div>
           ${
             endless && best > 0 && !isBest
-              ? `<p class="end-best-line">Best ${best}</p>`
+              ? `<p class="end-best-line">Best W${best}</p>`
+              : ""
+          }
+          ${
+            isBest && (bonus.parts || bonus.aether)
+              ? `<p class="end-best-line end-bonus-line">Parts &amp; Aether ×2</p>`
               : ""
           }
         </header>
@@ -986,132 +1081,140 @@ export class App {
   }
 
   bindUi() {
-    this.ui.querySelectorAll("[data-act]").forEach((el) => {
-      el.addEventListener("click", () => {
-        const act = el.getAttribute("data-act");
-        if (act === "endless" || act === "hub") this.showEndlessHub();
-        else if (act === "main") this.showMain();
-        else if (act === "campaign") this.showCampaign();
-        else if (act?.startsWith("prep:")) this.showPrep(+act.slice(5));
-        else if (act?.startsWith("prep-slot:")) {
-          this.prepSlot = +act.slice(10) | 0;
-          if (this.screen === "prep" && this.prepLevelId) this.showPrep(this.prepLevelId);
+    if (this._uiClickBound) return;
+    this._uiClickBound = true;
+    this.ui.addEventListener("click", (ev) => {
+      const el = ev.target.closest?.("[data-act]");
+      if (!el || !this.ui.contains(el)) return;
+      const act = el.getAttribute("data-act");
+      if (act === "endless" || act === "hub") this.showEndlessHub();
+      else if (act === "main") this.showMain();
+      else if (act === "campaign") this.showCampaign();
+      else if (act?.startsWith("prep:")) this.showPrep(+act.slice(5));
+      else if (act?.startsWith("prep-slot:")) {
+        this.prepSlot = +act.slice(10) | 0;
+        if (this.screen === "prep" && this.prepLevelId) this.showPrep(this.prepLevelId);
+      } else if (act?.startsWith("start-level:")) this.startCampaignLevel(+act.slice(12));
+      else if (act?.startsWith("campaign-level:")) this.showPrep(+act.slice(15));
+      else if (act === "editor") this.showEditor();
+      else if (act === "ed-apply-size") {
+        const c = +(this.ui.querySelector("#edCols")?.value || 8);
+        const r = +(this.ui.querySelector("#edRows")?.value || 8);
+        this.editor?.resize(c, r);
+        this.showEditor();
+      } else if (act === "ed-random") {
+        this.editor?.randomize(10);
+        this.showEditor();
+      } else if (act === "ed-save") {
+        this.editor.name = this.ui.querySelector("#edName")?.value || "Custom";
+        this.editor.wavesToWin = +(this.ui.querySelector("#edWaves")?.value || 5);
+        this.editor.waveScript = this.ui.querySelector("#edScript")?.value || "mixed_mid";
+        this.editor.saveNamed();
+        this.toast("Level saved locally");
+        this.showEditor();
+      } else if (act === "ed-playtest") {
+        this.editor.name = this.ui.querySelector("#edName")?.value || "Custom";
+        this.editor.wavesToWin = +(this.ui.querySelector("#edWaves")?.value || 5);
+        this.editor.waveScript = this.ui.querySelector("#edScript")?.value || "mixed_mid";
+        this.playtestEditorLevel(this.editor.toLevelDef());
+      } else if (act?.startsWith("ed-load:")) {
+        const list = loadEditorLevels();
+        const lv = list[+act.slice(8)];
+        if (lv) this.playtestEditorLevel(lv);
+      } else if (act?.startsWith("ed-cell:")) {
+        const [, xs, ys] = act.split(":");
+        if (!this.editor.toggle(+xs, +ys)) this.toast("Would seal the path");
+        this.showEditor();
+      } else if (act === "compose-toggle") this.toggleLiveCompose();
+      else if (act === "compose-close") {
+        this.liveCompose = false;
+        this.renderGameChrome();
+      } else if (act?.startsWith("compose-part:")) {
+        const [, kind, id] = act.split(":");
+        this.applyLiveComposePart(kind, id);
+      } else if (act === "ghost-replay") this.startGhostReplay();
+      else if (act === "forge") this.showForge(this.forgeReturn || "main");
+      else if (act === "forge-from-hub") this.showForge("hub");
+      else if (act === "forge-from-main") this.showForge("main");
+      else if (act === "forge-from-campaign") this.showForge("campaign");
+      else if (act === "forge-from-prep") this.showForge("prep");
+      else if (act === "upgrade-from-prep") this.showUpgrade("prep");
+      else if (act === "upgrade") {
+        const from =
+          this.screen === "main"
+            ? "main"
+            : this.screen === "forge"
+              ? "forge"
+              : this.screen === "prep"
+                ? "prep"
+                : this.screen === "hub"
+                  ? "hub"
+                  : this.screen === "campaign"
+                    ? "campaign"
+                    : this.forgeReturn || "forge";
+        this.showUpgrade(from);
+      } else if (act === "tech-close") this.closeTechOverlay();
+      else if (act?.startsWith("tech-tab:")) this.setTechTreeTab(act.slice(9));
+      else if (act?.startsWith("tech-select:")) this.selectTechNode(act.slice(12));
+      else if (act?.startsWith("tech-unlock-part:")) {
+        const [, kind, id] = act.split(":");
+        this.unlockPartFromTech(kind, id);
+      } else if (act?.startsWith("tech-buy:")) this.buyTechNode(act.slice(9));
+      else if (act?.startsWith("tech:")) this.buyTechNode(act.slice(5));
+      else if (act === "settings") this.showSettings();
+      else if (act === "newrun") this.newRun();
+      else if (act === "continue") this.continueRun();
+      else if (act === "pause") this.openPause();
+      else if (act === "resume") this.resumeGame();
+      else if (act === "quit-run") this.quitToMenu();
+      else if (act === "sell") this.sellSelected();
+      else if (act === "tool:wall") {
+        this.tool = "wall";
+        this.clearPlaceConfirm();
+        this.selectedTowerId = -1;
+        this.selectedWallId = -1;
+        this.renderGameChrome();
+      }       else if (act === "forge-clear") this.clearForgeSlot();
+      else if (act === "forge-unlock-slot") this.unlockForgeSlot();
+      else if (act?.startsWith("forge-slot:")) {
+        const i = +act.slice(11);
+        if (i < 0 || i >= (this.meta.slotCount | 0)) {
+          this.unlockForgeSlot();
+          return;
         }
-        else if (act?.startsWith("start-level:")) this.startCampaignLevel(+act.slice(12));
-        else if (act?.startsWith("campaign-level:")) this.showPrep(+act.slice(15));
-        else if (act === "editor") this.showEditor();
-        else if (act === "ed-apply-size") {
-          const c = +(this.ui.querySelector("#edCols")?.value || 8);
-          const r = +(this.ui.querySelector("#edRows")?.value || 8);
-          this.editor?.resize(c, r);
-          this.showEditor();
-        } else if (act === "ed-random") {
-          this.editor?.randomize(10);
-          this.showEditor();
-        } else if (act === "ed-save") {
-          this.editor.name = this.ui.querySelector("#edName")?.value || "Custom";
-          this.editor.wavesToWin = +(this.ui.querySelector("#edWaves")?.value || 5);
-          this.editor.waveScript = this.ui.querySelector("#edScript")?.value || "mixed_mid";
-          this.editor.saveNamed();
-          this.toast("Level saved locally");
-          this.showEditor();
-        } else if (act === "ed-playtest") {
-          this.editor.name = this.ui.querySelector("#edName")?.value || "Custom";
-          this.editor.wavesToWin = +(this.ui.querySelector("#edWaves")?.value || 5);
-          this.editor.waveScript = this.ui.querySelector("#edScript")?.value || "mixed_mid";
-          this.playtestEditorLevel(this.editor.toLevelDef());
-        } else if (act?.startsWith("ed-load:")) {
-          const list = loadEditorLevels();
-          const lv = list[+act.slice(8)];
-          if (lv) this.playtestEditorLevel(lv);
-        } else if (act?.startsWith("ed-cell:")) {
-          const [, xs, ys] = act.split(":");
-          if (!this.editor.toggle(+xs, +ys)) this.toast("Would seal the path");
-          this.showEditor();
-        } else if (act === "compose-toggle") this.toggleLiveCompose();
-        else if (act === "compose-close") {
-          this.liveCompose = false;
-          this.renderGameChrome();
-        } else if (act?.startsWith("compose-part:")) {
-          const [, kind, id] = act.split(":");
-          this.applyLiveComposePart(kind, id);
-        } else if (act === "ghost-replay") this.startGhostReplay();
-        else if (act === "forge") this.showForge(this.forgeReturn || "main");
-        else if (act === "forge-from-hub") this.showForge("hub");
-        else if (act === "forge-from-main") this.showForge("main");
-        else if (act === "forge-from-campaign") this.showForge("campaign");
-        else if (act === "forge-from-prep") this.showForge("prep");
-        else if (act === "upgrade-from-prep") this.showUpgrade("prep");
-        else if (act === "upgrade") {
-          const from =
-            this.screen === "main"
-              ? "main"
-              : this.screen === "forge"
-                ? "forge"
-                : this.screen === "prep"
-                  ? "prep"
-                  : this.screen === "hub"
-                    ? "hub"
-                    : this.screen === "campaign"
-                      ? "campaign"
-                      : this.forgeReturn || "forge";
-          this.showUpgrade(from);
-        } else if (act === "tech-close") this.closeTechOverlay();
-        else if (act?.startsWith("tech-tab:")) this.setTechTreeTab(act.slice(9));
-        else if (act?.startsWith("tech-select:")) this.selectTechNode(act.slice(12));
-        else if (act?.startsWith("tech-unlock-part:")) {
-          const [, kind, id] = act.split(":");
-          this.unlockPartFromTech(kind, id);
-        } else if (act?.startsWith("tech-buy:")) this.buyTechNode(act.slice(9));
-        else if (act?.startsWith("tech:")) this.buyTechNode(act.slice(5));
-        else if (act === "settings") this.showSettings();
-        else if (act === "newrun") this.newRun();
-        else if (act === "continue") this.continueRun();
-        else if (act === "pause") this.openPause();
-        else if (act === "resume") this.resumeGame();
-        else if (act === "quit-run") this.quitToMenu();
-        else if (act === "sell") this.sellSelected();
-        else if (act === "tool:wall") {
-          this.tool = "wall";
-          this.clearPlaceConfirm();
-          this.selectedTowerId = -1;
-          this.selectedWallId = -1;
-          this.renderGameChrome();
-        } else if (act === "forge-clear") this.clearForgeSlot();
-        else if (act?.startsWith("forge-slot:")) {
-          const i = +act.slice(11);
-          if (i < 0 || i >= (this.meta.slotCount | 0)) {
-            this.toast(`Unlock Slot ${i + 1} in Tech Tree → Roster`);
-            return;
-          }
-          this.forgeSlot = i;
-          this.showForge();
-        } else if (act?.startsWith("forge-part:")) {
-          const [, kind, id] = act.split(":");
-          this.applyForgePart(kind, id);
-        } else if (act?.startsWith("buy:")) {
-          const [, kind, id] = act.split(":");
-          this.buyPart(kind, id);
-        } else if (act?.startsWith("slot-locked:")) {
-          const n = (+act.slice(12) | 0) + 1;
-          this.toast(`Unlock Slot ${n} in Tech Tree → Roster`);
-        } else if (act?.startsWith("slot:")) {
-          const i = +act.slice(5);
-          const unlocked = this.meta.slotCount | 0;
-          if (!this.sim || i < 0 || i >= unlocked) {
-            this.toast(`Unlock Slot ${i + 1} in Tech Tree → Roster`);
-            return;
-          }
-          // Keep sim loadouts aligned with Forge before selecting/placing.
-          if ((this.sim.roster?.length | 0) < unlocked) this._syncSimFromMeta(this.sim);
-          this.slot = i;
-          this.tool = "tower";
-          this.clearPlaceConfirm();
-          this.selectedTowerId = -1;
-          this.selectedWallId = -1;
-          this.renderGameChrome();
+        this.forgeSlot = i;
+        this.status = `Editing slot ${i + 1}`;
+        this._refreshForgeUi();
+      } else if (act?.startsWith("forge-part:")) {
+        const [, kind, id] = act.split(":");
+        this.applyForgePart(kind, id);
+      } else if (act?.startsWith("buy:")) {
+        const [, kind, id] = act.split(":");
+        this.buyPart(kind, id);
+      } else if (act?.startsWith("slot-locked:")) {
+        const i = +act.slice(12) | 0;
+        if (this.screen === "forge") {
+          this.unlockForgeSlot(i);
+          return;
         }
-      });
+        const n = i + 1;
+        this.toast(`Unlock Slot ${n} in Tech Tree → Roster`);
+      } else if (act?.startsWith("slot:")) {
+        const i = +act.slice(5);
+        const unlocked = this.meta.slotCount | 0;
+        if (!this.sim || i < 0 || i >= unlocked) {
+          this.toast(`Unlock Slot ${i + 1} in Tech Tree → Roster`);
+          return;
+        }
+        // Keep sim loadouts aligned with Forge before selecting/placing.
+        if ((this.sim.roster?.length | 0) < unlocked) this._syncSimFromMeta(this.sim);
+        this.slot = i;
+        this.tool = "tower";
+        this.clearPlaceConfirm();
+        this.selectedTowerId = -1;
+        this.selectedWallId = -1;
+        this.renderGameChrome();
+      }
     });
   }
 
@@ -1139,7 +1242,7 @@ export class App {
       this.meta.slotCount,
       this.meta.levelCap
     );
-    sim.setStartLives(this.meta.startLives || 5, { resetCurrent: resetLives });
+    sim.setStartLives(this.meta.startLives || 3, { resetCurrent: resetLives });
     if (seedVault) {
       sim.economy.injectMeta(this.meta.forge, this.meta.aether);
     }
@@ -1147,7 +1250,9 @@ export class App {
       wallCostMult: this.meta.wallCostMult ?? 1,
       towerCostMult: this.meta.towerCostMult ?? 1,
       waveCoinBonus: this.meta.waveCoinBonus | 0,
+      wavePartsBonus: this.meta.wavePartsBonus | 0,
     });
+    sim.setSellRefundMult(this.meta.sellRefundMult ?? 0.5);
     sim.setRoster(structuredClone(this.meta.roster));
     sim.runLevelCap = this.meta.levelCap | 0 || 2;
     for (const t of sim.towers || []) {
@@ -1324,6 +1429,7 @@ export class App {
       Math.min(MAX_ROSTER_SLOTS, this.meta.slotCount | 0)
     );
     const roster = mode === "game" ? this.sim?.roster || [] : this.meta.roster || [];
+    const nextSlot = mode === "forge" ? nextRosterSlotUnlock(this.meta) : null;
     const bits = [];
     for (let i = 0; i < MAX_ROSTER_SLOTS; i++) {
       if (i >= unlocked) {
@@ -1333,11 +1439,18 @@ export class App {
               i + 1
             } in Tech Tree → Roster"><span class="slot-tile-idx">${i + 1}</span><span class="slot-tile-cost">lock</span></button>`
           );
+        } else if (mode === "forge" && nextSlot && i === nextSlot.nextSlotIndex) {
+          const costLabel = formatTechCost(nextSlot.cost);
+          const can = canAffordTech(this.meta, nextSlot.cost);
+          const cls = `btn slot-locked slot-unlock${can ? "" : " cant-afford"}`.trim();
+          bits.push(
+            `<button type="button" class="${cls}" data-act="forge-unlock-slot" title="Unlock Slot ${
+              i + 1
+            } for ${costLabel}">S${i + 1} · ${costLabel}</button>`
+          );
         } else {
           bits.push(
-            `<button type="button" class="btn slot-locked" data-act="slot-locked:${i}" title="Unlock Slot ${
-              i + 1
-            } in Tech Tree → Roster">S${i + 1}</button>`
+            `<button type="button" class="btn slot-locked" data-act="slot-locked:${i}" title="Unlock earlier slots first">S${i + 1}</button>`
           );
         }
         continue;
@@ -1992,7 +2105,11 @@ export class App {
         break;
       case "game_over":
         this.synth.play("explode");
-        this.syncMetaProgress();
+        {
+          const prevBest = this.meta.bestWave | 0;
+          this._endBestBonus = this._applyEndlessBestBonus(prevBest);
+          this.syncMetaProgress();
+        }
         this._lastReplay = exportReplayBlob(this.sim);
         if (this.sim.modeEndless) clearEndless();
         this.score.stop();
@@ -2065,7 +2182,7 @@ export class App {
     if (this.sim) this._syncSimFromMeta(this.sim);
     this.synth.play("ui");
     this.status = `Slot ${this.forgeSlot + 1}: set ${kind}`;
-    this.showForge();
+    this._refreshForgeUi();
   }
 
   clearForgeSlot() {
@@ -2073,7 +2190,38 @@ export class App {
     this.persistMeta();
     if (this.sim) this._syncSimFromMeta(this.sim);
     this.status = `Slot ${this.forgeSlot + 1} cleared`;
-    this.showForge();
+    this._refreshForgeUi();
+  }
+
+  /** Unlock next roster slot with Aether (same tech path as Roster Slots). */
+  unlockForgeSlot(wantIndex) {
+    const next = nextRosterSlotUnlock(this.meta);
+    if (!next) {
+      this.toast("All roster slots unlocked");
+      return;
+    }
+    if (wantIndex != null && wantIndex !== next.nextSlotIndex) {
+      this.toast(`Unlock Slot ${next.nextSlotCount} first`);
+      return;
+    }
+    if (!canAffordTech(this.meta, next.cost)) {
+      return this.toast(`Need ${formatTechCost(next.cost)}`);
+    }
+    spendTechCost(this.meta, next.cost);
+    this.meta.tech = this.meta.tech || {};
+    this.meta.tech[next.node.id] = next.rank + 1;
+    syncTechDerived(this.meta);
+    this.meta.roster = normalizeRoster(
+      this.meta.roster,
+      this.meta.slotCount,
+      this.meta.levelCap
+    );
+    this.forgeSlot = next.nextSlotIndex;
+    this.persistMeta();
+    if (this.sim) this._syncSimFromMeta(this.sim);
+    this.synth.play("confirm");
+    this.status = `Unlocked slot ${next.nextSlotCount}`;
+    this._refreshForgeUi({ rebuildParts: true });
   }
 
   buyTechNode(id) {
@@ -2126,6 +2274,7 @@ export class App {
       return;
     }
     this.meta.forge -= cost;
+    this.meta.forgeBuys = (this.meta.forgeBuys | 0) + 1;
     const key = kind === "base" ? "bases" : kind === "barrel" ? "barrels" : "payloads";
     if (!this.meta.owned[key].includes(id)) this.meta.owned[key].push(id);
     if (equip) {
@@ -2134,9 +2283,10 @@ export class App {
       this.meta.roster[this.forgeSlot] = makeSlot(s.base, s.barrel, s.payload, this.meta.levelCap);
     }
     this.persistMeta();
+    if (this.sim) this._syncSimFromMeta(this.sim);
     this.synth.play("confirm");
     this.status = `Unlocked ${partLabel(id)}${equip ? " · equipped" : ""}`;
-    this.showForge();
+    this._refreshForgeUi({ rebuildParts: true });
   }
 
   /** Unlock a Forge part from the tech overlay (no equip — stay on Tech Tree). */
@@ -2151,6 +2301,7 @@ export class App {
       return this.toast(`Need ${cost} Forge parts`);
     }
     this.meta.forge -= cost;
+    this.meta.forgeBuys = (this.meta.forgeBuys | 0) + 1;
     const key = kind === "base" ? "bases" : kind === "barrel" ? "barrels" : "payloads";
     if (!this.meta.owned[key]) this.meta.owned[key] = [];
     if (!this.meta.owned[key].includes(id)) this.meta.owned[key].push(id);

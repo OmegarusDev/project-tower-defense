@@ -1,7 +1,7 @@
 import { SimWorld } from "../sim/simWorld.js";
 import { WAVE_PACKS, composeEndlessWave, resolveCampaignWave } from "../data/waveScripts.js";
 import { ENEMY_KINDS, resolveEnemyKind } from "../data/enemies.js";
-import { CAMPAIGN_LEVELS } from "../data/campaign.js";
+import { CAMPAIGN_LEVELS, campaignCoinGrant } from "../data/campaign.js";
 import { mulberry32 } from "../sim/rng.js";
 import { buildAttackPlan } from "../sim/attackPlan.js";
 
@@ -26,6 +26,14 @@ assert(
   "level 5 authored waves match wavesToWin"
 );
 assert(CAMPAIGN_LEVELS[6].id === 7, "level 7 Ash Causeway");
+assert(campaignCoinGrant(1) === 50, "levels 1–10 start at 50");
+assert(campaignCoinGrant(10) === 50, "level 10 still 50");
+assert(campaignCoinGrant(11) === 75, "levels 11–20 start at 75");
+assert(campaignCoinGrant(21) === 100, "levels 21–30 start at 100");
+assert(campaignCoinGrant(31) === 125, "levels 31–40 start at 125");
+for (const lv of CAMPAIGN_LEVELS) {
+  assert(lv.coinGrant === campaignCoinGrant(lv.id), `${lv.name} coinGrant tier`);
+}
 
 for (const lv of CAMPAIGN_LEVELS) {
   assert(lv.waves.length === lv.wavesToWin, `${lv.name} wave count`);

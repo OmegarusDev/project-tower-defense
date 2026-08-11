@@ -70,6 +70,12 @@
     radial-gradient(circle at calc(100% - 10px) 10px, #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px),
     radial-gradient(circle at 10px calc(100% - 10px), #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px),
     radial-gradient(circle at calc(100% - 10px) calc(100% - 10px), #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px);
+  /* Tight corner bolts for short vault chips (clear of Æ / gear / numbers) */
+  --tex-bolts-corner:
+    radial-gradient(circle at 4px 4px, #9aa4b0 0 1.15px, #3a424c 1.7px, transparent 2.3px),
+    radial-gradient(circle at calc(100% - 4px) 4px, #9aa4b0 0 1.15px, #3a424c 1.7px, transparent 2.3px),
+    radial-gradient(circle at 4px calc(100% - 4px), #9aa4b0 0 1.15px, #3a424c 1.7px, transparent 2.3px),
+    radial-gradient(circle at calc(100% - 4px) calc(100% - 4px), #9aa4b0 0 1.15px, #3a424c 1.7px, transparent 2.3px);
   --tex-scratches:
     linear-gradient(115deg, transparent 40%, rgba(200, 210, 220, 0.04) 41%, transparent 42%),
     linear-gradient(70deg, transparent 58%, rgba(0, 0, 0, 0.14) 59%, transparent 60%),
@@ -460,6 +466,21 @@ html, body {
   flex: 0 0 auto;
 }
 
+#forgePreview.forge-preview-flash {
+  animation: forge-preview-fade 0.28s ease-out;
+}
+
+@keyframes forge-preview-fade {
+  from { opacity: 0.25; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #forgePreview.forge-preview-flash {
+    animation: none;
+  }
+}
+
 .forge-summary {
   flex: 1;
   min-width: 0;
@@ -603,8 +624,30 @@ html, body {
   text-align: left;
 }
 
-.tech-status:empty {
+.tech-status:empty,
+.tech-status[hidden] {
   display: none;
+}
+
+.forge-screen .forge-status {
+  display: block;
+  min-height: 1.45em;
+  margin: 10px 0 2px;
+  padding: 0 4px;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  color: var(--warn);
+  overflow-wrap: anywhere;
+  position: relative;
+  z-index: 2;
+}
+
+.forge-screen .forge-status[hidden] {
+  display: block;
+  visibility: hidden;
 }
 
 .tech-body {
@@ -935,6 +978,16 @@ html, body {
   text-align: left !important;
 }
 
+.tech-sheet-currency {
+  margin: -8px 0 12px !important;
+  font-size: 0.72rem !important;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8aaf9a !important;
+  text-align: left !important;
+}
+
 .tech-sheet-reqs {
   display: flex;
   flex-wrap: wrap;
@@ -1097,6 +1150,15 @@ html, body {
   margin: 4px 0 0 !important;
   font-size: 0.78rem !important;
   color: var(--muted) !important;
+  letter-spacing: 0.04em;
+}
+
+.end-bonus-line {
+  color: #d4a06a !important;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.72rem !important;
 }
 
 .end-card {
@@ -1131,7 +1193,9 @@ html, body {
 }
 
 .gain-pill {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 10px 18px;
   border-radius: 999px;
   background: #1c2740;
@@ -1139,6 +1203,18 @@ html, body {
   color: var(--text);
   font-size: 0.9rem;
   font-weight: 650;
+}
+
+.gain-pill .gain-x2 {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f0c090;
+  padding: 1px 6px;
+  border: 1px solid rgba(212, 160, 106, 0.45);
+  background: rgba(196, 90, 40, 0.22);
 }
 
 .gain-pill.parts {
@@ -1165,9 +1241,25 @@ html, body {
 
 .end-totals .chip {
   font-size: 0.9rem;
-  padding: 9px 16px;
-  gap: 7px;
-  min-height: 36px;
+  padding: 10px 22px;
+  gap: 8px;
+  min-height: 38px;
+  /* Bolts parked in the absolute corners so they clear Æ / gear / digits */
+  background-image: var(--tex-scratches), var(--tex-bolts-corner) !important;
+}
+
+.end-totals .chip .chip-v {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  min-width: 0.6em;
+}
+
+.end-totals .chip .k {
+  margin-right: 1px;
+}
+
+.end-totals .chip.wave .k {
+  margin-right: 4px;
 }
 
 .end-note {
@@ -2093,10 +2185,17 @@ html, body {
   letter-spacing: 0.04em;
 }
 
+.chip .chip-v {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .chip .chip-ico-wrap {
   display: inline-flex;
   align-items: center;
   line-height: 0;
+  flex: 0 0 auto;
 }
 
 .chip .chip-ico {
@@ -2468,6 +2567,19 @@ html, body {
   border-style: dashed;
   border-color: #4a5a72;
   box-shadow: none;
+  color: var(--muted);
+}
+
+.build-strip .btn.slot-unlock {
+  opacity: 0.92;
+  border-style: dashed;
+  border-color: rgba(201, 162, 39, 0.55);
+  color: var(--accent);
+  background: linear-gradient(180deg, #3a3428 0%, #2a2418 100%);
+}
+
+.build-strip .btn.slot-unlock.cant-afford {
+  opacity: 0.55;
   color: var(--muted);
 }
 
@@ -3221,6 +3333,12 @@ label.btn input {
 
 .forge-screen .meta-hero {
   margin-bottom: 4px;
+  padding-bottom: 10px;
+}
+
+.forge-screen .meta-hero-row {
+  position: relative;
+  z-index: 1;
 }
 
 .forge-part-grid .btn.part-btn {

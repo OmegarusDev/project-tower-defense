@@ -24,7 +24,7 @@ export class SimWorld {
     this.partUpgrades = {};
     this.globalMods = { damage: 1, range: 1, rof: 1 };
     this.tickIndex = 0;
-    this.lives = 5;
+    this.lives = 3;
     this.waveIndex = 0;
     this.running = false;
     this.modeEndless = true;
@@ -73,8 +73,9 @@ export class SimWorld {
     this.enemies = [];
     this.projectiles = [];
     this.tickIndex = 0;
-    this.lives = 5;
-    this.startLives = 5;
+    this.lives = 3;
+    this.startLives = 3;
+    this.sellRefundMult = 0.5;
     this.waveIndex = 0;
     this.running = false;
     this._nextId = 1;
@@ -124,8 +125,13 @@ export class SimWorld {
 
   /** Update the run's life budget. Only refill current lives when `resetCurrent`. */
   setStartLives(n, { resetCurrent = true } = {}) {
-    this.startLives = Math.max(1, n | 0 || 5);
+    this.startLives = Math.max(1, n | 0 || 3);
     if (resetCurrent) this.lives = this.startLives;
+  }
+
+  setSellRefundMult(mult) {
+    const m = Number(mult);
+    this.sellRefundMult = Number.isFinite(m) && m > 0 ? Math.max(0.5, Math.min(0.9, m)) : 0.5;
   }
 
   setRoster(slots) {
@@ -216,7 +222,8 @@ export class SimWorld {
     const i = this.towers.findIndex((t) => t.id === id);
     if (i < 0) return { ok: false, reason: "missing" };
     const t = this.towers[i];
-    const refund = (t.paid * 0.5) | 0;
+    const rate = this.sellRefundMult > 0 ? this.sellRefundMult : 0.5;
+    const refund = (t.paid * rate) | 0;
     this.economy.addBattle(refund);
     this.grid.setBlocked(t.cell.x, t.cell.y, false);
     this.towers.splice(i, 1);
@@ -232,7 +239,8 @@ export class SimWorld {
     if (i < 0) return { ok: false, reason: "missing" };
     const w = this.walls[i];
     if (w.preplaced) return { ok: false, reason: "preplaced" };
-    const refund = (w.paid * 0.5) | 0;
+    const rate = this.sellRefundMult > 0 ? this.sellRefundMult : 0.5;
+    const refund = (w.paid * rate) | 0;
     this.economy.addBattle(refund);
     this.grid.setBlocked(w.cell.x, w.cell.y, false);
     this.walls.splice(i, 1);
@@ -274,7 +282,7 @@ export class SimWorld {
       parts: blob.runWaveGains?.parts | 0,
       aether: blob.runWaveGains?.aether | 0,
     };
-    this.lives = blob.lives ?? 5;
+    this.lives = blob.lives ?? 3;
     this.waveIndex = blob.wave ?? 0;
     this.roster = (blob.roster || defaultSlots()).map((s) =>
       makeSlot(s.base, s.barrel, s.payload, s.levelCap || 1)

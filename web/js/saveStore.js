@@ -52,12 +52,15 @@ export function normalizeMeta(m) {
 
   draft.slotCount = Math.max(3, Math.min(6, draft.slotCount | 0 || 3));
   draft.levelCap = Math.max(2, Math.min(5, draft.levelCap | 0 || 2));
-  draft.startLives = Math.max(5, Math.min(8, draft.startLives | 0 || 5));
+  draft.startLives = Math.max(3, Math.min(25, draft.startLives | 0 || 3));
   draft.startCashBonus = Math.max(0, draft.startCashBonus | 0);
+  draft.forgeBuys = Math.max(0, m.forgeBuys | 0);
   draft.forgeCostMult = 1;
   draft.towerCostMult = clampMult(draft.towerCostMult, 1);
   draft.wallCostMult = clampMult(draft.wallCostMult, 1);
   draft.waveCoinBonus = Math.max(0, draft.waveCoinBonus | 0);
+  draft.wavePartsBonus = Math.max(0, Math.min(4, draft.wavePartsBonus | 0));
+  draft.sellRefundMult = clampRefund(draft.sellRefundMult);
   draft.globalDamageMult = clampBoost(draft.globalDamageMult, 1);
   draft.globalRangeMult = clampBoost(draft.globalRangeMult, 1);
   draft.globalRofMult = clampBoost(draft.globalRofMult, 1);
@@ -88,6 +91,12 @@ function clampBoost(v, fallback) {
   const n = Number(v);
   if (!Number.isFinite(n) || n <= 0) return fallback;
   return Math.max(1, Math.min(2, n));
+}
+
+function clampRefund(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return 0.5;
+  return Math.max(0.5, Math.min(0.9, n));
 }
 
 /** Part mastery ranks by part id, e.g. `{ shock: { chain: 2 }, sentry: { power: 1 } }`. */

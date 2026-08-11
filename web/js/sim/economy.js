@@ -1,20 +1,21 @@
 /**
  * Wave-clear payouts (wave is 1-indexed).
  * Coin — every wave, starts at 10 and scales up (+ optional tech Spoils).
- * Parts — every 3rd wave.
+ * Parts — every 3rd wave (+ optional Quartermaster).
  * Aether — every 5th wave.
  */
-export function waveClearRewards(wave, coinBonus = 0) {
+export function waveClearRewards(wave, coinBonus = 0, partsBonus = 0) {
   const w = Math.max(1, wave | 0);
   const coin = 10 + (w - 1) + (coinBonus | 0);
-  const parts = w % 3 === 0 ? 3 + Math.floor(w / 3) : 0;
+  const partsBase = w % 3 === 0 ? 3 + Math.floor(w / 3) : 0;
+  const parts = partsBase > 0 ? partsBase + (partsBonus | 0) : 0;
   const aether = w % 5 === 0 ? 2 + Math.floor(w / 5) : 0;
   return { coin, parts, aether };
 }
 
 export class Economy {
   constructor() {
-    this.battle = 100;
+    this.battle = 75;
     this.forge = 0;
     this.aether = 0;
     this.wallBase = 12;
@@ -22,6 +23,7 @@ export class Economy {
     this.wallCostMult = 1;
     this.towerCostMult = 1;
     this.waveCoinBonus = 0;
+    this.wavePartsBonus = 0;
     /** Meta currencies + clear-coin earned from wave clears this run. */
     this.runWaveGains = { coin: 0, parts: 0, aether: 0 };
   }
@@ -32,10 +34,11 @@ export class Economy {
   }
 
   /** Permanent economy tech for this run. */
-  applyRunMods({ wallCostMult = 1, towerCostMult = 1, waveCoinBonus = 0 } = {}) {
+  applyRunMods({ wallCostMult = 1, towerCostMult = 1, waveCoinBonus = 0, wavePartsBonus = 0 } = {}) {
     this.wallCostMult = wallCostMult > 0 ? wallCostMult : 1;
     this.towerCostMult = towerCostMult > 0 ? towerCostMult : 1;
     this.waveCoinBonus = waveCoinBonus | 0;
+    this.wavePartsBonus = wavePartsBonus | 0;
   }
 
   /** Bargainer applies here — Coin to place towers, not Forge unlocks. */
@@ -80,7 +83,7 @@ export class Economy {
 
   /** Apply clear rewards; returns the payout used. */
   applyWaveClear(wave) {
-    const r = waveClearRewards(wave, this.waveCoinBonus);
+    const r = waveClearRewards(wave, this.waveCoinBonus, this.wavePartsBonus);
     if (r.coin) this.addBattle(r.coin);
     if (r.parts) this.forge += r.parts;
     if (r.aether) this.aether += r.aether;

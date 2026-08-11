@@ -14,6 +14,17 @@ import { PARTS, partLabel } from "./parts.js";
 const AE_CHAIN = (a, b, c) => [{ aether: a }, { aether: b }, { aether: c }];
 const FG_CHAIN = (a, b, c) => [{ forge: a }, { forge: b }, { forge: c }];
 
+/** Iron Guard cumulative life totals by rank (rank 0 = base 3). */
+export const IRON_GUARD_LIVES = [3, 5, 7, 10, 15, 20, 25];
+const IRON_GUARD_COSTS = [
+  { aether: 18 },
+  { aether: 32 },
+  { aether: 50 },
+  { aether: 75 },
+  { aether: 110 },
+  { aether: 150 },
+];
+
 function masteryBlurb(kind, id) {
   if (kind === "payload") {
     if (id === "kinetic") return "+12% damage / rank";
@@ -100,54 +111,18 @@ export const TECH_TREES = [
         name: "Roster",
         children: [
           {
-            id: "cap3",
-            name: "Level Cap III",
-            blurb: "Towers reach level 3",
-            maxRank: 1,
-            costs: [{ aether: 20 }],
-            children: [
-              {
-                id: "cap4",
-                name: "Level Cap IV",
-                blurb: "Towers reach level 4",
-                maxRank: 1,
-                costs: [{ aether: 40 }],
-                children: [
-                  {
-                    id: "cap5",
-                    name: "Level Cap V",
-                    blurb: "Maximum tower growth",
-                    maxRank: 1,
-                    costs: [{ aether: 70 }],
-                  },
-                ],
-              },
-            ],
+            id: "level_cap",
+            name: "Level Cap",
+            blurb: "Towers reach L3 / L4 / L5",
+            maxRank: 3,
+            costs: [{ aether: 20 }, { aether: 40 }, { aether: 70 }],
           },
           {
-            id: "slot4",
-            name: "4th Slot",
-            blurb: "One more loadout",
-            maxRank: 1,
-            costs: [{ aether: 28 }],
-            children: [
-              {
-                id: "slot5",
-                name: "5th Slot",
-                blurb: "Expand the roster",
-                maxRank: 1,
-                costs: [{ aether: 50 }],
-                children: [
-                  {
-                    id: "slot6",
-                    name: "6th Slot",
-                    blurb: "Full field of comps",
-                    maxRank: 1,
-                    costs: [{ aether: 85 }],
-                  },
-                ],
-              },
-            ],
+            id: "roster_slots",
+            name: "Roster Slots",
+            blurb: "Unlock 4th / 5th / 6th loadout",
+            maxRank: 3,
+            costs: [{ aether: 28 }, { aether: 50 }, { aether: 85 }],
           },
         ],
       },
@@ -159,9 +134,9 @@ export const TECH_TREES = [
           {
             id: "lives",
             name: "Iron Guard",
-            blurb: "+1 life / rank (from 5)",
-            maxRank: 3,
-            costs: AE_CHAIN(18, 32, 50),
+            blurb: "Lives 3→5→7→10, then 15→20→25",
+            maxRank: 6,
+            costs: IRON_GUARD_COSTS,
           },
           {
             id: "cash",
@@ -187,16 +162,30 @@ export const TECH_TREES = [
           {
             id: "wall_cut",
             name: "Mason",
-            blurb: "Walls −10% / −20% Coin",
-            maxRank: 2,
-            costs: [{ aether: 16 }, { aether: 34 }],
+            blurb: "Walls −10% / −20% / −30% Coin",
+            maxRank: 3,
+            costs: AE_CHAIN(16, 34, 52),
           },
           {
             id: "wave_coin",
             name: "Spoils",
-            blurb: "Clear +3 / +5 Coin",
+            blurb: "Clear +3 / +5 / +8 Coin",
+            maxRank: 3,
+            costs: AE_CHAIN(20, 38, 58),
+          },
+          {
+            id: "wave_parts",
+            name: "Quartermaster",
+            blurb: "+1 / +2 Parts on part-drop waves",
             maxRank: 2,
-            costs: [{ aether: 20 }, { aether: 38 }],
+            costs: [{ aether: 24 }, { aether: 44 }],
+          },
+          {
+            id: "salvage",
+            name: "Salvager",
+            blurb: "Sell refund 60% / 75% (from 50%)",
+            maxRank: 2,
+            costs: [{ aether: 18 }, { aether: 36 }],
           },
         ],
       },
@@ -286,6 +275,36 @@ export function allTechNodes() {
   return [...NODE_BY_ID.values()];
 }
 
+export function livesFromIronGuardRank(rank) {
+  const r = Math.max(0, Math.min(IRON_GUARD_LIVES.length - 1, rank | 0));
+  return IRON_GUARD_LIVES[r];
+}
+
+export function ironGuardRankFromLives(lives) {
+  const hp = lives | 0;
+  let best = 0;
+  for (let i = 0; i < IRON_GUARD_LIVES.length; i++) {
+    if (hp >= IRON_GUARD_LIVES[i]) best = i;
+  }
+  return best;
+}
+
+/** Next roster-slot unlock (shared by Tech Tree + Forge). */
+export function nextRosterSlotUnlock(meta) {
+  const node = getTechNode("roster_slots");
+  if (!node) return null;
+  const rank = techRank(meta, node.id);
+  if (rank >= node.maxRank) return null;
+  const cost = techNextCost(node, rank);
+  return {
+    node,
+    rank,
+    cost,
+    nextSlotIndex: 3 + rank, // 0-based index of the slot being unlocked
+    nextSlotCount: 4 + rank,
+  };
+}
+
 /** Migrate legacy fields / old tech ids into ranks. */
 export function migrateTechRanks(rawMeta) {
   const tech = { ...(rawMeta?.tech && typeof rawMeta.tech === "object" ? rawMeta.tech : {}) };
@@ -299,18 +318,30 @@ export function migrateTechRanks(rawMeta) {
   }
   if ((tech.shock_edge | 0) > 0) bump("shock_power", tech.shock_edge | 0);
 
+  // Legacy nested level-cap nodes → condensed multi-rank
   const cap = rawMeta?.levelCap | 0;
-  if (cap >= 3) bump("cap3", 1);
-  if (cap >= 4) bump("cap4", 1);
-  if (cap >= 5) bump("cap5", 1);
+  if ((tech.cap5 | 0) >= 1 || cap >= 5) bump("level_cap", 3);
+  else if ((tech.cap4 | 0) >= 1 || cap >= 4) bump("level_cap", 2);
+  else if ((tech.cap3 | 0) >= 1 || cap >= 3) bump("level_cap", 1);
 
+  // Legacy nested slot nodes → condensed multi-rank
   const slots = rawMeta?.slotCount | 0;
-  if (slots >= 4) bump("slot4", 1);
-  if (slots >= 5) bump("slot5", 1);
-  if (slots >= 6) bump("slot6", 1);
+  if ((tech.slot6 | 0) >= 1 || slots >= 6) bump("roster_slots", 3);
+  else if ((tech.slot5 | 0) >= 1 || slots >= 5) bump("roster_slots", 2);
+  else if ((tech.slot4 | 0) >= 1 || slots >= 4) bump("roster_slots", 1);
 
+  // Iron Guard: prefer already-migrated ranks; else map from startLives / old 5+rank.
   const lives = rawMeta?.startLives | 0;
-  if (lives > 3) bump("lives", Math.min(3, lives - 3));
+  const oldLivesRank = tech.lives | 0;
+  if (oldLivesRank > 3 || (oldLivesRank > 0 && lives === livesFromIronGuardRank(oldLivesRank))) {
+    tech.lives = Math.min(6, oldLivesRank);
+  } else if (lives > 0) {
+    tech.lives = ironGuardRankFromLives(lives);
+  } else if (oldLivesRank > 0) {
+    tech.lives = ironGuardRankFromLives(5 + oldLivesRank);
+  } else {
+    delete tech.lives;
+  }
 
   if ((rawMeta?.startCashBonus | 0) >= 25) bump("cash", 1);
   if ((rawMeta?.startCashBonus | 0) >= 65) bump("cash", 2);
@@ -325,12 +356,22 @@ export function migrateTechRanks(rawMeta) {
   else if (tcm > 0 && tcm <= 0.95) bump("forge_cut", 1);
 
   const wcm = Number(rawMeta?.wallCostMult);
-  if (wcm > 0 && wcm <= 0.85) bump("wall_cut", 2);
+  if (wcm > 0 && wcm <= 0.75) bump("wall_cut", 3);
+  else if (wcm > 0 && wcm <= 0.85) bump("wall_cut", 2);
   else if (wcm > 0 && wcm <= 0.95) bump("wall_cut", 1);
 
   const wcb = rawMeta?.waveCoinBonus | 0;
-  if (wcb >= 8) bump("wave_coin", 2);
+  if (wcb >= 16) bump("wave_coin", 3);
+  else if (wcb >= 8) bump("wave_coin", 2);
   else if (wcb >= 3) bump("wave_coin", 1);
+
+  const wpb = rawMeta?.wavePartsBonus | 0;
+  if (wpb >= 2) bump("wave_parts", 2);
+  else if (wpb >= 1) bump("wave_parts", 1);
+
+  const srm = Number(rawMeta?.sellRefundMult);
+  if (srm >= 0.75) bump("salvage", 2);
+  else if (srm >= 0.6) bump("salvage", 1);
 
   const gD = Number(rawMeta?.globalDamageMult);
   if (gD >= 1.24) bump("global_damage", 3);
@@ -387,17 +428,10 @@ export function syncTechDerived(meta) {
   const tech = meta.tech || {};
   const rank = (id) => tech[id] | 0;
 
-  let levelCap = 2;
-  if (rank("cap5")) levelCap = 5;
-  else if (rank("cap4")) levelCap = 4;
-  else if (rank("cap3")) levelCap = 3;
+  const levelCap = 2 + rank("level_cap"); // 2..5
+  const slotCount = 3 + rank("roster_slots"); // 3..6
 
-  let slotCount = 3;
-  if (rank("slot6")) slotCount = 6;
-  else if (rank("slot5")) slotCount = 5;
-  else if (rank("slot4")) slotCount = 4;
-
-  const startLives = 5 + rank("lives");
+  const startLives = livesFromIronGuardRank(rank("lives"));
   const cashRanks = rank("cash");
   const startCashBonus = (cashRanks >= 1 ? 25 : 0) + (cashRanks >= 2 ? 40 : 0) + (cashRanks >= 3 ? 50 : 0);
 
@@ -406,10 +440,16 @@ export function syncTechDerived(meta) {
   const towerCostMult = bargain >= 2 ? 0.8 : bargain >= 1 ? 0.9 : 1;
 
   const wallCut = rank("wall_cut");
-  const wallCostMult = wallCut >= 2 ? 0.8 : wallCut >= 1 ? 0.9 : 1;
+  const wallCostMult = wallCut >= 3 ? 0.7 : wallCut >= 2 ? 0.8 : wallCut >= 1 ? 0.9 : 1;
 
   const spoils = rank("wave_coin");
-  const waveCoinBonus = (spoils >= 1 ? 3 : 0) + (spoils >= 2 ? 5 : 0);
+  const waveCoinBonus = (spoils >= 1 ? 3 : 0) + (spoils >= 2 ? 5 : 0) + (spoils >= 3 ? 8 : 0);
+
+  const partHaul = rank("wave_parts");
+  const wavePartsBonus = partHaul >= 2 ? 2 : partHaul >= 1 ? 1 : 0;
+
+  const salv = rank("salvage");
+  const sellRefundMult = salv >= 2 ? 0.75 : salv >= 1 ? 0.6 : 0.5;
 
   const globalDamageMult = 1 + 0.08 * rank("global_damage");
   const globalRangeMult = 1 + 0.06 * rank("global_range");
@@ -434,6 +474,8 @@ export function syncTechDerived(meta) {
   meta.towerCostMult = towerCostMult;
   meta.wallCostMult = wallCostMult;
   meta.waveCoinBonus = waveCoinBonus;
+  meta.wavePartsBonus = wavePartsBonus;
+  meta.sellRefundMult = sellRefundMult;
   meta.globalDamageMult = globalDamageMult;
   meta.globalRangeMult = globalRangeMult;
   meta.globalRofMult = globalRofMult;

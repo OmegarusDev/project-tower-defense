@@ -12,7 +12,7 @@ export const PARTS = {
   bases: {
     sentry: {
       range: 3.2,
-      fireInterval: 1.0,
+      fireInterval: 1.15,
       doctrine: "first",
       levelBias: "balanced",
       cost: 12,
@@ -20,14 +20,14 @@ export const PARTS = {
       blurb: "Lane clearer — shoots first on the path",
     },
     bulwark: {
-      range: 2.4,
-      fireInterval: 0.65,
+      range: 2.15,
+      fireInterval: 0.55,
       doctrine: "closest",
       pointBlankMult: 1.2,
       pointBlankRange: 1.25,
       levelBias: "rof",
       cost: 18,
-      forgeCost: 14,
+      forgeCost: 5,
       blurb: "Point defense — always the nearest threat",
     },
     spire: {
@@ -36,7 +36,7 @@ export const PARTS = {
       doctrine: "strongest",
       levelBias: "range",
       cost: 26,
-      forgeCost: 28,
+      forgeCost: 10,
       blurb: "Elite hunter — prioritizes highest HP",
     },
     aerie: {
@@ -46,7 +46,7 @@ export const PARTS = {
       airDamageMult: 1.25,
       levelBias: "balanced",
       cost: 22,
-      forgeCost: 22,
+      forgeCost: 8,
       blurb: "Air wing — flying first, then path tip",
     },
     warden: {
@@ -55,7 +55,7 @@ export const PARTS = {
       doctrine: "last",
       levelBias: "balanced",
       cost: 20,
-      forgeCost: 16,
+      forgeCost: 6,
       blurb: "Exit guard — last on the path (leak watch)",
     },
     talon: {
@@ -66,7 +66,7 @@ export const PARTS = {
       executeThreshold: 0.4,
       levelBias: "rof",
       cost: 20,
-      forgeCost: 18,
+      forgeCost: 7,
       blurb: "Finisher — lowest HP, bonus vs wounded",
     },
   },
@@ -79,7 +79,7 @@ export const PARTS = {
       rofMult: 1.35,
       speed: 9,
       cost: 10,
-      forgeCost: 8,
+      forgeCost: 5,
       blurb: "Alternating dual tubes",
     },
     scatter: {
@@ -88,7 +88,7 @@ export const PARTS = {
       spreadDeg: 34,
       speed: 8,
       cost: 16,
-      forgeCost: 22,
+      forgeCost: 9,
       damageMult: 0.8,
       homing: false,
       blurb: "Shotgun cone of pellets",
@@ -101,7 +101,7 @@ export const PARTS = {
       speed: 12,
       airCapable: true,
       cost: 18,
-      forgeCost: 18,
+      forgeCost: 6,
       blurb: "Long pierce; hits air",
     },
     pulse: {
@@ -109,7 +109,7 @@ export const PARTS = {
       pulseRadius: 1.85,
       rofMult: 0.85,
       cost: 20,
-      forgeCost: 20,
+      forgeCost: 7,
       blurb: "Area ticks around the tower",
     },
     launcher: {
@@ -119,7 +119,7 @@ export const PARTS = {
       aoeRadius: 1.25,
       aoeFalloff: true,
       cost: 22,
-      forgeCost: 26,
+      forgeCost: 10,
       blurb: "Lobs a blast on impact",
     },
     flak: {
@@ -131,7 +131,7 @@ export const PARTS = {
       airDamageMult: 1.35,
       damageMult: 0.72,
       cost: 20,
-      forgeCost: 24,
+      forgeCost: 8,
       blurb: "Burst flak — shreds air swarms",
     },
   },
@@ -150,7 +150,7 @@ export const PARTS = {
       status: { burn: { duration: 4, dps: 2, every: 0.5 } },
       speed: 9,
       cost: 12,
-      forgeCost: 14,
+      forgeCost: 6,
       blurb: "Fire + burn DoT",
     },
     shock: {
@@ -162,7 +162,7 @@ export const PARTS = {
       chainUpgradeable: true,
       speed: 12,
       cost: 16,
-      forgeCost: 24,
+      forgeCost: 9,
       blurb: "Yellow lightning — chains (tech-upgradeable)",
     },
     frost: {
@@ -171,7 +171,7 @@ export const PARTS = {
       status: { slow: { duration: 2.5, amount: 0.4 } },
       speed: 8,
       cost: 9,
-      forgeCost: 10,
+      forgeCost: 5,
       blurb: "Frost + slow",
     },
     poison: {
@@ -183,7 +183,7 @@ export const PARTS = {
       },
       speed: 8,
       cost: 11,
-      forgeCost: 16,
+      forgeCost: 7,
       blurb: "Purple toxin — mild DoT + light slow",
     },
     acid: {
@@ -192,7 +192,7 @@ export const PARTS = {
       status: { shred: { amount: 2, duration: 4 } },
       speed: 9,
       cost: 12,
-      forgeCost: 18,
+      forgeCost: 8,
       blurb: "Green acid — shreds armor for a few seconds",
     },
     breach: {
@@ -202,7 +202,7 @@ export const PARTS = {
       status: { shred: { amount: 1, duration: 2.5 } },
       speed: 11,
       cost: 15,
-      forgeCost: 22,
+      forgeCost: 10,
       blurb: "AP kinetic — ignores 4 armor; light shred. Best vs Slab Haulers.",
     },
     emp: {
@@ -211,7 +211,7 @@ export const PARTS = {
       emp: true,
       speed: 10,
       cost: 14,
-      forgeCost: 26,
+      forgeCost: 11,
       blurb: "EMP burst — strips energy wards & shields. Weak vs bare plate.",
     },
   },
@@ -242,7 +242,7 @@ export const WAVE_UNLOCKS = [
   { bestWave: 26, payloads: ["emp"], label: "EMP payload" },
 ];
 
-/** Soft roster size — matches slot4→slot6 tech. */
+/** Soft roster size — matches roster_slots tech (3→6). */
 export const MIN_ROSTER_SLOTS = 3;
 export const MAX_ROSTER_SLOTS = 6;
 
@@ -283,13 +283,28 @@ export function placeCost(base, barrel, payload) {
   return b + r + p;
 }
 
-/** Forge unlock price in Parts — never affected by Bargainer. */
-export function forgeBuyCost(kind, id, _ignoredMult = 1) {
+/** Parts already purchased at the Forge (not starters, not wave gifts). */
+export function forgePurchaseCount(meta) {
+  return Math.max(0, meta?.forgeBuys | 0);
+}
+
+/**
+ * Forge unlock price in Parts — never affected by Bargainer.
+ * Escalates with prior Forge purchases (`meta.forgeBuys`).
+ * Free parts (`forgeCost: 0`) stay free. Pass meta (or a buys count) as the 3rd arg.
+ */
+export function forgeBuyCost(kind, id, metaOrBuys = 0) {
   const table = kind === "base" ? PARTS.bases : kind === "barrel" ? PARTS.barrels : PARTS.payloads;
   const row = table[id];
   if (!row) return 0;
   const base = row.forgeCost != null ? row.forgeCost : row.cost ?? 0;
-  return Math.max(0, Math.round(base));
+  if (base <= 0) return 0;
+  const buys =
+    metaOrBuys && typeof metaOrBuys === "object"
+      ? forgePurchaseCount(metaOrBuys)
+      : Math.max(0, metaOrBuys | 0);
+  // First paid unlock ≈ base (5–6); each prior buy adds +4 Parts.
+  return Math.max(0, Math.round(base + buys * 4));
 }
 
 export function makeSlot(base = "", barrel = "", payload = "", levelCap = 1) {
