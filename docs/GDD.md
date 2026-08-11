@@ -55,7 +55,7 @@
 - Plain square grid; no pre-walls
 - Grid grows every **5 waves**, up to **22 rows**, **south from top** (spawn fixed; exit moves down)
 - Starts compact (**9×8**); drag / scroll the board when the field is taller than the screen
-- Base start: **3 lives / 75 Coin** (Iron Guard tech raises lives 3→5→7→10→15→20→25)
+- Base start: **3 HP / 75 Coin** (Iron Guard tech raises HP 3→5→7→10→15→20→25; sim field remains `lives`)
 - Kick drum tempo rises each wave; no music gap between waves
 
 ## 5. Campaign
@@ -102,8 +102,9 @@ Main Menu entry at launch: grid, spawn/exit, pre-walls, wave scripts or formula,
 
 - Spawn top, exit bottom; no diagonals
 - Towers + walls block **ground** path; illegal to seal ground path
-- Ground pathfinding: shortest path; deterministic tie-break; repath on blocker change
+- Ground pathfinding: shortest path to exit; soft tower-avoid for most enemies; fair hash tie-split among equal steps; never seal spawn→exit
 - **Flying:** air layer; ignore walls/towers; shortest air route; only air-capable turrets hit them
+- Player-facing HP (internal field remains `lives`); start Battle shown as **Coin** in meta UI
 - Wall cost rises with walls currently owned
 - PINNED later: env tiles, special walls
 
@@ -140,12 +141,14 @@ Starter free parts: **Sentry + Single + Kinetic**.
 | Barrel | Delivery |
 |--------|----------|
 | Single | One projectile |
-| Twin | Alternating dual |
+| Twin | Alternating dual; **1.75× ROF**, reduced range vs Single |
 | Scatter | Cone multi |
 | Rail | Long pierce (ballistic); air-capable |
 | Pulse | Self-centered area ticks |
 | Launcher | Lob; **blast on impact** (explosion is barrel, not payload) |
 | Flak | Shotgun cone; air-capable |
+
+Base × barrel **range/ROF multipliers stack** in AttackPlan. Arsenal mastery unlocks per-part **Range** and **ROF** ranks for every base/barrel.
 
 ### Payloads (elements)
 
@@ -202,7 +205,7 @@ Boot → Main → Endless Hub | Campaign Select → Prep | Build/Forge | Tech | 
 
 InGame Endless (live compose) | InGame Campaign (frozen roster) | Pause | Tower selected | Game Over | Victory | Confirms  
 
-HUD Endless: Lives, Battle, Forge/Aether readouts, Wave, Call Early (hold for 5×), Compose, Undo, Wall, Pause, selection (spend point / sell / XP).  
+HUD Endless: HP, Coin, Forge/Aether readouts, Wave, Call Early (hold for 5×), Compose, Undo, Wall, Pause, selection (spend point / sell / XP).  
 HUD Campaign: same without compose/Forge/tech.  
 
 Pause: Resume, Speed 1/2/3, Quit (confirm). Pause copy distinguishes mid-wave vs between-wave checkpoint.  

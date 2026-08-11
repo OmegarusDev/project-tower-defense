@@ -1,4 +1,4 @@
-import { buildAttackPlan } from "../sim/attackPlan.js";
+import { buildAttackPlan, planOptsFromParts } from "../sim/attackPlan.js";
 import { drawComposedTower } from "./towerPainter.js";
 import { drawEnemyBody } from "./enemyPainter.js";
 import { VIEW25, setPitch, deckRy, BoardCamera } from "./view25.js";
@@ -1280,15 +1280,13 @@ export class BoardView {
     if (selected) {
       const up = this.sim.partUpgrades || {};
       const g = this.sim.globalMods || {};
-      const plan = buildAttackPlan(t.base, t.barrel, t.payload, t.level, {
-        chainRank: up[t.payload]?.chain | 0,
-        powerRank: up[t.payload]?.power | 0,
-        basePower: up[t.base]?.power | 0,
-        barrelPower: up[t.barrel]?.power | 0,
-        globalDamage: g.damage || 1,
-        globalRange: g.range || 1,
-        globalRof: g.rof || 1,
-      });
+      const plan = buildAttackPlan(
+        t.base,
+        t.barrel,
+        t.payload,
+        t.level,
+        planOptsFromParts(up, g, t)
+      );
       // Range as perspective ellipse (circle in board space → oval on screen)
       const r = plan.rangeCells * this.cell;
       const steps = 48;

@@ -1,0 +1,30 @@
+/* editor.css — split from style.css (pure move, no restyle) */
+
+/* Level editor grid */
+.ed-grid {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  background: #0a0c10;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid #3a4a5e;
+}
+
+.ed-cell {
+  appearance: none;
+  aspect-ratio: 1;
+  border: 1px solid #2a3440;
+  background: #1c222a;
+  border-radius: 3px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.ed-cell.wall { background: #9aa6b4; border-color: #d4783a; }
+
+.ed-cell.spawn { background: #2a5a44; }
+
+.ed-cell.exit { background: #5a2a28; }

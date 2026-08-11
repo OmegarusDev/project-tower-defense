@@ -1,6 +1,6 @@
 import { PARTS } from "../data/parts.js";
 import { ballastPressureFactor, isConductive } from "../data/enemies.js";
-import { buildAttackPlan, Pattern } from "./attackPlan.js";
+import { buildAttackPlan, Pattern, planOptsFromParts } from "./attackPlan.js";
 import { INF } from "./boardGrid.js";
 
 export class CombatSystem {
@@ -24,20 +24,7 @@ export class CombatSystem {
   }
 
   _planOpts(t) {
-    const up = this.world.partUpgrades || {};
-    const g = this.world.globalMods || {};
-    const payload = up[t.payload] || {};
-    const base = up[t.base] || {};
-    const barrel = up[t.barrel] || {};
-    return {
-      chainRank: payload.chain | 0,
-      powerRank: payload.power | 0,
-      basePower: base.power | 0,
-      barrelPower: barrel.power | 0,
-      globalDamage: g.damage || 1,
-      globalRange: g.range || 1,
-      globalRof: g.rof || 1,
-    };
+    return planOptsFromParts(this.world.partUpgrades, this.world.globalMods, t);
   }
 
   _tickTower(t) {

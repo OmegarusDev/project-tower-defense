@@ -1,5 +1,6 @@
 import { buildAttackPlan, Pattern } from "../sim/attackPlan.js";
-import { doctrineLabel } from "../data/parts.js";
+import { doctrineLabel, PARTS } from "../data/parts.js";
+import { getTechNode } from "../data/techTree.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -34,5 +35,47 @@ assert(rail.pierce >= 1, "rail pierce");
 assert(rail.airCapable, "rail air");
 
 assert(doctrineLabel("flying") === "Air → First", "label");
+
+{
+  const single = buildAttackPlan("sentry", "single", "kinetic", 1);
+  const twin = buildAttackPlan("sentry", "twin", "kinetic", 1);
+  const ratio = single.fireInterval / twin.fireInterval;
+  assert(Math.abs(ratio - 1.75) < 1e-6, `twin ROF ≈ 1.75× single (got ${ratio})`);
+  assert(PARTS.barrels.twin.rofMult === 1.75, "twin data rofMult 1.75");
+  assert(twin.rangeCells < single.rangeCells, "twin reduced range vs single");
+}
+
+{
+  const baseOnly = buildAttackPlan("bulwark", "single", "kinetic", 1);
+  const withRail = buildAttackPlan("bulwark", "rail", "kinetic", 1);
+  assert(withRail.rangeCells > baseOnly.rangeCells * 1.2, "long barrel offsets short base");
+  const shortTwin = buildAttackPlan("spire", "twin", "kinetic", 1);
+  const longSingle = buildAttackPlan("spire", "single", "kinetic", 1);
+  assert(shortTwin.rangeCells < longSingle.rangeCells, "barrel rangeMult stacks on base");
+}
+
+{
+  const plain = buildAttackPlan("sentry", "single", "kinetic", 1);
+  const ranged = buildAttackPlan("sentry", "single", "kinetic", 1, {
+    baseRange: 2,
+    barrelRange: 1,
+  });
+  assert(ranged.rangeCells > plain.rangeCells * 1.1, "arsenal range ranks stack");
+  const faster = buildAttackPlan("sentry", "single", "kinetic", 1, {
+    baseRof: 2,
+    barrelRof: 1,
+  });
+  assert(faster.fireInterval < plain.fireInterval * 0.9, "arsenal ROF ranks stack");
+}
+
+{
+  assert(getTechNode("base_sentry_range")?.key === "range", "base range arsenal node");
+  assert(getTechNode("barrel_twin_rof")?.key === "rof", "barrel ROF arsenal node");
+  const breach = buildAttackPlan("sentry", "single", "breach", 1);
+  assert(breach.armorPierce >= 4, "breach AP");
+  assert(!breach.status?.shred, "breach distinct from acid shred");
+  const acid = buildAttackPlan("sentry", "single", "acid", 1);
+  assert(acid.status?.shred, "acid keeps shred");
+}
 
 console.log("ALL attackPlan tests passed");

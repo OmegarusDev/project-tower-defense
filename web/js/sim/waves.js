@@ -135,6 +135,7 @@ export class WaveManager {
       regen: def.regen || 0,
       boss: !!def.boss,
       silhouette: def.silhouette || id,
+      ignoreTowerAvoid: !!def.ignoreTowerAvoid,
       reachedExit: false,
       _hitFlash: 0,
       _regenAcc: 0,

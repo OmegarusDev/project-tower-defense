@@ -34,9 +34,11 @@ python3 -m http.server 8080 --directory web
 ```text
 web/
   index.html
-  css/style.css
+  css/            # tokens → shell → title → forge → tech → game-hud → meta → editor
   js/
     main.js app.js saveStore.js
+    app/          # run / chrome / input modules (take `app`)
+    ui/           # menu + forge/tech/end screens, bindActions
     data/         # parts, techTree, campaign
     sim/          # BoardGrid, AttackPlan, combat, waves, economy
     view/         # palette, board, painters, title, fx

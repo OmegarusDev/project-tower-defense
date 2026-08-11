@@ -33,11 +33,28 @@ function masteryBlurb(kind, id) {
     if (id === "pyro") return "Wilder burns / rank";
     if (id === "poison") return "Virulent brew / rank";
     if (id === "acid") return "Caustic shred / rank";
+    if (id === "breach") return "Harder AP strikes / rank";
+    if (id === "emp") return "Stronger EMP burst / rank";
     return "Payload mastery / rank";
   }
-  if (kind === "base") return "+8% damage & +4% range / rank for this base";
-  if (kind === "barrel") return "+7% damage & +4% fire rate / rank for this barrel";
+  if (kind === "base") return "+8% damage & +4% range / rank — unlock Range & ROF axes";
+  if (kind === "barrel") return "+7% damage & +4% fire rate / rank — unlock Range & ROF axes";
   return "Mastery / rank";
+}
+
+/** Axis child (range / ROF) under a base or barrel mastery node. */
+function partAxisChild(kind, id, key, name, blurb, costs) {
+  return {
+    id: `${kind}_${id}_${key}`,
+    name,
+    blurb,
+    maxRank: 3,
+    costs,
+    requiresPart: { kind, id },
+    partId: id,
+    partKind: kind,
+    key,
+  };
 }
 
 /** One mastery node per forge part (payload ids keep legacy tech ids). */
@@ -91,8 +108,13 @@ function arsenalGroup(kind, title) {
       }
       return node;
     }
+    const axisCosts = kind === "base" ? FG_CHAIN(8, 12, 18) : FG_CHAIN(7, 11, 16);
     return partMastery(kind, id, {
       forgeCosts: kind === "base" ? FG_CHAIN(10, 15, 22) : FG_CHAIN(9, 13, 19),
+      children: [
+        partAxisChild(kind, id, "range", "Range", "+6% range / rank for this part", axisCosts),
+        partAxisChild(kind, id, "rof", "ROF", "+5% fire rate / rank for this part", axisCosts),
+      ],
     });
   });
   return { kind: "group", id: `g_${kind}s`, name: title, children: kids };
@@ -144,7 +166,7 @@ export const TECH_TREES = [
           {
             id: "lives",
             name: "Iron Guard",
-            blurb: "Lives 3→5→7→10, then 15→20→25",
+            blurb: "HP 3→5→7→10, then 15→20→25",
             maxRank: 6,
             costs: IRON_GUARD_COSTS,
           },

@@ -34,7 +34,7 @@ Project Tower Defense/
 
 ## Modes
 
-**Endless:** infinite waves; live compose **without** pausing; wave-start checkpoint (**inWave** Continue = start of that wave) plus **betweenWaves** save on clear/quit-between so Continue keeps the post-clear board; starts 9×8 and grows south every 5 waves (cap 22 rows); pan/scroll the board; pinch (or ⌘/Ctrl+scroll) to zoom; in-game Pitch slider for foreshortening; base start **3 lives / 75 Coin**; no pre-walls; Forge/Aether meta not mid-run (delta-merge run gains into meta — never clobber vault with stale checkpoint).
+**Endless:** infinite waves; live compose **without** pausing; wave-start checkpoint (**inWave** Continue = start of that wave) plus **betweenWaves** save on clear/quit-between so Continue keeps the post-clear board; starts 9×8 and grows south every 5 waves (cap 22 rows); pan/scroll the board; pinch (or ⌘/Ctrl+scroll) to zoom; in-game Pitch slider for foreshortening; base start **3 HP / 75 Coin**; no pre-walls; Forge/Aether meta not mid-run (delta-merge run gains into meta — never clobber vault with stale checkpoint).
 
 **Campaign:** **shipped slice = 7 linear Act I levels**; future PINNED 5/10/25 × 3 campaigns. Prep = compose+Forge+Aether (untimed); in-level roster frozen (no compose/meta); predefined map seeds + valid pre-walls; victory per level data (waves and/or boss).
 
@@ -62,6 +62,7 @@ Sell tower/wall = Salvager **50%/60%/75%** of **recorded** Battle paid for that 
 - **Base** = envelope + targeting doctrine (+ light innate). No per-tower Target menu.
 - **Barrel** = delivery (Single/Twin/Scatter/Rail/Pulse/Launcher/Flak). Explosion = Launcher. Rail = ballistic pierce.
 - **Payload** = element only (Kinetic/Pyro/Shock/Frost/Poison/Acid/Breach/EMP)
+- Twin barrel = **1.75× ROF** vs Single with reduced range; base+barrel range/ROF mults stack; Arsenal Range/ROF ranks on all bases/barrels
 - Bases: Sentry(first), Bulwark(closest), Spire(strongest), Aerie(air→first), Warden(last), Talon(weakest)
 - XP bar → level-up **point** → spend (`U` / overlay) for +1 level; buffs by tower type; respect levelCap
 - Damage types; armor flat+%+immunity; DoT; slow cap; freeze at 100%
@@ -73,7 +74,7 @@ Sell tower/wall = Salvager **50%/60%/75%** of **recorded** Battle paid for that 
 
 ## Map
 
-Spawn top, exit bottom; no diagonals; ground shortest path; never seal; wall price scales with count; campaign seeds predefined.
+Spawn top, exit bottom; no diagonals; ground shortest path with soft tower-avoid + fair tie-split; never seal; wall price scales with count; campaign seeds predefined. UI shows **HP** / **Coin** (sim still uses `lives` / battle).
 
 ---
 

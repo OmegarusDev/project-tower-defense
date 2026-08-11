@@ -250,6 +250,7 @@ export class SimWorld {
       aimAngle: -Math.PI / 2,
     };
     this.towers.push(tower);
+    this.grid.setTower(x, y, true);
     this.grid.recompute();
     this.combat.dirtyAuras();
     this.logAction("place_tower", { x, y, slot: slotIndex });
@@ -265,6 +266,7 @@ export class SimWorld {
     const refund = (t.paid * rate) | 0;
     this.economy.addBattle(refund);
     this.grid.setBlocked(t.cell.x, t.cell.y, false);
+    this.grid.setTower(t.cell.x, t.cell.y, false);
     this.towers.splice(i, 1);
     this.grid.recompute();
     this.combat.dirtyAuras();
@@ -346,6 +348,9 @@ export class SimWorld {
     }
     this.towers = blob.towers || [];
     this.walls = blob.walls || [];
+    if (this.grid.towerMask?.length === this.grid.cols * this.grid.rows) {
+      this.grid.towerMask.fill(0);
+    }
     for (const t of this.towers) {
       t.base = migratePartId("base", t.base) || "sentry";
       t.barrel = migratePartId("barrel", t.barrel) || "single";
@@ -353,6 +358,7 @@ export class SimWorld {
       if (!Number.isFinite(t.aimAngle)) t.aimAngle = -Math.PI / 2;
       t.levelPoints = t.levelPoints | 0;
       this.grid.setBlocked(t.cell.x, t.cell.y, true);
+      this.grid.setTower(t.cell.x, t.cell.y, true);
     }
     for (const w of this.walls) this.grid.setBlocked(w.cell.x, w.cell.y, true);
     this.grid.recompute();
@@ -425,7 +431,11 @@ export class SimWorld {
       }
       const next = e.flying
         ? this.grid.nextAir(cx, cy)
-        : this.grid.nextGround(cx, cy);
+        : this.grid.pickNextGround(cx, cy, {
+            id: e.id,
+            tick: this.tickIndex | 0,
+            avoidTowers: !e.ignoreTowerAvoid,
+          });
       if (next.x === cx && next.y === cy) {
         if (this.grid.isExit(cx, cy)) e.reachedExit = true;
         return;

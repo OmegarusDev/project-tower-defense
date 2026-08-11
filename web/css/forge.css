@@ -1,0 +1,218 @@
+/* forge.css — split from style.css (pure move, no restyle) */
+
+.forge-preview-wrap {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background:
+    var(--tex-rust),
+    linear-gradient(165deg, #3a3028 0%, #1c1814 100%);
+  border: 2px solid #8a6238;
+  border-radius: 0;
+  clip-path: var(--plate-clip);
+  padding: 10px;
+  box-shadow: 0 3px 0 #14100c;
+}
+
+#forgePreview.forge-preview-flash {
+  animation: forge-preview-fade 0.28s ease-out;
+}
+
+@keyframes forge-preview-fade {
+  from { opacity: 0.25; }
+  to { opacity: 1; }
+}
+
+.forge-summary {
+  flex: 1;
+  min-width: 0;
+}
+
+.forge-summary h3 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.forge-summary p {
+  margin: 0;
+  text-align: left;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.part-btn.locked {
+  opacity: 0.78;
+  background: linear-gradient(180deg, #2a3344 0%, #1e2634 100%);
+  border-style: dashed;
+  border-color: #4a5a72;
+  box-shadow: none;
+}
+
+.part-btn.locked.cant-afford {
+  opacity: 0.45;
+}
+
+.part-btn.equipped {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-btn), 0 0 0 1px var(--accent-soft);
+  background: linear-gradient(180deg, #524a32 0%, #3a3628 50%, #2e2c22 100%);
+}
+
+.forge-screen .forge-status {
+  display: block;
+  min-height: 1.45em;
+  margin: 10px 0 2px;
+  padding: 0 4px;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  color: var(--warn);
+  overflow-wrap: anywhere;
+  position: relative;
+  z-index: 2;
+}
+
+.forge-screen .forge-status[hidden] {
+  display: block;
+  visibility: hidden;
+}
+
+.forge-screen .meta-scroll .build-strip {
+  flex: 0 0 auto;
+}
+
+.forge-screen .forge-preview-wrap {
+  flex: 0 0 auto;
+}
+
+.forge-part-grid {
+  flex: 0 0 auto;
+}
+
+.build-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.build-strip .btn {
+  min-width: 0;
+  width: 100%;
+  padding: 12px 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.build-strip .btn.slot-locked {
+  opacity: 0.48;
+  background: linear-gradient(180deg, #2a3344 0%, #1e2634 100%);
+  border-style: dashed;
+  border-color: #4a5a72;
+  box-shadow: none;
+  color: var(--muted);
+}
+
+.build-strip .btn.slot-unlock {
+  opacity: 0.92;
+  border-style: dashed;
+  border-color: rgba(201, 162, 39, 0.55);
+  color: var(--accent);
+  background: linear-gradient(180deg, #3a3428 0%, #2a2418 100%);
+}
+
+.build-strip .btn.slot-unlock.cant-afford {
+  opacity: 0.55;
+  color: var(--muted);
+}
+
+.part-chip {
+  padding: 8px 10px !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.04em;
+  clip-path: var(--plate-clip-sm);
+  border-radius: 0 !important;
+}
+
+.part-btn.part-chip,
+.btn.part-chip {
+  white-space: normal;
+}
+
+.forge-screen .meta-hero {
+  margin-bottom: 4px;
+  padding-bottom: 10px;
+}
+
+.forge-screen .meta-hero-row {
+  position: relative;
+  z-index: 1;
+}
+
+.forge-part-grid .btn.part-btn {
+  clip-path: var(--plate-clip-sm);
+  border-radius: 0;
+  padding: 10px 8px;
+  font-size: 0.72rem;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.part-btn-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+.part-btn-inner .part-ico {
+  flex: 0 0 auto;
+  display: block;
+}
+
+.part-btn-label {
+  min-width: 0;
+}
+
+.part-btn-cost {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.part-btn.equipped {
+  background-image:
+    var(--tex-scratches),
+    linear-gradient(180deg, #6a5430 0%, #4a3a24 50%, #322818 100%) !important;
+  filter: drop-shadow(0 0 6px rgba(232, 136, 64, 0.3));
+}
+
+.part-btn-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-align: left;
+}
+
+.part-btn-label {
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.part-btn-cost {
+  opacity: 0.75;
+  font-weight: 600;
+}
+
+.part-ico,
+.tech-ico {
+  flex: 0 0 auto;
+  display: block;
+  shape-rendering: geometricPrecision;
+}

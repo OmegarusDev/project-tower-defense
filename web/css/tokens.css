@@ -1,0 +1,105 @@
+/* tokens.css — split from style.css (pure move, no restyle) */
+
+:root {
+  /* Iron / stone / wood / lava — industrial, not brass steampunk */
+  --bg: #12151a;
+  --panel: #1a1e24;
+  --wood: #2a221a;
+  --stone: #3a3e44;
+  --iron: #6a727c;
+  --text: #e6e2da;
+  --muted: #9aa3ae;
+  --accent: #c45a28;
+  --accent-soft: rgba(196, 90, 40, 0.32);
+  --lava: #c45a28;
+  --brass: #8a7a5a;
+  --tech: #5a8a9a;
+  --rust: #7a4028;
+  --rust-deep: #3a2018;
+  --btn: #3a424c;
+  --btn-face: linear-gradient(180deg, #4a5460 0%, #343c46 42%, #242a32 100%);
+  --btn-face-hover: linear-gradient(180deg, #5a6470 0%, #3e4650 42%, #2c323a 100%);
+  --btn-border: #7a8490;
+  --btn-border-hi: rgba(220, 228, 236, 0.14);
+  --btn-lip: #0e1216;
+  --btn-ink: #0e1216;
+  --btn-secondary: linear-gradient(180deg, #3a3630 0%, #2a2620 48%, #1e1a16 100%);
+  --btn-secondary-hover: linear-gradient(180deg, #4a443c 0%, #342e28 48%, #26221c 100%);
+  --btn-secondary-border: #6a5e50;
+  --btn-secondary-lip: #12100c;
+  --btn-warn: linear-gradient(180deg, #8a5a28 0%, #6a421c 48%, #4a3014 100%);
+  --btn-warn-border: #b07840;
+  --btn-warn-lip: #2a1a0c;
+  --btn-danger: linear-gradient(180deg, #8a4038 0%, #6a302c 48%, #4a2420 100%);
+  --btn-danger-border: #a85850;
+  --btn-danger-lip: #2a1412;
+  --btn-call: linear-gradient(180deg, #3a6a58 0%, #2a5044 48%, #1e3a32 100%);
+  --btn-call-hover: linear-gradient(180deg, #4a7a66 0%, #345c4e 48%, #284840 100%);
+  --btn-call-border: #6a9a88;
+  --btn-call-lip: #0e241c;
+  --btn-hover: #4a5460;
+  --warn: #c49a5a;
+  --danger: #c06050;
+  /* Inset face only — outer lip uses drop-shadow (survives clip-path) */
+  --shadow-btn:
+    0 1px 0 var(--btn-border-hi) inset,
+    0 -2px 0 rgba(0, 0, 0, 0.28) inset;
+  --shadow-btn-press:
+    0 2px 0 rgba(0, 0, 0, 0.4) inset;
+  --drop-btn: drop-shadow(0 4px 0 var(--btn-lip)) drop-shadow(0 7px 10px rgba(0, 0, 0, 0.38));
+  --drop-btn-press: drop-shadow(0 1px 0 var(--btn-lip)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  --drop-btn-secondary: drop-shadow(0 4px 0 var(--btn-secondary-lip)) drop-shadow(0 7px 10px rgba(0, 0, 0, 0.35));
+  --drop-btn-warn: drop-shadow(0 4px 0 var(--btn-warn-lip)) drop-shadow(0 7px 10px rgba(0, 0, 0, 0.35));
+  --drop-btn-danger: drop-shadow(0 4px 0 var(--btn-danger-lip)) drop-shadow(0 7px 10px rgba(0, 0, 0, 0.35));
+  --drop-btn-call: drop-shadow(0 5px 0 var(--btn-call-lip)) drop-shadow(0 9px 14px rgba(0, 0, 0, 0.4));
+  --drop-btn-gold: drop-shadow(0 5px 0 #3a2410) drop-shadow(0 9px 14px rgba(0, 0, 0, 0.4));
+  --font-ui: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-btn: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  /* Soft noise + slag blooms (no asset packs) */
+  --tex-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.28  0 0 0 0 0.3  0 0 0 0 0.34  0 0 0 0.45 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --tex-rust:
+    radial-gradient(ellipse 55% 40% at 12% 18%, rgba(140, 60, 30, 0.28) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 50% at 88% 72%, rgba(80, 40, 24, 0.32) 0%, transparent 50%),
+    radial-gradient(ellipse 35% 28% at 62% 22%, rgba(60, 70, 80, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 30% 35% at 30% 85%, rgba(40, 28, 20, 0.35) 0%, transparent 55%);
+  --tex-patina:
+    radial-gradient(circle at 20% 30%, rgba(70, 90, 80, 0.1) 0 2px, transparent 3px),
+    radial-gradient(circle at 70% 60%, rgba(100, 55, 35, 0.12) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 45% 80%, rgba(40, 44, 50, 0.22) 0 1px, transparent 2px);
+  --tex-bolts:
+    radial-gradient(circle at 10px 10px, #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px),
+    radial-gradient(circle at calc(100% - 10px) 10px, #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px),
+    radial-gradient(circle at 10px calc(100% - 10px), #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px),
+    radial-gradient(circle at calc(100% - 10px) calc(100% - 10px), #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px);
+  /* Tight corner bolts for short vault chips (clear of Æ / gear / numbers) */
+  --tex-bolts-corner:
+    radial-gradient(circle at 4px 4px, #9aa4b0 0 1.15px, #3a424c 1.7px, transparent 2.3px),
+    radial-gradient(circle at calc(100% - 4px) 4px, #9aa4b0 0 1.15px, #3a424c 1.7px, transparent 2.3px),
+    radial-gradient(circle at 4px calc(100% - 4px), #9aa4b0 0 1.15px, #3a424c 1.7px, transparent 2.3px),
+    radial-gradient(circle at calc(100% - 4px) calc(100% - 4px), #9aa4b0 0 1.15px, #3a424c 1.7px, transparent 2.3px);
+  --tex-scratches:
+    linear-gradient(115deg, transparent 40%, rgba(200, 210, 220, 0.04) 41%, transparent 42%),
+    linear-gradient(70deg, transparent 58%, rgba(0, 0, 0, 0.14) 59%, transparent 60%),
+    linear-gradient(160deg, transparent 30%, rgba(180, 100, 50, 0.03) 31%, transparent 33%);
+  --tex-hazard:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(120, 60, 30, 0.22) 0 6px,
+      rgba(18, 20, 24, 0.5) 6px 12px
+    );
+  --rim-brass:
+    0 0 0 1px rgba(120, 130, 140, 0.28) inset,
+    0 0 0 3px rgba(12, 14, 18, 0.55) inset,
+    0 1px 0 rgba(200, 210, 220, 0.1) inset;
+  /* Chamfered plate — shared forgeworks silhouette */
+  --plate-clip: polygon(
+    0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px,
+    100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px)
+  );
+  --plate-clip-sm: polygon(
+    0 6px, 6px 0, calc(100% - 6px) 0, 100% 6px,
+    100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px)
+  );
+  font-family: var(--font-ui);
+}

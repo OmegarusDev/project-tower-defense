@@ -38,6 +38,7 @@ export const ENEMY_KINDS = {
     ballast: "high",
     resist: { fire: 0.55 },
     silhouette: "hauler",
+    ignoreTowerAvoid: true,
   },
   hauler_ceramite: {
     label: "Ceramite Hauler",
@@ -50,6 +51,7 @@ export const ENEMY_KINDS = {
     ballast: "high",
     resist: { fire: 0.55, shock: 0.65 },
     silhouette: "hauler",
+    ignoreTowerAvoid: true,
   },
   duct: {
     label: "Duct Hover",
@@ -124,6 +126,7 @@ export const ENEMY_KINDS = {
     leakDamage: 2,
     battleDrop: 4,
     silhouette: "kiln",
+    ignoreTowerAvoid: true,
   },
   siphon: {
     label: "Siphon Tick",
@@ -148,6 +151,7 @@ export const ENEMY_KINDS = {
     battleDrop: 16,
     boss: true,
     silhouette: "claim",
+    ignoreTowerAvoid: true,
   },
 };
 

@@ -2,6 +2,10 @@ import { PARTS } from "../data/parts.js";
 
 export const Pattern = { PROJECTILE: 0, PULSE: 1, HYBRID: 2 };
 
+/**
+ * Build combat plan from triad + level + meta ranks.
+ * Range/ROF stack: base envelope × base mults × barrel mults × part upgrade ranks × globals.
+ */
 export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {}) {
   const base = PARTS.bases[baseId] || {};
   const barrel = PARTS.barrels[barrelId] || {};
@@ -14,8 +18,8 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
     alternating: !!barrel.alternating,
     pierce: barrel.pierce ?? 0,
     pulseRadius: barrel.pulseRadius ?? 0,
-    rangeCells: base.range ?? 3,
-    fireInterval: base.fireInterval ?? 1,
+    rangeCells: (base.range ?? 3) * (base.rangeMult ?? 1),
+    fireInterval: (base.fireInterval ?? 1) / Math.max(0.05, base.rofMult ?? 1),
     projectileSpeed: barrel.speed ?? 8,
     airCapable: !!barrel.airCapable,
     damage: payload.damage ?? 10,
@@ -42,6 +46,7 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
     executeThreshold: base.executeThreshold ?? 0,
   };
 
+  // Barrel delivery mults stack on the base envelope
   plan.rangeCells *= barrel.rangeMult ?? 1;
   plan.fireInterval /= Math.max(0.05, barrel.rofMult ?? 1);
   if (payload.speed != null) plan.projectileSpeed = payload.speed;
@@ -102,6 +107,16 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
     plan.fireInterval /= 1 + 0.04 * barrelPower;
   }
 
+  // Per-part Arsenal range / ROF ranks (bases + barrels)
+  const baseRange = Math.max(0, opts.baseRange | 0);
+  const baseRof = Math.max(0, opts.baseRof | 0);
+  const barrelRange = Math.max(0, opts.barrelRange | 0);
+  const barrelRof = Math.max(0, opts.barrelRof | 0);
+  if (baseRange > 0) plan.rangeCells *= 1 + 0.06 * baseRange;
+  if (baseRof > 0) plan.fireInterval /= 1 + 0.05 * baseRof;
+  if (barrelRange > 0) plan.rangeCells *= 1 + 0.06 * barrelRange;
+  if (barrelRof > 0) plan.fireInterval /= 1 + 0.05 * barrelRof;
+
   const gDmg = opts.globalDamage > 0 ? opts.globalDamage : 1;
   const gRange = opts.globalRange > 0 ? opts.globalRange : 1;
   const gRof = opts.globalRof > 0 ? opts.globalRof : 1;
@@ -110,6 +125,28 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
   plan.fireInterval /= gRof;
 
   return plan;
+}
+
+/** Shared opts builder for combat / ghost / board range rings. */
+export function planOptsFromParts(partUpgrades, globalMods, triad) {
+  const up = partUpgrades || {};
+  const g = globalMods || {};
+  const payload = up[triad.payload] || {};
+  const base = up[triad.base] || {};
+  const barrel = up[triad.barrel] || {};
+  return {
+    chainRank: payload.chain | 0,
+    powerRank: payload.power | 0,
+    basePower: base.power | 0,
+    barrelPower: barrel.power | 0,
+    baseRange: base.range | 0,
+    baseRof: base.rof | 0,
+    barrelRange: barrel.range | 0,
+    barrelRof: barrel.rof | 0,
+    globalDamage: g.damage || 1,
+    globalRange: g.range || 1,
+    globalRof: g.rof || 1,
+  };
 }
 
 function applyPayloadPower(plan, payloadId, power) {
@@ -131,6 +168,6 @@ function applyPayloadPower(plan, payloadId, power) {
     st.shred.amount = (st.shred.amount || 0) + power;
     st.shred.duration = (st.shred.duration || 0) + 0.6 * power;
   }
-  // Kinetic has no status — damage mult is the mastery
+  // Kinetic / breach / emp: damage (and pierce/emp flags) are the mastery
   void payloadId;
 }

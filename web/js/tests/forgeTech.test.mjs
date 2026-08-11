@@ -70,4 +70,10 @@ function assert(cond, msg) {
   assert(n.startLives >= 3 && n.startLives <= 25, "lives clamp 3–25");
 }
 
+{
+  assert(getTechNode("base_sentry_range")?.key === "range", "arsenal base range");
+  assert(getTechNode("barrel_single_rof")?.key === "rof", "arsenal barrel ROF");
+  assert(getTechNode("base_sentry_range")?.requiresPart?.id === "sentry", "range requires part");
+}
+
 console.log("ALL forgeTech tests passed");
