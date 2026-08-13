@@ -244,6 +244,22 @@ export function getCampaignLevel(id) {
   return CAMPAIGN_LEVELS.find((l) => l.id === id) || null;
 }
 
+/**
+ * Static spawn seam for a campaign level. Defaults to the center back line.
+ * Levels may author `spawnCells` (any tiles, including mid-board for 40+);
+ * the portal pins one cell for the whole level (seeded pick when several).
+ */
+export function levelPortalCell(lv) {
+  const cells = lv.spawnCells;
+  if (cells && cells.length) {
+    if (cells.length === 1) return { x: cells[0].x, y: cells[0].y };
+    const rand = mulberry32((lv.seed || 1) >>> 0);
+    const c = cells[(rand() * cells.length) | 0];
+    return { x: c.x, y: c.y };
+  }
+  return { x: (lv.cols / 2) | 0, y: 0 };
+}
+
 /** Linear unlock: level N needs N-1 cleared. */
 export function isLevelUnlocked(levelId, clearedIds) {
   const cleared = new Set(clearedIds || []);

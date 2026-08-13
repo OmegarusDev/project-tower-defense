@@ -7,7 +7,7 @@ import {
   clearEndless,
   loadEndless,
 } from "../saveStore.js";
-import { getCampaignLevel, isLevelUnlocked } from "../data/campaign.js";
+import { getCampaignLevel, isLevelUnlocked, levelPortalCell } from "../data/campaign.js";
 
 export function newRun(app, seed, { skipConfirm = false } = {}) {
   if (!skipConfirm && hasEndless()) {
@@ -123,6 +123,19 @@ export function bootLevel(app, lv) {
       : null);
   app._applyRunTech(app.sim, { battleBase: lv.coinGrant || BASE_START_CASH });
   app.sim.applyPreWalls(lv.preWalls || []);
+  // Campaign seam is static per level; later levels may spawn off the back line.
+  const pc = levelPortalCell(lv);
+  if (app.sim.grid.groundDist[app.sim.grid.idx(pc.x, pc.y)] >= 1_000_000) {
+    // Picked cell walled by preWalls — fall back to nearest reachable seam cell
+    for (let x = 0; x < app.sim.grid.cols; x++) {
+      if (app.sim.grid.groundDist[app.sim.grid.idx(x, 0)] < 1_000_000) {
+        pc.x = x;
+        pc.y = 0;
+        break;
+      }
+    }
+  }
+  app.sim.portal = pc;
   app.fx.clear();
   app._ghost = null;
   app.clearUndoStack();

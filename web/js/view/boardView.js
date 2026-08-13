@@ -33,6 +33,7 @@ export class BoardView {
     this.selectedTowerId = -1;
     this.onTap = null;
     this._portalAcc = 0;
+    this._prevPortalX = -1;
     this._drag = null;
     this._pointers = new Map();
     this._pinch = null;
@@ -924,13 +925,22 @@ export class BoardView {
     if (!this.fx) return;
     this._portalAcc += 1;
     if (this._portalAcc % 8 !== 0) return;
-    this.fx.portalMote(g.spawn.x + 0.5, g.spawn.y + 0.5);
+    const p = this.sim?.portal || g.spawn;
+    this.fx.portalMote(p.x + 0.5, p.y + 0.5);
   }
 
-  /** Animated wormhole at spawn. */
+  /** Animated wormhole at the live portal cell. */
   _drawPortal(g) {
     const ctx = this.ctx;
-    const c = this.cam.projectCell(g.spawn.x, g.spawn.y);
+    const p = this.sim?.portal || g.spawn;
+    if (this._prevPortalX !== p.x) {
+      // Seam re-opened: puff at the new cell (and mark the old one closing)
+      this._prevPortalX = p.x;
+      if (this.fx) {
+        for (let i = 0; i < 6; i++) this.fx.portalMote(p.x + 0.5, p.y + 0.5);
+      }
+    }
+    const c = this.cam.projectCell(p.x, p.y);
     const t = performance.now() * 0.001;
     const rx = this.cell * 0.42 * c.s;
     const ry = deckRy(rx);

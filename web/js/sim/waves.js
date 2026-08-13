@@ -2,6 +2,7 @@ import { ENDLESS_GRID } from "../data/endlessGrid.js";
 import { composeEndlessWave, resolveCampaignWave } from "../data/waveScripts.js";
 import { enemyDef, resolveEnemyKind } from "../data/enemies.js";
 import { mulberry32 } from "./rng.js";
+import { INF } from "./boardGrid.js";
 
 export class WaveManager {
   constructor(world) {
@@ -13,6 +14,11 @@ export class WaveManager {
     this._spawnGap = 0.4;
     this._waveSpeedMult = 1;
     this._rand = null;
+    this._portalRand = null;
+    this._portalCycle = null;
+    this._portalIdx = 0;
+    this._portalTimer = 0;
+    this._lastPortalX = -1;
     this.lastTheme = "";
     this.lastEvent = "";
   }
@@ -30,6 +36,7 @@ export class WaveManager {
     this.toSpawn = this._queue.length;
     this.spawnTimer = Math.min(0.2, this._spawnGap);
     this.waveActive = true;
+    this._buildPortal(w);
     this.world.emit("wave_checkpoint", { wave: w });
     this.world.emit("wave_composition", {
       count: this.toSpawn,
@@ -42,6 +49,15 @@ export class WaveManager {
   tick() {
     if (!this.waveActive) return;
     if (this.toSpawn > 0) {
+      // Endless: the seam re-opens elsewhere after each dwell stretch
+      if (this.world.modeEndless) {
+        this._portalTimer -= this.world.dt;
+        if (this._portalTimer <= 0) {
+          this._portalTimer = this._dwellFor(this.world.waveIndex);
+          this._portalIdx += 1;
+          this._relocatePortal();
+        }
+      }
       this.spawnTimer -= this.world.dt;
       if (this.spawnTimer <= 0) {
         this._spawnOne();
@@ -88,9 +104,71 @@ export class WaveManager {
   _spawnOne() {
     const w = this.world.waveIndex;
     const kind = this._queue.shift() || "mite";
-    const e = this.makeEnemy(kind, w, { speedMult: this._waveSpeedMult });
+    const e = this.makeEnemy(kind, w, {
+      speedMult: this._waveSpeedMult,
+      pos: this._spawnPos(kind),
+    });
     this.world.enemies.push(e);
     this.world.emit("enemy_spawned", { enemy: e });
+  }
+
+  /**
+   * Spawn point for an enemy — the live portal cell, with a reachability guard.
+   * If the portal's column is sealed (player walls), fall back to the first
+   * reachable back-line cell (deterministic left-to-right scan), then the
+   * canonical spawn. Air enemies use airDist (always reachable).
+   */
+  _spawnPos(kind) {
+    const g = this.world.grid;
+    const p = this.world.portal || { x: g.spawn.x, y: 0 };
+    const dist = enemyDef(kind).flying ? g.airDist : g.groundDist;
+    if (g.inBounds(p.x, p.y) && dist[g.idx(p.x, p.y)] < INF) {
+      return { x: p.x + 0.5, y: p.y + 0.5 };
+    }
+    for (let x = 0; x < g.cols; x++) {
+      if (dist[g.idx(x, 0)] < INF) return { x: x + 0.5, y: 0.5 };
+    }
+    return { x: g.spawn.x + 0.5, y: 0.5 };
+  }
+
+  /** Endless only: seeded back-line portal cycle + dwell schedule for a wave. */
+  _buildPortal(w) {
+    const world = this.world;
+    if (!world.modeEndless) return;
+    this._portalRand = mulberry32(((world.runSeed || 1) ^ (w * 0x9e3779b9) ^ 0x51ab3d) >>> 0);
+    const cols = world.grid.cols;
+    const cycle = [];
+    for (let x = 0; x < cols; x++) cycle.push(x);
+    for (let i = cycle.length - 1; i > 0; i--) {
+      const j = (this._portalRand() * (i + 1)) | 0;
+      const tmp = cycle[i];
+      cycle[i] = cycle[j];
+      cycle[j] = tmp;
+    }
+    this._portalCycle = cycle;
+    this._portalIdx = 0;
+    this._portalTimer = this._dwellFor(w);
+    this._lastPortalX = -1;
+    this._relocatePortal();
+  }
+
+  _relocatePortal() {
+    const cycle = this._portalCycle || [];
+    if (!cycle.length) return;
+    let x = cycle[this._portalIdx % cycle.length];
+    // Never sit on the same seam cell twice in a row (cycle wrap-around)
+    if (x === this._lastPortalX) {
+      this._portalIdx = (this._portalIdx + 1) % cycle.length;
+      x = cycle[this._portalIdx % cycle.length];
+    }
+    this._lastPortalX = x;
+    this.world.portal = { x, y: 0 };
+    this.world.emit("portal_moved", { x, y: 0 });
+  }
+
+  /** Intensity curve: long dwells early, quicker re-opening as waves climb. */
+  _dwellFor(w) {
+    return Math.max(2.5, Math.min(8, 8 - 0.15 * (w - 1)));
   }
 
   /** Public factory — also used for nest-cask children. */

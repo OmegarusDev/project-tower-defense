@@ -32,12 +32,27 @@ PLAY.html        # thin launcher → GitHub Pages
 | `BoardGrid` | Exit BFS distance fields (ground + air); per-enemy next-step with soft tower-avoid + fair tie-split (air unchanged) |
 | `AttackPlan` | `(base,barrel,payload,level,opts)` → pattern/damage; auto-level + branch ranks; base×barrel range/ROF mults stack with Arsenal ranks |
 | `combat` | Targeting, projectiles (pierce / ballistic / homing coast), pulses, status, XP→auto-level + pending branch picks |
+| `waves` | Wave compose (endless themes / campaign packs), spawn pacing, **roaming seam portal** (endless dwell schedule, spawn-time reachability guard), enemy HP/speed scaling |
 | `ProcPalette` | Colors + colorblind LUT (default off) |
 | `SynthBank` | Bake SFX PCM at boot; Music/SFX buses on shared AudioContext |
 | `ScoreEngine` | Generative ambient pads + kick; reacts to wave/density/phase/speed; pause ducks Music bus |
 | `balance/` | Headless `runSim` + greedy bot + Monte Carlo CLI — no simBridge/DOM |
 
 Endless checkpoints store `phase` (`inWave` | `betweenWaves`), `earlyBonusWave`, and `metaAppliedGains`. Meta Forge/Aether merge via run-gain deltas only; Continue re-seeds the sim vault from current meta.
+
+### Seam portal (spawn origin)
+
+`world.portal` is the live spawn cell. Endless: `WaveManager` builds a seeded shuffle
+cycle of back-line columns per wave (`_portalRand`, own stream — independent of the
+compose/jitter `_rand`) and relocates every `dwell(w) = clamp(8 − 0.15(w−1), 2.5, 8)` s
+while spawns remain (`portal_moved` event; `_portalIdx` advances, never re-sits on the
+last cell). Campaign: `levelPortalCell(lv)` pins one cell for the whole level — default
+center back line, or authored `spawnCells` (any tiles; 40+ levels may spawn mid-board);
+`bootLevel` guards against preWalls sealing the pick. Spawn-time guard in
+`WaveManager._spawnPos`: if the scheduled cell is unreachable (player walls), fall back
+to the first reachable back-line cell (deterministic scan), then canonical spawn.
+The seam row (y = 0) is never buildable (`BoardGrid.isBuildable`), so the portal always
+has a legal origin.
 
 ### In-run leveling
 
@@ -58,6 +73,10 @@ Presets ladder the Forge progression (all bots are greedy — real players do be
 Measured on the shipped endless map (`ENDLESS_GRID`, 9×8).
 Post-refactor (2026-08-13) 12-run medians: fresh 7.25w/GO .83, earlyAA 8.9w/GO .75,
 parts2 12.1w/GO .75, midMeta 32.4w/GO 1.0 — baseline held after synergies + enemy identity.
+After the roaming seam portal (2026-08-13): fresh 7.4/.83, earlyAA 16.3/.25,
+parts2 19.7/.25, midMeta 32.3/.92 — spread spawns removed choke-bunching, easing the
+mid-game ~2× for the wall-less greedy bot; early (long dwell, short waves) and late
+(HP ramp dominates) unchanged. Re-tune compose pacing if mid-game difficulty targets move.
 `node js/balance/diagRun.mjs --preset fresh --seed 1` gives per-wave leak/kill detail.
 
 Enemy HP: ×1.05/wave, accelerating ×1.02/wave extra past wave 15 so late endless

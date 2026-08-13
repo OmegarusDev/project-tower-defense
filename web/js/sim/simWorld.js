@@ -92,6 +92,8 @@ export class SimWorld {
     this.roster = defaultSlots(3, 1);
     this.partUpgrades = {};
     this.globalMods = { damage: 1, range: 1, rof: 1 };
+    // Live spawn seam — endless roams it per wave; campaign pins it per level.
+    this.portal = { x: this.grid.spawn.x, y: 0 };
   }
 
   logAction(type, data = {}) {

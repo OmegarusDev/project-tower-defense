@@ -188,6 +188,8 @@ Tags + channels + stack mode (`add`/`mult`/`max`/`override`). Mutex one base/bar
 
 Leak damage by type. Abilities data-driven. Formula waves default; editor scripts OK. No wave preview. Call Early (small Battle bonus); no skip. Difficulty tune in playtests.
 
+**Spawn seam:** Endless portal roams the back line — seeded per-wave column cycle, dwell `8s → 2.5s` across waves (intensity curve), relocating while spawns remain. Campaign portal pins one cell per level (default center back line; levels may author `spawnCells`, including mid-board tiles from 40+). The seam row is never buildable; a sealed portal cell falls back to the nearest reachable seam cell.
+
 ---
 
 # Part V — Meta & presentation

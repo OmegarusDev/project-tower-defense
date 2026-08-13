@@ -76,6 +76,8 @@ export class BoardGrid {
 
   isBuildable(x, y) {
     if (!this.inBounds(x, y)) return false;
+    // Seam row (back line) is portal territory — never buildable
+    if (y === 0) return false;
     if (this.isSpawn(x, y) || this.isExit(x, y)) return false;
     return !this.isBlocked(x, y);
   }
