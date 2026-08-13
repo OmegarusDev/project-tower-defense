@@ -73,8 +73,6 @@ export function showUpgrade(app, returnTo) {
     </div>`;
   app.bindUi();
 }
-  
-}
 
 /** Flat list of purchasable nodes under a group (preserves child nesting). */
 export function techCollectBuyables(app, node, out = []) {
