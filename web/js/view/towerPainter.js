@@ -1,6 +1,6 @@
 /** Procedural tower = grounded Base + rotating turret (Barrel + Payload tip). */
 
-import { VIEW25, aimToDrawAngle, deckRy, barrelDepthFactor } from "./view25.js";
+import { VIEW25, aimToDrawAngle, deckRy, groundBasis } from "./view25.js";
 import { shade, withAlpha, roundRect, matsFrom } from "./drawUtil.js";
 import { vz, cyl25, box25, frustum25, diamondPrism25, ring25, rivetRing } from "./prims25.js";
 
@@ -351,19 +351,10 @@ function drawBaseTalon(ctx, cx, deckY, s, m) {
 function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
   const metal = palette.barrelColor(barrel);
   const tip = palette.payloadColor(payload);
-  const f = barrelDepthFactor();
-  // Screen-space barrel model — the LENGTH foreshortens along the aim vector
-  // (hard-linked to the unified depth factor f), the THICKNESS stays constant
-  // (normalized perpendicular), and the muzzle reads end-on. Side-facing
-  // barrels keep full length AND full thickness at every pitch; away-facing
-  // ones visibly recede. No frame-scale that thins the tube.
-  const ax = Math.cos(angle);
-  const ay = Math.sin(angle) * f;
-  const pl = Math.hypot(Math.sin(angle), f * Math.cos(angle)) || 1;
-  const px = -Math.sin(angle) / pl;
-  const py = (f * Math.cos(angle)) / pl;
-  // away-facing cue (pointing up the board)
-  const depth = Math.max(0, Math.min(1, -Math.sin(angle)));
+  // Engine ground basis: one source of truth for angle -> screen vectors.
+  // LENGTH foreshortens (f), THICKNESS stays constant (normalized p),
+  // muzzle reads end-on. Nothing in the turret hand-rolls projection.
+  const { f, ax, ay, px, py, depth } = groundBasis(angle);
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -371,13 +362,8 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
   drawHub(ctx, metal, hubR, f);
 
   const cannon = (len, th, off, sub = 0) => {
-    const a = angle + sub;
-    const ax2 = Math.cos(a);
-    const ay2 = Math.sin(a) * f;
-    const pl2 = Math.hypot(Math.sin(a), f * Math.cos(a)) || 1;
-    const px2 = -Math.sin(a) / pl2;
-    const py2 = (f * Math.cos(a)) / pl2;
-    drawCannon(ctx, metal, tip, len, th, payload, depth, ax2, ay2, px2, py2, off * px2, off * py2);
+    const b = groundBasis(angle + sub);
+    drawCannon(ctx, metal, tip, len, th, payload, b.depth, b.ax, b.ay, b.px, b.py, off * b.px, off * b.py);
   };
 
   switch (barrel) {

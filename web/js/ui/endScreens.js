@@ -2,6 +2,7 @@
 import { hasEndless, loadEndless } from "../saveStore.js";
 import { CAMPAIGN_LEVELS, getCampaignLevel, isLevelUnlocked } from "../data/campaign.js";
 import { endlessThemeBlurb } from "./metaUi.js";
+import { xClose } from "./xClose.js";
 
 export function showEndlessHub(app) {
   app.screen = "hub";
@@ -18,7 +19,7 @@ export function showEndlessHub(app) {
           <div>
             <h1>Endless</h1>
           </div>
-          <button class="btn secondary tech-back" data-act="main">Menu</button>
+          ${xClose("main")}
         </div>
         <p class="meta-blurb">How far can the Bastion hold the Vein?</p>
       </header>

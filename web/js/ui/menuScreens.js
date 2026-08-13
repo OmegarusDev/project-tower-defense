@@ -10,6 +10,7 @@ import { LevelEditor, loadEditorLevels } from "./levelEditor.js";
 import { buildAttackPlan } from "../sim/attackPlan.js";
 import { PARTS, partLabel, doctrineLabel } from "../data/parts.js";
 import { saveMeta } from "../saveStore.js";
+import { xClose } from "./xClose.js";
 import {
   threatTagsForLevel,
   rosterPeekHtml,
@@ -63,7 +64,7 @@ export function renderSettings(app) {
           <div>
             <h1>Settings</h1>
           </div>
-          <button class="btn secondary tech-back" data-act="main">Back</button>
+          ${xClose("main")}
         </div>
       </header>
       <div class="settings-plate plate">
@@ -190,7 +191,7 @@ export function renderCampaign(app) {
           <div>
             <h1>Campaign</h1>
           </div>
-          <button class="btn secondary tech-back" data-act="main">Back</button>
+          ${xClose("main")}
         </div>
         <p class="meta-blurb">Seal each Yard before the Claim walks it.</p>
         <div class="title-stats tech-stats">
@@ -238,7 +239,7 @@ export function renderPrep(app, levelId) {
           <div>
             <h1>${lv.name}</h1>
           </div>
-          <button class="btn secondary tech-back" data-act="campaign">Back</button>
+          ${xClose("campaign")}
         </div>
         <p class="meta-blurb">${lv.blurb}</p>
       </header>
@@ -293,7 +294,7 @@ export function renderEditor(app) {
           <div>
             <h1>Editor</h1>
           </div>
-          <button class="btn secondary tech-back" data-act="main">Back</button>
+          ${xClose("main")}
         </div>
       </header>
       <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">

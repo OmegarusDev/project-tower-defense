@@ -19,6 +19,7 @@ import { renderTower } from "../view/towerPainter.js";
 import { forgePlanSummary } from "./menuScreens.js";
 import { rosterSlotButtons } from "../app/gameChrome.js";
 import { partIconHtml } from "./partIcons.js";
+import { xClose } from "./xClose.js";
 
 function forgePartBtnHtml(app, kind, id, slot) {
   const have = ownsPart(app.meta.owned, kind, id);
@@ -142,7 +143,7 @@ export function showForge(app, returnTo) {
           <div>
             <h1>Forge</h1>
           </div>
-          <button class="btn secondary tech-back" data-act="${backAct}">Back</button>
+          ${xClose(backAct)}
         </div>
         <div class="title-stats tech-stats">
           <span><i>Parts</i>${app.meta.forge}</span>

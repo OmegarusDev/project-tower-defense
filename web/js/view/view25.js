@@ -78,19 +78,38 @@ export function groundForeshorten(ctx) {
 }
 
 /**
- * Stylized barrel foreshortening factor. The raw ground squash (cos pitch)
- * sits near 1 at the pitches players actually use (default 24° → 0.91), so
- * away/toward-facing barrels read as full-length and standing up. This curve
- * exaggerates the depth squash so the recession is legible at any pitch:
- * ~22% shorter at 24°, ~40% at 40°, floored at 0.38 side-on.
+ * Stylized barrel foreshortening factor — the LENGTH squash for ground
+ * tubes. The raw ground squash (cos pitch) sits near 1 at the pitches
+ * players actually use (default 24° → 0.91), so receding barrels read as
+ * full-length. This curve is strong enough to be legible at any pitch:
+ * ~31% shorter at 24°, floored at 0.4 side-on.
  */
 export function barrelDepthFactor() {
   const p = (VIEW25.pitchDeg * Math.PI) / 180;
-  return Math.max(0.38, Math.cos(p) * (1 - 0.35 * Math.sin(p)));
+  return Math.max(0.4, Math.pow(Math.cos(p), 4.2));
 }
 
-export function foreshortenBarrel(ctx) {
-  ctx.scale(1, barrelDepthFactor());
+/**
+ * THE ground-plane basis — the only place a board angle becomes screen
+ * vectors. Every ground-oriented drawing (barrels, housings, pods, gems,
+ * dishes) derives from this, so the projection can never drift:
+ *  - ax, ay  = foreshortened AIM vector (length × barrelDepthFactor)
+ *  - px, py  = normalized PERPENDICULAR — thickness stays constant
+ *  - depth   = away-facing cue (aiming up the board)
+ */
+export function groundBasis(angle) {
+  const f = barrelDepthFactor();
+  const ax = Math.cos(angle);
+  const ay = Math.sin(angle) * f;
+  const pl = Math.hypot(Math.sin(angle), f * Math.cos(angle)) || 1;
+  return {
+    f,
+    ax,
+    ay,
+    px: -Math.sin(angle) / pl,
+    py: (f * Math.cos(angle)) / pl,
+    depth: Math.max(0, Math.min(1, -Math.sin(angle))),
+  };
 }
 
 export function aimToDrawAngle(aimAngle) {

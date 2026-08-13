@@ -117,6 +117,39 @@ html, body {
   pointer-events: auto;
 }
 
+/* Unified close chip — every screen header's X (returns to the previous screen) */
+.x-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1px solid #5a6470;
+  background:
+    var(--tex-scratches),
+    linear-gradient(180deg, rgba(64, 72, 84, 0.9), rgba(24, 28, 34, 0.95));
+  color: #c8b890;
+  box-shadow: var(--rim-brass), 0 3px 0 #0c0e12, 0 5px 12px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+}
+.x-close svg {
+  width: 13px;
+  height: 13px;
+}
+.x-close:hover {
+  color: #f0e6c8;
+  box-shadow:
+    0 0 0 1px rgba(201, 162, 39, 0.35) inset,
+    0 0 12px rgba(201, 162, 39, 0.3),
+    0 3px 0 #0c0e12;
+}
+.x-close:active {
+  transform: scale(0.94);
+}
+
 #forgePreview {
   width: 112px;
   height: 112px;

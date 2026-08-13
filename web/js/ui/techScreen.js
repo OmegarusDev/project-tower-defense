@@ -19,6 +19,7 @@ import {
   syncTechDerived,
 } from "../data/techTree.js";
 import { forgeCost } from "./forgeScreen.js";
+import { xClose } from "./xClose.js";
 import { techCategoryIcon, techNodeIconHtml } from "./partIcons.js";
 
 export function showUpgrade(app, returnTo) {
@@ -35,8 +36,6 @@ export function showUpgrade(app, returnTo) {
   else if (app.upgradeReturn === "campaign") backAct = "campaign";
   else if (app.upgradeReturn === "prep") backAct = `prep:${app.prepLevelId || 1}`;
   else if (app.upgradeReturn === "forge") backAct = "forge";
-  const backLabel =
-    backAct === "main" ? "Menu" : backAct === "forge" ? "Forge" : backAct.startsWith("prep:") ? "Prep" : "Back";
   const cash = BASE_START_CASH + (app.meta.startCashBonus | 0);
   const giftLine = `Best wave ${app.meta.bestWave || 0} · earn Parts in runs, unlock parts at the Forge`;
   const tabs = TECH_TREES.map((tree) => {
@@ -52,7 +51,7 @@ export function showUpgrade(app, returnTo) {
           <div>
             <h1>Tech Tree</h1>
           </div>
-          <button class="btn secondary tech-back" data-act="${backAct}">${backLabel}</button>
+          ${xClose(backAct)}
         </div>
         <div class="title-stats tech-stats" aria-label="Currencies">
           <span><i>Æ</i>${app.meta.aether}</span>
@@ -65,7 +64,7 @@ export function showUpgrade(app, returnTo) {
         <div class="status tech-status" id="status">${app.status}</div>
         <div class="ttree-tabs" role="tablist">${tabs}</div>
       </header>
-      <div class="tech-body">
+      <div class="tech-body" id="techBody">
         ${techTreeHtml(app, tree)}
         <p class="tech-gift">${giftLine}</p>
       </div>
@@ -180,8 +179,21 @@ export function setTechTreeTab(app, tabId) {
   app.techTreeTab = tabId;
   app.techSelectedId = null;
   app.synth.play("ui");
-  showUpgrade(app);
-  
+  // Tabs swap ONLY the tree body — no full-screen refresh.
+  if (app.screen !== "upgrade") {
+    showUpgrade(app);
+    return;
+  }
+  const body = app.ui.querySelector("#techBody");
+  if (body) {
+    const tree = TECH_TREES.find((t) => t.id === tabId) || TECH_TREES[0];
+    body.innerHTML = `${techTreeHtml(app, tree)}
+      <p class="tech-gift">Best wave ${app.meta.bestWave || 0} · earn Parts in runs, unlock parts at the Forge</p>`;
+  }
+  for (const tab of app.ui.querySelectorAll(".ttree-tab")) {
+    tab.classList.toggle("active", tab.getAttribute("data-act") === `tech-tab:${tabId}`);
+  }
+  app.ui.querySelector(".tech-overlay")?.remove();
 }
 
 export function selectTechNode(app, id) {
