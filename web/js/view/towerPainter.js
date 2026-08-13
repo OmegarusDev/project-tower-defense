@@ -1,6 +1,6 @@
 /** Procedural tower = grounded Base + rotating turret (Barrel + Payload tip). */
 
-import { VIEW25, aimToDrawAngle, deckRy, groundBasis } from "./view25.js";
+import { VIEW25, aimToDrawAngle, deckRy, groundBasis, capEllipse } from "./view25.js";
 import { shade, withAlpha, roundRect, matsFrom } from "./drawUtil.js";
 import { vz, cyl25, box25, frustum25, diamondPrism25, ring25, rivetRing } from "./prims25.js";
 
@@ -517,29 +517,50 @@ function drawHubCap(ctx, metal, r, f) {
 }
 
 /**
- * Barrel in SCREEN space — the tube is the parallelogram between its
- * top/bottom generators: length L·len (depth factor D), vertical thickness
- * 2r·V (vertical factor V). It recedes and thickens at exactly the same
- * rates as the ground footprints and the tower heights — one camera, two
- * factors, no drift. ox/oy = lateral offset along the unit perpendicular.
+ * Exact orthographic cylinder in screen space. The tube's silhouette is the
+ * union of: two end-cap ellipses (the exact projected circles, via
+ * capEllipse) + the two common tangent lines between them. Head-on barrels
+ * read as true receding tubes (concentric caps, tapered by a subtle
+ * convergence), side-on as clean bars — no flat-transform artifacts.
+ * Length = L·len (depth factor D), thickness = 2r·V (vertical factor V).
  */
 function drawCannon(ctx, metal, tip, length, th, payload, b, ox = 0, oy = 0) {
   const h = th;
-  const rise = h * 0.35;
-  const top = (h / 2) * b.V; // tube half-thickness — locked to verticals
-  const dark = shade(metal, -0.22);
-  const mid = metal;
-  const light = shade(metal, 0.18);
-  const ex = ox + b.ax * length * b.len;
-  const ey = oy + b.ay * length * b.len;
+  const r = h / 2;
+  const L = length * b.len;
+  const ex = ox + b.ax * L;
+  const ey = oy + b.ay * L;
+  const near = { x: ox, y: oy };
+  const far = { x: ex, y: ey };
+
+  const cap = capEllipse(b, r);
+  const converge = 1 - 0.22 * b.depth; // subtle perspective on receding tubes
+  const fcap = { rx: cap.rx * converge, ry: cap.ry * converge, rot: cap.rot };
+
+  // Tangent points on each cap where the tangent runs parallel to the aim.
+  const tanPts = (c, rx, ry, rot) => {
+    const dx = b.ax * Math.cos(-rot) - b.ay * Math.sin(-rot);
+    const dy = b.ax * Math.sin(-rot) + b.ay * Math.cos(-rot);
+    const k = 1 / Math.sqrt(dx * dx / (rx * rx) + dy * dy / (ry * ry) || 1e-9);
+    const s = (-k * dx) / rx;
+    const co = (k * dy) / ry;
+    const t0 = Math.atan2(s, co);
+    const pt = (t) => ({
+      x: c.x + Math.cos(rot) * (rx * Math.cos(t)) - Math.sin(rot) * (ry * Math.sin(t)),
+      y: c.y + Math.sin(rot) * (rx * Math.cos(t)) + Math.cos(rot) * (ry * Math.sin(t)),
+    });
+    return [pt(t0), pt(t0 + Math.PI)];
+  };
+  const [nA, nB] = tanPts(near, cap.rx, cap.ry, cap.rot);
+  const [fA, fB] = tanPts(far, fcap.rx, fcap.ry, fcap.rot);
 
   // Ground shadow streak — anchors the receding tube to the deck
   if (b.depth > 0.05) {
     ctx.fillStyle = `rgba(0,0,0,${(0.14 + b.depth * 0.1).toFixed(3)})`;
     ctx.beginPath();
     ctx.ellipse(
-      ox + (ex - ox) * 0.5,
-      oy + (ey - oy) * 0.5 + h * 1.05,
+      (ox + ex) * 0.5,
+      (oy + ey) * 0.5 + h * 1.05,
       Math.abs(ex - ox) * 0.55,
       h * 0.32,
       0,
@@ -549,58 +570,64 @@ function drawCannon(ctx, metal, tip, length, th, payload, b, ox = 0, oy = 0) {
     ctx.fill();
   }
 
-  // Parallelogram between the generators: vertical edges at ±top
-  const band = (yOff, half, fill) => {
-    ctx.fillStyle = fill;
-    ctx.beginPath();
-    ctx.moveTo(ox, oy + yOff - half);
-    ctx.lineTo(ex, ey + yOff - half);
-    ctx.lineTo(ex, ey + yOff + half);
-    ctx.lineTo(ox, oy + yOff + half);
-    ctx.closePath();
-    ctx.fill();
-  };
-  // Partial band (e.g. tip) between aim fractions tA..tB
-  const seg = (tA, tB, yOff, half, fill) => {
-    const x0 = ox + (ex - ox) * tA;
-    const y0 = oy + (ey - oy) * tA;
-    const x1 = ox + (ex - ox) * tB;
-    const y1 = oy + (ey - oy) * tB;
-    ctx.fillStyle = fill;
-    ctx.beginPath();
-    ctx.moveTo(x0, y0 + yOff - half);
-    ctx.lineTo(x1, y1 + yOff - half);
-    ctx.lineTo(x1, y1 + yOff + half);
-    ctx.lineTo(x0, y0 + yOff + half);
-    ctx.closePath();
-    ctx.fill();
-  };
-  band(rise, top, dark); // under-lip (tube underside)
-  band(0, top, mid); // body
-  band(-h * 0.22, top * 0.4, light); // light top band
+  // Cylinder body: tangent lines + far cap; near cap covers the near end.
+  const dark = shade(metal, -0.3);
+  const mid = metal;
+  const light = shade(metal, 0.2);
+  ctx.beginPath();
+  ctx.moveTo(nA.x, nA.y);
+  ctx.lineTo(fA.x, fA.y);
+  ctx.lineTo(fB.x, fB.y);
+  ctx.lineTo(nB.x, nB.y);
+  ctx.closePath();
+  const topY = Math.min(nA.y, nB.y) - r * b.V * 0.1;
+  const botY = Math.max(nA.y, nB.y) + r * b.V * 0.1;
+  const grad = ctx.createLinearGradient(0, topY, 0, botY);
+  grad.addColorStop(0, dark);
+  grad.addColorStop(0.32, mid);
+  grad.addColorStop(0.45, light);
+  grad.addColorStop(0.58, light);
+  grad.addColorStop(0.72, mid);
+  grad.addColorStop(1, dark);
+  ctx.fillStyle = grad;
+  ctx.fill();
 
-  // Reinforcing rings — vertical bands across the tube
-  ctx.fillStyle = shade(metal, -0.35);
+  // Far cap (receding end)
+  ctx.fillStyle = shade(metal, -0.2);
+  ctx.beginPath();
+  ctx.ellipse(far.x, far.y, fcap.rx, fcap.ry, fcap.rot, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Reinforcing rings — bands across the tube
+  ctx.fillStyle = shade(metal, -0.4);
   for (const t of [0.28, 0.55]) {
     const rx = ox + (ex - ox) * t;
     const ry = oy + (ey - oy) * t;
-    ctx.fillRect(rx - h * 0.09, ry - top, h * 0.18, top * 2);
+    ctx.fillRect(rx - h * 0.09, ry - r * b.V, h * 0.18, r * b.V * 2);
   }
 
-  // Tip band + end-on muzzle cap + bore (cap ellipse: rx = r·D, ry = r·V)
+  // Tip band + muzzle cap (near end, on top) + bore
   const capT = Math.max(2.5, length * 0.16);
-  seg(1 - capT / length, 1, 0, top, shade(tip, -0.15)); // tip band
-  ctx.fillStyle = shade(tip, -0.3);
+  const tA = 1 - capT / length;
+  ctx.fillStyle = withAlpha(shade(tip, -0.15), 0.9);
+  ctx.beginPath();
+  ctx.moveTo(ox + (ex - ox) * tA, oy + (ey - oy) * tA - r * b.V);
+  ctx.lineTo(ex, ey - r * b.V);
+  ctx.lineTo(ex, ey + r * b.V);
+  ctx.lineTo(ox + (ex - ox) * tA, oy + (ey - oy) * tA + r * b.V);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = shade(tip, -0.35);
   ctx.beginPath();
   ctx.ellipse(ex, ey, capT * 0.5 * b.D, capT * 0.5 * b.V, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = tip;
   ctx.beginPath();
-  ctx.ellipse(ex, ey, capT * 0.4 * b.D, capT * 0.4 * b.V, 0, 0, Math.PI * 2);
+  ctx.ellipse(ex, ey, capT * 0.38 * b.D, capT * 0.38 * b.V, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = withAlpha("#0a0c10", 0.7);
   ctx.beginPath();
-  ctx.ellipse(ex, ey, capT * 0.17 * b.D, capT * 0.17 * b.V, 0, 0, Math.PI * 2);
+  ctx.ellipse(ex, ey, capT * 0.16 * b.D, capT * 0.16 * b.V, 0, 0, Math.PI * 2);
   ctx.fill();
 
   if (payload && payload !== "kinetic") {

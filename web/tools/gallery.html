@@ -224,6 +224,27 @@
       check(badRecede === 0, "away barrels recede as pitch rises", `${badRecede} not receding (avg ${(avgRecede / Math.max(1, barrels.length - badRecede)).toFixed(1)}px)`);
       check(badSideLen === 0, "side barrels keep their length", `${badSideLen} drifted`);
       check(badSideThin === 0, "side barrels never thin with pitch (V lock)", `${badSideThin} thinned`);
+      // Head-on tubes must read as receding end-on cylinders: the muzzle cap
+      // converges well inside the hub width at the default pitch.
+      await awaitPitch(24);
+      let badCap = 0;
+      for (let i = 0; i < barrels.length; i++) {
+        const c = document.querySelectorAll("canvas")[nBase + i * 4 + 1];
+        const b = bboxOf(c);
+        if (!b) continue;
+        const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+        const w = (y0, y1) => {
+          let mn = 1e9, mx = -1;
+          for (let y = y0; y <= y1; y++) for (let x = b.minX; x <= b.maxX; x++) {
+            if (d[(y * c.width + x) * 4 + 3] > 8) { if (x < mn) mn = x; if (x > mx) mx = x; }
+          }
+          return mx > mn ? mx - mn + 1 : 0;
+        };
+        const muzzle = w(b.minY, b.minY + Math.round((b.maxY - b.minY) * 0.3));
+        const hub = w(b.minY + Math.round((b.maxY - b.minY) * 0.7), b.maxY);
+        if (muzzle >= hub) badCap++;
+      }
+      check(badCap === 0, "head-on barrels read as receding end-on cylinders", `${badCap} flat-looking`);
       // unknown/future parts must fall back gracefully (palette + painter defaults)
       const scratch = makeCanvas("future_part");
       let threw = false;

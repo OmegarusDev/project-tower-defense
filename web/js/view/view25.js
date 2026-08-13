@@ -99,6 +99,27 @@ export function groundBasis(angle) {
   };
 }
 
+/**
+ * Exact on-screen ellipse of a circle of radius r lying ACROSS a ground tube
+ * (the plane spanned by the perpendicular and the vertical). Used for barrel
+ * end-caps — the projected circle's semi-axes are the singular values of
+ * [[px, 0],[py·D, V]]; this is the same two-factor camera, one formula.
+ */
+export function capEllipse(basis, r) {
+  const a = basis.px * basis.px;
+  const c = basis.px * basis.py * basis.D;
+  const b = basis.py * basis.py * basis.D * basis.D + basis.V * basis.V;
+  const tr = a + b;
+  const disc = Math.sqrt(Math.max(0, (a - b) * (a - b) + 4 * c * c));
+  const l1 = (tr + disc) / 2;
+  const l2 = Math.max(1e-6, (tr - disc) / 2);
+  return {
+    rx: r * Math.sqrt(l1),
+    ry: r * Math.sqrt(l2),
+    rot: 0.5 * Math.atan2(2 * c, a - b),
+  };
+}
+
 export function aimToDrawAngle(aimAngle) {
   return Number.isFinite(aimAngle) ? aimAngle : -Math.PI / 2;
 }
