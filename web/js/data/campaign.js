@@ -4,7 +4,7 @@ import { mulberry32 } from "../sim/rng.js";
 /**
  * Place `count` walls with a seeded RNG; never seals spawn→exit.
  */
-export function generatePreWalls(cols, rows, seed, count) {
+function generatePreWalls(cols, rows, seed, count) {
   const g = new BoardGrid();
   g.setup(cols, rows);
   const rand = mulberry32(seed >>> 0);

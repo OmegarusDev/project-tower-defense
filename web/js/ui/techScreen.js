@@ -75,7 +75,7 @@ export function showUpgrade(app, returnTo) {
 }
 
 /** Flat list of purchasable nodes under a group (preserves child nesting). */
-export function techCollectBuyables(app, node, out = []) {
+function techCollectBuyables(app, node, out = []) {
   if (!node) return out;
   if (node.kind === "group" || node.kind === "root") {
     for (const c of node.children || []) techCollectBuyables(app, c, out);
@@ -87,7 +87,7 @@ export function techCollectBuyables(app, node, out = []) {
   
 }
 
-export function techGroupProgress(app, group) {
+function techGroupProgress(app, group) {
   const nodes = techCollectBuyables(app, group);
   let ranks = 0;
   let max = 0;
@@ -100,7 +100,7 @@ export function techGroupProgress(app, group) {
   
 }
 
-export function techTreeHtml(app, tree) {
+function techTreeHtml(app, tree) {
   if (!tree) return "";
   const currency = tree.id === "arsenal" ? "Parts" : "Aether";
   const branches = (tree.children || [])
@@ -114,7 +114,7 @@ export function techTreeHtml(app, tree) {
   
 }
 
-export function techBranchHtml(app, group) {
+function techBranchHtml(app, group) {
   const { ranks, max } = techGroupProgress(app, group);
   const kids = (group.children || []).map((c) => techNodeWrapHtml(app, c, group.id)).join("");
   const ico = techCategoryIcon(group.id);
@@ -127,7 +127,7 @@ export function techBranchHtml(app, group) {
   </section>`;
 }
 
-export function techNodeWrapHtml(app, node, groupId = "") {
+function techNodeWrapHtml(app, node, groupId = "") {
   if (!node || node.kind === "group" || node.kind === "root") return "";
   const def = getTechNode(node.id) || node;
   const childHtml = (node.children || []).map((c) => techNodeWrapHtml(app, c, groupId)).join("");
@@ -138,7 +138,7 @@ export function techNodeWrapHtml(app, node, groupId = "") {
   return `<div class="ttree-node-wrap">${techNodeBtnHtml(app, def, groupId)}${kids}</div>`;
 }
 
-export function techNodeBtnHtml(app, def, groupId = "") {
+function techNodeBtnHtml(app, def, groupId = "") {
   const rank = techRank(app.meta, def.id);
   const maxed = rank >= def.maxRank;
   const prereq = techRequiresMet(app.meta, def);
@@ -199,7 +199,7 @@ export function closeTechOverlay(app) {
   
 }
 
-export function techOverlayHtml(app, id) {
+function techOverlayHtml(app, id) {
   const def = getTechNode(id);
   if (!def) return "";
   const rank = techRank(app.meta, def.id);

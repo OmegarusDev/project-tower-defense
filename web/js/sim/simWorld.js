@@ -102,6 +102,7 @@ export class SimWorld {
 
   setPartUpgrades(up) {
     this.partUpgrades = structuredClone(up || {});
+    this.combat.invalidatePlans();
   }
 
   setGlobalMods(mods = {}) {
@@ -110,6 +111,7 @@ export class SimWorld {
       range: mods.range > 0 ? mods.range : 1,
       rof: mods.rof > 0 ? mods.rof : 1,
     };
+    this.combat.invalidatePlans();
   }
 
   /** Seeded map debris — unsellable, free. */
@@ -189,6 +191,7 @@ export class SimWorld {
     t.pendingPicks = (t.pendingPicks | 0) - 1;
     if (!t.branch) t.branch = { damage: 0, rof: 0, range: 0 };
     t.branch[branch] = (t.branch[branch] | 0) + 1;
+    this.combat.invalidatePlans();
     this.logAction("level_branch", {
       id: towerId,
       branch,

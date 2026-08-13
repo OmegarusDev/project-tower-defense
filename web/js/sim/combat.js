@@ -7,6 +7,12 @@ export class CombatSystem {
   constructor(world) {
     this.world = world;
     this.altToggle = new Map();
+    this._plans = new Map();
+  }
+
+  /** Plans are immutable per (tower id, upgrades, branch) — rebuild only on change. */
+  invalidatePlans() {
+    this._plans.clear();
   }
 
   tick() {
@@ -55,7 +61,11 @@ export class CombatSystem {
   }
 
   _tickTower(t) {
-    const plan = buildAttackPlan(t.base, t.barrel, t.payload, t.level, this._planOpts(t));
+    let plan = this._plans.get(t.id);
+    if (!plan) {
+      plan = buildAttackPlan(t.base, t.barrel, t.payload, t.level, this._planOpts(t));
+      this._plans.set(t.id, plan);
+    }
 
     const target = this._selectTarget(t, plan);
     if (target) {
@@ -522,6 +532,7 @@ export class CombatSystem {
       tower.level = (tower.level | 0) + 1;
       tower.pendingPicks = (tower.pendingPicks | 0) + 1;
       gained += 1;
+      this.invalidatePlans();
       this.world.emit("tower_leveled", {
         tower,
         level: tower.level,

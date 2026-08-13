@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tower Gallery — part tour at every angle &amp; pitch</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #14181f;
+      color: #e8e0d0;
+      font-family: "Chakra Petch", system-ui, sans-serif;
+    }
+    h1 { font-size: 1.1rem; letter-spacing: 0.14em; text-transform: uppercase; color: #c9a227; }
+    h2 { font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase; color: #a89878; margin: 28px 0 8px; }
+    .controls { display: flex; gap: 18px; align-items: center; margin: 12px 0 4px; }
+    .controls label { font-size: 0.8rem; color: #a89878; }
+    .controls input { width: 260px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+      gap: 10px;
+    }
+    .tile {
+      background: #1b2029;
+      border: 1px solid #3a4558;
+      border-radius: 8px;
+      padding: 6px;
+      text-align: center;
+    }
+    .tile canvas { display: block; margin: 0 auto; }
+    .tile figcaption {
+      font-size: 0.62rem;
+      color: #a89878;
+      letter-spacing: 0.05em;
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tile figcaption b { color: #e8e0d0; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Tower Gallery</h1>
+  <div class="controls">
+    <label>Pitch <span id="pitchVal">24°</span></label>
+    <input id="pitch" type="range" min="8" max="58" step="1" value="24" />
+    <button id="randomize">Random combo</button>
+    <span id="randomLbl"></span>
+  </div>
+  <div id="randomRow" class="grid"></div>
+
+  <h2>Bases × single × kinetic — angles 0° / up / 180° / down</h2>
+  <div id="bases" class="grid"></div>
+
+  <h2>Barrels on sentry × kinetic — 4 angles</h2>
+  <div id="barrels" class="grid"></div>
+
+  <h2>Payloads on sentry × single — 4 angles</h2>
+  <div id="payloads" class="grid"></div>
+
+  <script type="module">
+    import { PARTS } from "../js/data/parts.js";
+    import { ProcPalette } from "../js/view/palette.js";
+    import { renderTower } from "../js/view/towerPainter.js";
+    import { setPitch } from "../js/view/view25.js";
+
+    const palette = new ProcPalette();
+    const ANG = [0, -Math.PI / 2, Math.PI, Math.PI / 2];
+    const ANG_LABEL = ["0°", "up", "180°", "down"];
+    const SIZE = 200;
+    const CSS = 92;
+
+    function makeCanvas(alt) {
+      const c = document.createElement("canvas");
+      c.width = SIZE;
+      c.height = SIZE;
+      c.alt = alt;
+      return c;
+    }
+
+    function draw(canvas, t) {
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, SIZE, SIZE);
+      renderTower(ctx, palette, t, (SIZE - CSS) / 2, (SIZE - CSS) / 2 + 6, CSS, {
+        showBadge: false,
+      });
+    }
+
+    function tile(canvas, caption, angle, pitch) {
+      const el = document.createElement("div");
+      el.className = "tile";
+      const fig = document.createElement("figcaption");
+      fig.innerHTML = caption;
+      fig.title = `${caption} · ${ANG_LABEL[ANG.indexOf(angle)]} · ${Math.round(pitch)}°`;
+      el.appendChild(canvas);
+      el.appendChild(fig);
+      return el;
+    }
+
+    function renderRow(container, specs) {
+      container.innerHTML = "";
+      for (const s of specs) {
+        const cv = makeCanvas(s.alt);
+        draw(cv, s.t);
+        container.appendChild(tile(cv, s.label, s.angle, s.pitch));
+      }
+    }
+
+    const bases = Object.keys(PARTS.bases);
+    const barrels = Object.keys(PARTS.barrels);
+    const payloads = Object.keys(PARTS.payloads);
+
+    function renderAll() {
+      const pitch = +document.getElementById("pitch").value;
+      document.getElementById("pitchVal").textContent = `${pitch}°`;
+      setPitch(pitch);
+
+      const baseSpecs = [];
+      for (const base of bases) {
+        for (const a of ANG) {
+          baseSpecs.push({
+            label: `<b>${base}</b>`,
+            angle: a,
+            pitch,
+            t: { base, barrel: "single", payload: "kinetic", aimAngle: a, level: 1 },
+          });
+        }
+      }
+      renderRow(document.getElementById("bases"), baseSpecs);
+
+      const barrelSpecs = [];
+      for (const barrel of barrels) {
+        for (const a of ANG) {
+          barrelSpecs.push({
+            label: `<b>${barrel}</b>`,
+            angle: a,
+            pitch,
+            t: { base: "sentry", barrel, payload: "kinetic", aimAngle: a, level: 1 },
+          });
+        }
+      }
+      renderRow(document.getElementById("barrels"), barrelSpecs);
+
+      const payloadSpecs = [];
+      for (const payload of payloads) {
+        for (const a of ANG) {
+          payloadSpecs.push({
+            label: `<b>${payload}</b>`,
+            angle: a,
+            pitch,
+            t: { base: "sentry", barrel: "single", payload, aimAngle: a, level: 1 },
+          });
+        }
+      }
+      renderRow(document.getElementById("payloads"), payloadSpecs);
+    }
+
+    document.getElementById("pitch").addEventListener("input", renderAll);
+
+    document.getElementById("randomize").addEventListener("click", () => {
+      const base = bases[(Math.random() * bases.length) | 0];
+      const barrel = barrels[(Math.random() * barrels.length) | 0];
+      const payload = payloads[(Math.random() * payloads.length) | 0];
+      const specs = ANG.map((a) => ({
+        label: `<b>${base}</b> · ${barrel} · ${payload}`,
+        angle: a,
+        pitch: +document.getElementById("pitch").value,
+        t: { base, barrel, payload, aimAngle: a, level: 3 },
+      }));
+      renderRow(document.getElementById("randomRow"), specs);
+      document.getElementById("randomLbl").textContent = `${base} / ${barrel} / ${payload}`;
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>

@@ -20,13 +20,6 @@ export const WAVE_PACKS = {
   finale_b: ["phantom", "phantom", "cask", "ward", "hauler", "kiln", "claim"],
   ceramite_line: ["hauler_ceramite", "hauler", "hauler_ceramite", "mite", "ward"],
   volt_wall: ["ward_volt", "hauler", "ward_volt", "duct", "ward"],
-  // legacy pack ids → same content under old names for editor saves
-  grub_line: null,
-  runners: null,
-  plates: null,
-  aegis_wall: null,
-  cluster_burst: null,
-  leech_pack: null,
 };
 
 // Wire legacy pack aliases
@@ -79,7 +72,7 @@ export const ENDLESS_THEMES = [
   },
 ];
 
-export const ENDLESS_EVENTS = [
+const ENDLESS_EVENTS = [
   {
     id: "sky_breach",
     unlock: 6,

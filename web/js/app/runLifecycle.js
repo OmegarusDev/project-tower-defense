@@ -109,7 +109,7 @@ export function playtestEditorLevel(app, lv) {
   
 }
 
-export function bootLevel(app, lv) {
+function bootLevel(app, lv) {
   app.sim = new SimWorld();
   app.sim.setup(lv.cols, lv.rows, lv.seed || 1, false);
   app.sim.runSeed = (lv.seed || 1) >>> 0;

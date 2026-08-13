@@ -42,7 +42,7 @@ export function setPitch(deg) {
   syncCamera();
 }
 
-export function syncCamera() {
+function syncCamera() {
   const p = (VIEW25.pitchDeg * Math.PI) / 180;
   const cos = Math.cos(p);
   const sin = Math.sin(p);

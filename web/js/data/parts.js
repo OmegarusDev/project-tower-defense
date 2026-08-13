@@ -17,7 +17,6 @@ export const PARTS = {
       rangeMult: 1,
       rofMult: 1,
       doctrine: "first",
-      levelBias: "balanced",
       cost: 12,
       forgeCost: 0,
       blurb: "Lane clearer — shoots first on the path",
@@ -30,7 +29,6 @@ export const PARTS = {
       doctrine: "closest",
       pointBlankMult: 1.2,
       pointBlankRange: 1.25,
-      levelBias: "rof",
       cost: 18,
       forgeCost: 5,
       blurb: "Point defense — short & fast; nearest threat",
@@ -41,7 +39,6 @@ export const PARTS = {
       rangeMult: 1,
       rofMult: 1,
       doctrine: "strongest",
-      levelBias: "range",
       cost: 26,
       forgeCost: 10,
       blurb: "Elite hunter — long reach, slow cadence",
@@ -53,7 +50,6 @@ export const PARTS = {
       rofMult: 1,
       doctrine: "flying",
       airDamageMult: 1.25,
-      levelBias: "balanced",
       cost: 22,
       forgeCost: 8,
       blurb: "Air wing — flying first, then path tip",
@@ -64,7 +60,6 @@ export const PARTS = {
       rangeMult: 1,
       rofMult: 1,
       doctrine: "last",
-      levelBias: "balanced",
       cost: 20,
       forgeCost: 6,
       blurb: "Exit guard — last on the path (leak watch)",
@@ -77,7 +72,6 @@ export const PARTS = {
       doctrine: "weakest",
       executeMult: 1.3,
       executeThreshold: 0.4,
-      levelBias: "rof",
       cost: 20,
       forgeCost: 7,
       blurb: "Finisher — lowest HP, bonus vs wounded",
@@ -248,9 +242,9 @@ export const PARTS = {
   },
 };
 
-export const STARTER = { base: "sentry", barrel: "single", payload: "kinetic" };
+const STARTER = { base: "sentry", barrel: "single", payload: "kinetic" };
 
-export const STARTER_OWNED = {
+const STARTER_OWNED = {
   bases: ["sentry"],
   barrels: ["single"],
   payloads: ["kinetic"],
@@ -323,7 +317,7 @@ export function placeCost(base, barrel, payload) {
 }
 
 /** Parts already purchased at the Forge (not starters, not wave gifts). */
-export function forgePurchaseCount(meta) {
+function forgePurchaseCount(meta) {
   return Math.max(0, meta?.forgeBuys | 0);
 }
 

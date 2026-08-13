@@ -1,30 +1,49 @@
 /** Procedural tower = grounded Base + rotating turret (Barrel + Payload tip). */
 
 import { VIEW25, aimToDrawAngle, deckRy, groundForeshorten } from "./view25.js";
-import { shade, withAlpha, roundRect, facePoly, matsFrom } from "./drawUtil.js";
+import { shade, withAlpha, roundRect, matsFrom } from "./drawUtil.js";
+import { vz, cyl25, box25, frustum25, diamondPrism25, ring25, rivetRing } from "./prims25.js";
 
 /** Relative sizes vs the cell sprite scale. */
 const BASE_SCALE = 1.22;
 const BARREL_SCALE = 0.8;
 
-/** Pitch-linked vertical measure — footprint radii stay unscaled. */
-function vz(s, k) {
-  return s * k * VIEW25.vExag;
-}
+/**
+ * Tallest vz-factor of each base stack (visual constant, painter-local).
+ * The turret hub must clear the crown at EVERY pitch — the pitch curve of
+ * VIEW25.rise alone sinks the hub inside tall bases at low/mid pitch.
+ */
+const BASE_CROWN = {
+  sentry: 0.26,
+  bulwark: 0.26,
+  spire: 0.34,
+  aerie: 0.2,
+  warden: 0.3,
+  talon: 0.28,
+};
 
-export function drawComposedTower(ctx, palette, t, px, py, s, selected, opts = {}) {
+/**
+ * THE tower render entry point — all callers (board, dock slots, forge
+ * preview, placement ghost) go through here. The painter owns every
+ * transform: pitch foreshortening (vz/deckRy/groundForeshorten), badge,
+ * selection ring. Callers supply only the tower truth + a box + options.
+ */
+export function renderTower(ctx, palette, t, px, py, s, opts = {}) {
+  const selected = opts.selected === true;
   const cx = px + s / 2;
-  // Cell center = base pad / footprint. Turret hub lifts above by VIEW25.rise.
+  // Cell center = base pad / footprint. The turret hub lifts above it — at
+  // least VIEW25.rise, and always clear of the base's tallest crown.
   const groundY = py + s / 2;
-  const hubY = groundY - s * VIEW25.rise;
-  const angle = aimToDrawAngle(t.aimAngle);
   const baseS = s * BASE_SCALE;
+  const crownLift = baseS * (BASE_CROWN[t.base] || 0.22) * VIEW25.vExag;
+  const hubY = groundY - Math.max(s * VIEW25.rise, crownLift);
+  const angle = aimToDrawAngle(t.aimAngle);
   const barrelS = s * BARREL_SCALE;
   const showBadge = opts.showBadge !== false;
 
   drawGroundShadow(ctx, cx, groundY, baseS);
   drawBase(ctx, palette, t.base, cx, groundY, baseS);
-  drawTurretStem(ctx, palette, t.barrel, cx, groundY, hubY, baseS);
+  drawTurretStem(ctx, palette, t.base, t.barrel, cx, groundY, hubY, baseS);
   drawTurret(ctx, palette, t.barrel, t.payload, cx, hubY, barrelS, angle);
 
   if (showBadge) {
@@ -107,9 +126,10 @@ function drawBase(ctx, palette, base, cx, groundY, s) {
 }
 
 /** Thin column bridging pad crown → turret hub when rise clears the base. */
-function drawTurretStem(ctx, palette, barrel, cx, groundY, hubY, baseS) {
-  // Approximate tallest pad crown (spire/sentry stack); only fill air above it
-  const crownY = groundY - vz(baseS, 0.2);
+function drawTurretStem(ctx, palette, base, barrel, cx, groundY, hubY, baseS) {
+  // Fill the air between the base crown and the hub (crown factor matches
+  // the renderTower lift so the stem never pokes through a base).
+  const crownY = groundY - vz(baseS, BASE_CROWN[base] || 0.22);
   const topY = hubY + Math.max(1, baseS * 0.015);
   const rise = crownY - topY;
   if (rise < 3) return;
@@ -300,145 +320,12 @@ function drawBaseTalon(ctx, cx, deckY, s, m) {
   });
 }
 
-function ring25(ctx, cx, y, rx, color) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.25;
-  ctx.beginPath();
-  ctx.ellipse(cx, y, rx, deckRy(rx), 0, 0, Math.PI * 2);
-  ctx.stroke();
-}
 
-function rivetRing(ctx, cx, y, rx, count, color) {
-  for (let i = 0; i < count; i++) {
-    const a = (i / count) * Math.PI * 2;
-    const px = cx + Math.cos(a) * rx;
-    const py = y + Math.sin(a) * deckRy(rx);
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(px, py, Math.max(0.9, rx * 0.08), 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
 
-// --- 2.5D primitives (light from upper-left) ---
 
-export function cyl25(ctx, cx, topY, rx, rise, topCol, sideCol, bottomCol) {
-  const ry = deckRy(rx);
-  ctx.fillStyle = sideCol;
-  ctx.fillRect(cx - rx, topY, rx * 2, Math.max(1, rise));
-  ctx.beginPath();
-  ctx.ellipse(cx, topY + rise, rx, ry, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = bottomCol || shade(sideCol, -0.15);
-  ctx.beginPath();
-  ctx.ellipse(cx, topY + rise, rx, ry, 0, 0.15, Math.PI - 0.15);
-  ctx.fill();
-  ctx.fillStyle = topCol;
-  ctx.beginPath();
-  ctx.ellipse(cx, topY, rx, ry, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = withAlpha("#fff8e0", 0.18);
-  ctx.lineWidth = 1.25;
-  ctx.beginPath();
-  ctx.ellipse(cx - rx * 0.12, topY - ry * 0.08, rx * 0.72, ry * 0.55, -0.35, Math.PI * 1.15, Math.PI * 1.85);
-  ctx.stroke();
-}
 
-export function box25(ctx, cx, topY, w, d, h, m) {
-  const hw = w / 2;
-  const hd = d / 2;
-  // foreshortened top corners (pitch-linked iso skew)
-  const skew = d * VIEW25.boxSkew;
-  const tl = { x: cx - hw + skew * 0.2, y: topY - hd * 0.35 };
-  const tr = { x: cx + hw + skew * 0.2, y: topY - hd * 0.35 };
-  const br = { x: cx + hw - skew * 0.15, y: topY + hd * 0.55 };
-  const bl = { x: cx - hw - skew * 0.15, y: topY + hd * 0.55 };
 
-  // right face
-  ctx.fillStyle = m.sideDark;
-  ctx.beginPath();
-  ctx.moveTo(tr.x, tr.y);
-  ctx.lineTo(br.x, br.y);
-  ctx.lineTo(br.x, br.y + h);
-  ctx.lineTo(tr.x, tr.y + h);
-  ctx.closePath();
-  ctx.fill();
-  // front face
-  ctx.fillStyle = m.side;
-  ctx.beginPath();
-  ctx.moveTo(bl.x, bl.y);
-  ctx.lineTo(br.x, br.y);
-  ctx.lineTo(br.x, br.y + h);
-  ctx.lineTo(bl.x, bl.y + h);
-  ctx.closePath();
-  ctx.fill();
-  // top face
-  ctx.fillStyle = m.top;
-  ctx.beginPath();
-  ctx.moveTo(tl.x, tl.y);
-  ctx.lineTo(tr.x, tr.y);
-  ctx.lineTo(br.x, br.y);
-  ctx.lineTo(bl.x, bl.y);
-  ctx.closePath();
-  ctx.fill();
-  // top edge light
-  ctx.strokeStyle = withAlpha("#ffffff", 0.16);
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(tl.x, tl.y);
-  ctx.lineTo(tr.x, tr.y);
-  ctx.stroke();
-}
 
-export function frustum25(ctx, cx, topY, rxBot, rxTop, rise, m) {
-  const ryBot = deckRy(rxBot);
-  const ryTop = deckRy(rxTop);
-  ctx.fillStyle = m.side;
-  ctx.beginPath();
-  ctx.moveTo(cx - rxTop, topY);
-  ctx.lineTo(cx - rxBot, topY + rise);
-  ctx.lineTo(cx + rxBot, topY + rise);
-  ctx.lineTo(cx + rxTop, topY);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = m.sideDark;
-  ctx.beginPath();
-  ctx.ellipse(cx, topY + rise, rxBot, ryBot, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = m.top;
-  ctx.beginPath();
-  ctx.ellipse(cx, topY, rxTop, ryTop, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = withAlpha("#fff8e0", 0.14);
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.ellipse(cx - rxTop * 0.1, topY - ryTop * 0.08, rxTop * 0.65, ryTop * 0.5, -0.3, Math.PI * 1.15, Math.PI * 1.85);
-  ctx.stroke();
-}
-
-function diamondPrism25(ctx, cx, topY, rx, rise, m) {
-  const ry = deckRy(rx);
-  const top = [
-    { x: cx, y: topY - ry },
-    { x: cx + rx, y: topY },
-    { x: cx, y: topY + ry },
-    { x: cx - rx, y: topY },
-  ];
-  const bot = top.map((p) => ({ x: p.x, y: p.y + rise }));
-  ctx.fillStyle = m.sideDark;
-  facePoly(ctx, [top[1], top[2], bot[2], bot[1]]);
-  ctx.fillStyle = m.side;
-  facePoly(ctx, [top[2], top[3], bot[3], bot[2]]);
-  ctx.fillStyle = m.top;
-  facePoly(ctx, top);
-  ctx.strokeStyle = withAlpha("#fff8e0", 0.14);
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(top[3].x, top[3].y);
-  ctx.lineTo(top[0].x, top[0].y);
-  ctx.lineTo(top[1].x, top[1].y);
-  ctx.stroke();
-}
 
 function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
   const metal = palette.barrelColor(barrel);

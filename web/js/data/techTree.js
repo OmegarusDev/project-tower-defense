@@ -301,7 +301,7 @@ export function getTechNode(id) {
   return NODE_BY_ID.get(id) || null;
 }
 
-export function allTechNodes() {
+function allTechNodes() {
   return [...NODE_BY_ID.values()];
 }
 

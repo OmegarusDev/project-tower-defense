@@ -160,7 +160,7 @@ export const ENEMY_KINDS = {
 };
 
 /** Legacy + paper-TD ids → Slag Host kinds. */
-export const ENEMY_ALIASES = {
+const ENEMY_ALIASES = {
   // paper / early web
   basic: "mite",
   grub: "mite",

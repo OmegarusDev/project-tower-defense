@@ -65,7 +65,7 @@ export function syncSimFromMeta(app, sim, { seedVault = false, resetLives = fals
 
 export function syncMetaProgress(app) {
   // Ghost replays and editor playtests are view-only — never credit meta.
-  if (app._ghost || app.playtestFromEditor) return [];
+  if (app._ghost || app.playtestFromEditor) return;
   // Delta-merge run gains only — never clobber meta with a stale sim vault
   // (hub spends + Continue would otherwise restore spent Forge/Aether).
   const gains = app.sim.economy.runWaveGains || { parts: 0, aether: 0 };
@@ -86,6 +86,4 @@ export function syncMetaProgress(app) {
     app.meta.bestWave = Math.max(app.meta.bestWave | 0, app.sim.waveIndex);
   }
   persistMeta(app);
-  return [];
-  
 }

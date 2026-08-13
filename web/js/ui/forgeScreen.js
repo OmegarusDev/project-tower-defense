@@ -15,12 +15,12 @@ import {
   canAffordTech,
   spendTechCost,
 } from "../data/techTree.js";
-import { drawComposedTower } from "../view/towerPainter.js";
+import { renderTower } from "../view/towerPainter.js";
 import { forgePlanSummary } from "./menuScreens.js";
 import { rosterSlotButtons } from "../app/gameChrome.js";
 import { partIconHtml } from "./partIcons.js";
 
-export function forgePartBtnHtml(app, kind, id, slot) {
+function forgePartBtnHtml(app, kind, id, slot) {
   const have = ownsPart(app.meta.owned, kind, id);
   const equipped = slot[kind] === id;
   const table = kind === "base" ? PARTS.bases : kind === "barrel" ? PARTS.barrels : PARTS.payloads;
@@ -41,7 +41,7 @@ export function forgePartBtnHtml(app, kind, id, slot) {
 }
 
 
-export function forgePartGridHtml(app, slot) {
+function forgePartGridHtml(app, slot) {
   const col = (title, kind, ids) =>
     `<div><h4>${title}</h4>${ids.map((id) => forgePartBtnHtml(app, kind, id, slot)).join("")}</div>`;
   return `
@@ -105,7 +105,7 @@ export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true 
   
 }
 
-export function flashForgePreview(app) {
+function flashForgePreview(app) {
   const canvas = app.ui.querySelector("#forgePreview");
   if (!canvas || app.screen !== "forge") return;
   canvas.classList.remove("forge-preview-flash");
@@ -219,7 +219,7 @@ export function paintForgePreview(app) {
   const py = (css - size) / 2;
   // The painter owns ground-plane foreshortening (groundForeshorten in the
   // turret) — no pre-scale here, or barrels would double-squash.
-  drawComposedTower(ctx, app.palette, t, px, py, size, false);
+  renderTower(ctx, app.palette, t, px, py, size, {});
   
 }
 

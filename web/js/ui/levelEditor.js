@@ -12,7 +12,7 @@ export function loadEditorLevels() {
   }
 }
 
-export function saveEditorLevels(list) {
+function saveEditorLevels(list) {
   localStorage.setItem(EDITOR_KEY, JSON.stringify(list.slice(0, 24)));
 }
 

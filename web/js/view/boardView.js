@@ -1,6 +1,6 @@
 import { buildAttackPlan, planOptsFromParts } from "../sim/attackPlan.js";
 import { XP_TO_POINT } from "../data/parts.js";
-import { drawComposedTower } from "./towerPainter.js";
+import { renderTower } from "./towerPainter.js";
 import { drawEnemyBody } from "./enemyPainter.js";
 import { VIEW25, setPitch, deckRy, BoardCamera } from "./view25.js";
 import { shade, withAlpha, hash21 } from "./drawUtil.js";
@@ -1266,7 +1266,7 @@ export class BoardView {
     const px = p.x - s / 2 - kick;
     const py = p.y - s / 2 - kickY;
     const selected = t.id === this.selectedTowerId;
-    drawComposedTower(ctx, this.palette, t, px, py, s, selected);
+    renderTower(ctx, this.palette, t, px, py, s, { selected });
 
     // XP bar above the tower (never across the base / cell edge)
     const cap = t.levelCap || 1;
@@ -1505,7 +1505,7 @@ export class BoardView {
       const s = this.cell * p.s * UNIT_SCALE;
       ctx.save();
       ctx.globalAlpha = 0.38 + pulse * 0.18;
-      drawComposedTower(
+      renderTower(
         ctx,
         this.palette,
         {
@@ -1518,7 +1518,7 @@ export class BoardView {
         p.x - s / 2,
         p.y - s / 2,
         s,
-        false
+        { showBadge: false }
       );
       ctx.restore();
     }

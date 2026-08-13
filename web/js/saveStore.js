@@ -32,13 +32,11 @@ export function loadMeta() {
 export function normalizeMeta(m) {
   const bestWave = m.bestWave | 0;
   const owned = normalizeOwned(m.owned || defaultOwned());
-
-  const tech = migrateTechRanks(m);
   const draft = {
     aether: m.aether | 0,
     forge: m.forge | 0,
     bestWave,
-    tech,
+    tech: migrateTechRanks(m),
     owned,
     campaign: {
       cleared: Array.isArray(m.campaign?.cleared)
@@ -54,10 +52,14 @@ export function normalizeMeta(m) {
       cameraPitch: clampPitch(m.settings?.cameraPitch),
     },
   };
-
   // Carry legacy fields into migrateTechRanks via `m`; sync writes derived.
   syncTechDerived(draft);
+  clampAndDerive(draft, m, owned);
+  return draft;
+}
 
+/** Range clamps + legacy backfills (forgeBuys) — one pass, no game rules. */
+function clampAndDerive(draft, m, owned) {
   draft.slotCount = Math.max(MIN_ROSTER_SLOTS, Math.min(MAX_ROSTER_SLOTS, draft.slotCount | 0 || MIN_ROSTER_SLOTS));
   draft.levelCap = Math.max(MIN_LEVEL_CAP, Math.min(MAX_LEVEL_CAP, draft.levelCap | 0 || MIN_LEVEL_CAP));
   draft.startLives = Math.max(
@@ -81,7 +83,6 @@ export function normalizeMeta(m) {
   draft.globalRofMult = clampBoost(draft.globalRofMult, 1);
   draft.partUpgrades = normalizePartUpgrades(draft.partUpgrades);
   draft.roster = normalizeRoster(m.roster, draft.slotCount, draft.levelCap);
-  return draft;
 }
 
 function clampPitch(v) {
@@ -115,7 +116,7 @@ function clampRefund(v) {
 }
 
 /** Part mastery ranks by part id, e.g. `{ shock: { chain: 2 }, sentry: { power: 1 } }`. */
-export function normalizePartUpgrades(raw) {
+function normalizePartUpgrades(raw) {
   const live = { ...PARTS.bases, ...PARTS.barrels, ...PARTS.payloads };
   const out = {};
   if (!raw || typeof raw !== "object") return out;

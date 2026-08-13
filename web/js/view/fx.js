@@ -305,16 +305,22 @@ export class FxSystem {
       } else if (it.kind === "puff") {
         it.y += it.vy * dt;
       }
-      if (it.life <= 0) this.items.splice(i, 1);
-      else i++;
+      if (it.life <= 0) {
+        const last = this.items.length - 1;
+        this.items[i] = this.items[last];
+        this.items.pop();
+      } else i++;
     }
     for (let i = 0; i < this.floats.length; ) {
       const f = this.floats[i];
       f.life -= dt;
       f.y += f.vy * dt;
       f.vy *= 0.94;
-      if (f.life <= 0) this.floats.splice(i, 1);
-      else i++;
+      if (f.life <= 0) {
+        const last = this.floats.length - 1;
+        this.floats[i] = this.floats[last];
+        this.floats.pop();
+      } else i++;
     }
   }
 

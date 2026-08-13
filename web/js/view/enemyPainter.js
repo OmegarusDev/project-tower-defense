@@ -1,6 +1,6 @@
 /** Slag Host silhouettes — industrial reclaimers in the forgeworks dialect. */
 
-import { cyl25, box25, frustum25 } from "./towerPainter.js";
+import { cyl25, box25, frustum25 } from "./prims25.js";
 import { deckRy } from "./view25.js";
 import { shade, withAlpha, matsFrom } from "./drawUtil.js";
 

@@ -14,13 +14,13 @@ import {
   nextRosterSlotUnlock,
 } from "../data/techTree.js";
 import { VIEW25 } from "../view/view25.js";
-import { drawComposedTower } from "../view/towerPainter.js";
+import { renderTower } from "../view/towerPainter.js";
 import { forgePlanSummary } from "../ui/menuScreens.js";
 import { partIconHtml } from "../ui/partIcons.js";
 
 /** Always show S1–S6; locked slots stay visible until Roster tech unlocks them. */
   /** Live place quote for a roster index (game only). */
-export function gameSlotQuote(app, i) {
+function gameSlotQuote(app, i) {
   const s = app.sim?.roster?.[i];
   if (!s?.complete) {
     return {
@@ -190,7 +190,7 @@ export function renderGameChrome(app) {
   
 }
 
-export function liveComposeHtml(app) {
+function liveComposeHtml(app) {
   const slot = app.meta.roster[app.slot] || makeSlot();
   const partBtn = (kind, id) => {
     const have = ownsPart(app.meta.owned, kind, id);
@@ -272,7 +272,7 @@ export function paintSlotPreviews(app) {
     const py = (css - size) / 2 + 1;
     // No outer yScale — the painter owns ground-plane foreshortening
     // (groundForeshorten in the turret; vz()/deckRy on the base).
-    drawComposedTower(ctx, app.palette, t, px, py, size, false, { showBadge: false });
+    renderTower(ctx, app.palette, t, px, py, size, { showBadge: false });
   }
   
 }
@@ -370,7 +370,7 @@ export function refreshThemeChip(app, theme, event) {
 }
 
 /** Update slot/wall prices + dock meta from current economy state. */
-export function syncBuildDock(app) {
+function syncBuildDock(app) {
   if (!app.sim) return;
   for (let i = 0; i < MAX_ROSTER_SLOTS; i++) {
     const btn = app.ui.querySelector(`[data-build-slot="${i}"]`);
