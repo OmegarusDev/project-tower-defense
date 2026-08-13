@@ -270,12 +270,9 @@ export function paintSlotPreviews(app) {
     const size = 34;
     const px = (css - size) / 2;
     const py = (css - size) / 2 + 1;
-    ctx.save();
-    ctx.translate(css / 2, css / 2);
-    ctx.scale(1, VIEW25.yScale);
-    ctx.translate(-css / 2, -css / 2);
+    // No outer yScale — the painter owns ground-plane foreshortening
+    // (groundForeshorten in the turret; vz()/deckRy on the base).
     drawComposedTower(ctx, app.palette, t, px, py, size, false, { showBadge: false });
-    ctx.restore();
   }
   
 }
