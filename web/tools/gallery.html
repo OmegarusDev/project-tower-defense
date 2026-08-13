@@ -185,13 +185,42 @@
         return zMaxX > zMinX ? zMaxX - zMinX + 1 : 0;
       });
       const nBase = bases.length * 4;
-      let bad = 0;
+      const measure = () => {
+        let bad = 0;
+        let shrink = 0;
+        for (let i = 0; i < barrels.length; i++) {
+          const side = tz[nBase + i * 4];
+          const up = tz[nBase + i * 4 + 1];
+          if (up >= side) bad++;
+          else shrink += side - up;
+        }
+        return { bad, shrink };
+      };
+      let r = measure();
+      check(r.bad === 0, "barrels foreshorten along depth (pitch 58)", `${r.bad} not foreshortened`);
+      // The stylized squash must be legible at the DEFAULT pitch too — this is
+      // the regression that made away-facing barrels read as standing up.
+      await awaitPitch(24);
+      const tz24 = [...document.querySelectorAll("canvas")].map((c) => {
+        const b = bboxOf(c);
+        if (!b) return 0;
+        const zoneBottom = b.minY + Math.round((b.maxY - b.minY) * 0.45);
+        let zMinX = 1e9, zMaxX = -1;
+        const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+        for (let y = b.minY; y <= zoneBottom; y++) for (let x = b.minX; x <= b.maxX; x++) {
+          if (d[(y * c.width + x) * 4 + 3] > 8) { if (x < zMinX) zMinX = x; if (x > zMaxX) zMaxX = x; }
+        }
+        return zMaxX > zMinX ? zMaxX - zMinX + 1 : 0;
+      });
+      let bad24 = 0;
+      let shrink24 = 0;
       for (let i = 0; i < barrels.length; i++) {
-        const side = tz[nBase + i * 4];
-        const up = tz[nBase + i * 4 + 1];
-        if (up >= side) bad++;
+        const side = tz24[nBase + i * 4];
+        const up = tz24[nBase + i * 4 + 1];
+        if (up >= side) bad24++;
+        else shrink24 += side - up;
       }
-      check(bad === 0, "barrels foreshorten along depth (pitch 58)", `${bad} not foreshortened`);
+      check(bad24 === 0, "barrels foreshorten along depth (pitch 24)", `${bad24} not foreshortened (avg shrink ${(shrink24 / Math.max(1, barrels.length - bad24)).toFixed(1)}px)`);
       // unknown/future parts must fall back gracefully (palette + painter defaults)
       const scratch = makeCanvas("future_part");
       let threw = false;

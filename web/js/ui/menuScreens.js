@@ -200,7 +200,9 @@ export function renderCampaign(app) {
         </div>
       </header>
       ${acts}
-      <button class="btn" data-act="forge-from-campaign">Forge</button>
+      <div class="screen-foot">
+        <button class="btn" data-act="forge-from-campaign">Forge</button>
+      </div>
     </div>`;
 }
 
@@ -254,8 +256,8 @@ export function renderPrep(app, levelId) {
         <p class="end-note" style="margin-top:8px;text-align:left">${planLine}</p>
         ${prepSlotButtonsHtml(app.meta, app.prepSlot)}
       </div>
-      <button class="btn title-cta" data-act="start-level:${lv.id}">Start Level</button>
-      <div class="row" style="gap:8px">
+      <div class="screen-foot">
+        <button class="btn title-cta" data-act="start-level:${lv.id}">Start Level</button>
         <button class="btn" data-act="forge-from-prep">Forge</button>
         <button class="btn" data-act="upgrade-from-prep">Tech Tree</button>
       </div>

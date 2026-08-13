@@ -1,6 +1,6 @@
 /** Procedural tower = grounded Base + rotating turret (Barrel + Payload tip). */
 
-import { VIEW25, aimToDrawAngle, deckRy, groundForeshorten } from "./view25.js";
+import { VIEW25, aimToDrawAngle, deckRy, foreshortenBarrel } from "./view25.js";
 import { shade, withAlpha, roundRect, matsFrom } from "./drawUtil.js";
 import { vz, cyl25, box25, frustum25, diamondPrism25, ring25, rivetRing } from "./prims25.js";
 
@@ -25,7 +25,7 @@ const BASE_CROWN = {
 /**
  * THE tower render entry point — all callers (board, dock slots, forge
  * preview, placement ghost) go through here. The painter owns every
- * transform: pitch foreshortening (vz/deckRy/groundForeshorten), badge,
+ * transform: pitch foreshortening (vz/deckRy/foreshortenBarrel), badge,
  * selection ring. Callers supply only the tower truth + a box + options.
  */
 /** Hub lift above the pad for a given sprite size + base (pixel units). */
@@ -353,12 +353,11 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
   const tip = palette.payloadColor(payload);
   ctx.save();
   ctx.translate(cx, cy);
-  // Yaw first, then the unified ground-plane squash: the barrel's depth axis
-  // foreshortens exactly like deckRy, so barrels pointing up the board read
-  // shorter, side-on barrels full length. Draw circles — the transform makes
-  // the correct ellipses (no hand-tuned ratios).
+  // Yaw first, then the stylized barrel squash: away/toward-facing barrels
+  // visibly recede at every pitch (stronger than the raw ground squash).
+  // Draw circles — the transform makes the correct ellipses.
   ctx.rotate(angle);
-  groundForeshorten(ctx);
+  foreshortenBarrel(ctx);
 
   const hubR = s * 0.125;
   // depth = how far the barrel points away (up the board): sin<0 aims at the
@@ -464,7 +463,7 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
 }
 
 function drawHub(ctx, metal, r) {
-  // Circles — groundForeshorten makes the correct deck ellipses
+  // Circles — the barrel transform makes the correct deck ellipses
   ctx.fillStyle = shade(metal, -0.3);
   ctx.beginPath();
   ctx.ellipse(0, r * 0.15, r, r, 0, 0, Math.PI * 2);

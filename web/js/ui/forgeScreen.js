@@ -217,7 +217,7 @@ export function paintForgePreview(app) {
   const size = 72;
   const px = (css - size) / 2;
   const py = (css - size) / 2;
-  // The painter owns ground-plane foreshortening (groundForeshorten in the
+  // The painter owns ground-plane foreshortening (foreshortenBarrel in the
   // turret) — no pre-scale here, or barrels would double-squash.
   renderTower(ctx, app.palette, t, px, py, size, {});
   

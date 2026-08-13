@@ -69,12 +69,28 @@ export function deckRy(rx) {
  * Unified ground-plane foreshortening for rotating sprites (turret barrels,
  * any body that yaws across the board). Apply AFTER ctx.rotate(angle):
  * a ground direction at angle θ then maps to screen length
- * √(cos²θ + yScale²·sin²θ) — the same depth squash deckRy() uses — so a
+ * √(cos²θ + f²·sin²θ) — the same depth squash deckRy() uses — so a
  * barrel pointing up the board reads shorter than one pointing sideways.
  * Forge previews must NOT pre-scale; the painter owns the transform.
  */
 export function groundForeshorten(ctx) {
   ctx.scale(1, VIEW25.yScale);
+}
+
+/**
+ * Stylized barrel foreshortening factor. The raw ground squash (cos pitch)
+ * sits near 1 at the pitches players actually use (default 24° → 0.91), so
+ * away/toward-facing barrels read as full-length and standing up. This curve
+ * exaggerates the depth squash so the recession is legible at any pitch:
+ * ~22% shorter at 24°, ~40% at 40°, floored at 0.38 side-on.
+ */
+export function barrelDepthFactor() {
+  const p = (VIEW25.pitchDeg * Math.PI) / 180;
+  return Math.max(0.38, Math.cos(p) * (1 - 0.35 * Math.sin(p)));
+}
+
+export function foreshortenBarrel(ctx) {
+  ctx.scale(1, barrelDepthFactor());
 }
 
 export function aimToDrawAngle(aimAngle) {

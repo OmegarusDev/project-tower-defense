@@ -42,7 +42,7 @@ export function showEndlessHub(app) {
             }
           </p>
         </div>
-        <div class="hub-actions">
+        <div class="screen-foot">
           <button class="btn title-cta" data-act="newrun">New Run</button>
           <button class="btn hub-continue" data-act="continue" ${canContinue ? "" : "disabled"}>Continue</button>
           <button class="btn" data-act="forge-from-hub">Forge</button>

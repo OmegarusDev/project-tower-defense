@@ -278,7 +278,7 @@ export function paintSlotPreviews(app, force = false) {
     const px = (css - size) / 2;
     const py = (css - size) / 2 + 1;
     // No outer yScale — the painter owns ground-plane foreshortening
-    // (groundForeshorten in the turret; vz()/deckRy on the base).
+    // (foreshortenBarrel in the turret; vz()/deckRy on the base).
     renderTower(ctx, app.palette, t, px, py, size, { showBadge: false });
   }
   
