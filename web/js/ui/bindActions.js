@@ -85,7 +85,6 @@ export function handleUiAction(app, act, _ev) {
   else if (act?.startsWith("level-branch:")) {
     app.chooseLevelBranchSelected(act.slice("level-branch:".length));
   } else if (act === "undo") app.undoLast();
-  else if (act === "tech-respec") app.respecTechTree();
   else if (act?.startsWith("speed:")) app.setSpeed(+act.slice(6));
   else if (act === "tool:wall") {
     app.tool = "wall";

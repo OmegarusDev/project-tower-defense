@@ -37,7 +37,7 @@ export function showEndlessHub(app) {
           <p style="text-align:left;color:var(--text);margin:0">
             ${
               canContinue
-                ? `Wave <strong>${blob.wave}</strong> · seed ${blob.seed >>> 0}`
+                ? `Wave <strong>${blob.wave}</strong> · seed ${blob.runSeed >>> 0}`
                 : "No checkpoint. Start a run when your Forge is set."
             }
           </p>

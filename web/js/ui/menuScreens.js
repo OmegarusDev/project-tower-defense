@@ -100,11 +100,10 @@ export function renderSettings(app) {
           </div>
           <input id="pitch" type="range" min="8" max="58" step="1" value="${pitch}" />
         </div>
-        <div class="set-block">
-          <h3>Tech</h3>
-          <p class="end-note" style="margin:0 0 8px">Refund all Foundations + Arsenal ranks.</p>
-          <button type="button" class="btn secondary" data-act="tech-respec">Respec tech tree</button>
-        </div>
+<div class="set-block">
+            <h3>Tech</h3>
+            <p class="end-note" style="margin:0">Ranks are permanent — pick Foundations and Arsenal upgrades with care.</p>
+          </div>
       </div>
     </div>`;
 }

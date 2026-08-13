@@ -1,4 +1,4 @@
-import { PARTS } from "../data/parts.js";
+import { PARTS, XP_TO_POINT } from "../data/parts.js";
 import { ballastPressureFactor, isConductive } from "../data/enemies.js";
 import { buildAttackPlan, Pattern, planOptsFromParts } from "./attackPlan.js";
 import { INF } from "./boardGrid.js";
@@ -480,12 +480,12 @@ export class CombatSystem {
     tower.levelCap = cap;
     // At cap: freeze bar — no endless banked points.
     if ((tower.level | 0) >= cap) {
-      const need = tower.xpToPoint || 55;
+      const need = tower.xpToPoint || XP_TO_POINT;
       tower.xp = Math.min(tower.xp || 0, need - 1);
       return;
     }
     tower.xp = (tower.xp || 0) + amount;
-    const need = tower.xpToPoint || 55;
+    const need = tower.xpToPoint || XP_TO_POINT;
     let gained = 0;
     while (tower.xp >= need && (tower.level | 0) < cap) {
       tower.xp -= need;

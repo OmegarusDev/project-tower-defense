@@ -252,7 +252,6 @@ export class App {
   buyPart(k, id, e) { return forge.buyPart(this, k, id, e); }
 
   showUpgrade(r) { return tech.showUpgrade(this, r); }
-  respecTechTree() { return tech.respecTechTree(this); }
   setTechTreeTab(id) { return tech.setTechTreeTab(this, id); }
   selectTechNode(id) { return tech.selectTechNode(this, id); }
   closeTechOverlay() { return tech.closeTechOverlay(this); }

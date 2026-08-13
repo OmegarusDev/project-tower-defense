@@ -211,7 +211,14 @@ export function startGhostReplay(app) {
     app.toast("No replay log from last run");
     return;
   }
+  // Rebuild the sim from the replay's own roster so loadout changes after the
+  // original run can't break replay determinism.
+  const rosterBackup = app.meta.roster;
+  if (Array.isArray(blob.roster) && blob.roster.length) {
+    app.meta.roster = blob.roster;
+  }
   app.newRun(blob.runSeed, { skipConfirm: true });
+  app.meta.roster = rosterBackup;
   if (!app.sim) return;
   // Ghost owns the action log — clear live log so we don't double-record
   app.sim.actionLog = [];

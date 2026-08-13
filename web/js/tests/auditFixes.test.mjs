@@ -11,7 +11,6 @@ import {
   syncTechDerived,
   livesFromIronGuardRank,
   ironGuardRankFromLives,
-  respecAllTech,
   getTechNode,
 } from "../data/techTree.js";
 import { normalizeMeta } from "../saveStore.js";
@@ -291,17 +290,7 @@ function placeOpen(sim, slot = 0) {
   assert(n.forgeBuys === 2, "normalize backfills forgeBuys");
 }
 
-// ——— H9: respec refunds ———
-{
-  const meta = { aether: 0, forge: 0, tech: { level_cap: 2, cash: 1 } };
-  syncTechDerived(meta);
-  const beforeCap = meta.levelCap;
-  assert(beforeCap === 3, "pre-respec cap");
-  const { aether } = respecAllTech(meta);
-  assert(aether > 0, "refunds aether");
-  assert(Object.keys(meta.tech || {}).length === 0, "ranks cleared");
-  assert(meta.levelCap === 1, "cap reset to 1");
-  assert(meta.aether === aether, "aether restored");
-}
+// ——— H9: respec removed (2026-08-13) — respecAllTech no longer exists
+// Tech ranks are permanent; the respec feature was removed by design.
 
 console.log("ALL auditFixes tests passed");

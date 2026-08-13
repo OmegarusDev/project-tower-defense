@@ -1,6 +1,6 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { normalizeRoster, applyWaveUnlocks } from "../data/parts.js";
-import { syncTechDerived } from "../data/techTree.js";
+import { syncTechDerived, BASE_START_LIVES } from "../data/techTree.js";
 import { saveMeta } from "../saveStore.js";
 
 export function persistMeta(app) {
@@ -38,7 +38,7 @@ export function syncSimFromMeta(app, sim, { seedVault = false, resetLives = fals
     app.meta.slotCount,
     app.meta.levelCap
   );
-  sim.setStartLives(app.meta.startLives || 3, { resetCurrent: resetLives });
+  sim.setStartLives(app.meta.startLives || BASE_START_LIVES, { resetCurrent: resetLives });
   if (seedVault) {
     sim.economy.injectMeta(app.meta.forge, app.meta.aether);
   }

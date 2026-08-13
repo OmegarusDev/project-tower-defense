@@ -1,4 +1,5 @@
 import { buildAttackPlan, planOptsFromParts } from "../sim/attackPlan.js";
+import { XP_TO_POINT } from "../data/parts.js";
 import { drawComposedTower } from "./towerPainter.js";
 import { drawEnemyBody } from "./enemyPainter.js";
 import { VIEW25, setPitch, deckRy, BoardCamera } from "./view25.js";
@@ -1257,7 +1258,7 @@ export class BoardView {
 
     // XP bar above the tower (never across the base / cell edge)
     const cap = t.levelCap || 1;
-    const need = t.xpToPoint || 55;
+    const need = t.xpToPoint || XP_TO_POINT;
     const atCap = (t.level || 1) >= cap;
     const ratio = atCap ? 1 : Math.max(0, Math.min(1, (t.xp || 0) / need));
     const barW = s * 0.55;

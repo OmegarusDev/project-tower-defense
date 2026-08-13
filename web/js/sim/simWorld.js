@@ -2,8 +2,9 @@ import { BoardGrid } from "./boardGrid.js";
 import { Economy } from "./economy.js";
 import { CombatSystem } from "./combat.js";
 import { WaveManager } from "./waves.js";
-import { defaultSlots, migratePartId, makeSlot } from "../data/parts.js";
+import { defaultSlots, migratePartId, makeSlot, XP_TO_POINT } from "../data/parts.js";
 import { ballastSlowFactor } from "../data/enemies.js";
+import { BASE_START_LIVES } from "../data/techTree.js";
 
 export const TICK_HZ = 60;
 export const TICK_DT = 1 / TICK_HZ;
@@ -24,7 +25,7 @@ export class SimWorld {
     this.partUpgrades = {};
     this.globalMods = { damage: 1, range: 1, rof: 1 };
     this.tickIndex = 0;
-    this.lives = 3;
+    this.lives = BASE_START_LIVES;
     this.waveIndex = 0;
     this.running = false;
     this.modeEndless = true;
@@ -79,8 +80,8 @@ export class SimWorld {
     this.enemies = [];
     this.projectiles = [];
     this.tickIndex = 0;
-    this.lives = 3;
-    this.startLives = 3;
+    this.lives = BASE_START_LIVES;
+    this.startLives = BASE_START_LIVES;
     this.sellRefundMult = 0.5;
     this.waveIndex = 0;
     this.running = false;
@@ -134,7 +135,7 @@ export class SimWorld {
 
   /** Update the run's life budget. Only refill current lives when `resetCurrent`. */
   setStartLives(n, { resetCurrent = true } = {}) {
-    this.startLives = Math.max(1, n | 0 || 3);
+    this.startLives = Math.max(1, n | 0 || BASE_START_LIVES);
     if (resetCurrent) this.lives = this.startLives;
   }
 
@@ -258,7 +259,7 @@ export class SimWorld {
       paid: cost,
       level: 1,
       xp: 0,
-      xpToPoint: 55,
+      xpToPoint: XP_TO_POINT,
       pendingPicks: 0,
       branch: { damage: 0, rof: 0, range: 0 },
       levelCap: Math.max(loadout.levelCap | 0, this.runLevelCap | 0, 1),

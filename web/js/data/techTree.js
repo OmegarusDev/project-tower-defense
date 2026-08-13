@@ -16,6 +16,7 @@ const FG_CHAIN = (a, b, c) => [{ forge: a }, { forge: b }, { forge: c }];
 
 /** Iron Guard cumulative life totals by rank (rank 0 = base 3). */
 export const IRON_GUARD_LIVES = [3, 5, 7, 10, 15, 20, 25];
+export const BASE_START_LIVES = IRON_GUARD_LIVES[0];
 const IRON_GUARD_COSTS = [
   { aether: 18 },
   { aether: 32 },
@@ -569,31 +570,6 @@ export function canAffordTech(meta, cost) {
 export function spendTechCost(meta, cost) {
   meta.aether = (meta.aether | 0) - (cost.aether | 0);
   meta.forge = (meta.forge | 0) - (cost.forge | 0);
-}
-
-/**
- * Full Foundations + Arsenal respec: refund Aether/Parts spent on ranks, clear ranks.
- * Returns { aether, forge } refunded.
- */
-export function respecAllTech(meta) {
-  let aether = 0;
-  let forge = 0;
-  const tech = meta.tech || {};
-  for (const node of allTechNodes()) {
-    const r = tech[node.id] | 0;
-    if (r <= 0) continue;
-    for (let i = 0; i < r; i++) {
-      const c = node.costs?.[i];
-      if (!c) continue;
-      aether += c.aether | 0;
-      forge += c.forge | 0;
-    }
-  }
-  meta.tech = {};
-  meta.aether = (meta.aether | 0) + aether;
-  meta.forge = (meta.forge | 0) + forge;
-  syncTechDerived(meta);
-  return { aether, forge };
 }
 
 /** Default endless / campaign base Coin before War Chest bonus. */

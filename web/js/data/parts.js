@@ -277,6 +277,9 @@ export const WAVE_UNLOCKS = [
 export const MIN_ROSTER_SLOTS = 3;
 export const MAX_ROSTER_SLOTS = 12;
 
+/** XP needed per tower level-up (set on towers at spawn; display fallbacks use this). */
+export const XP_TO_POINT = 55;
+
 /**
  * Count owned paid Forge purchases (forgeCost>0), excluding starters and
  * wave-gift unlocks already granted by bestWave. Used to backfill forgeBuys.

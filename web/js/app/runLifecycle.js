@@ -33,6 +33,8 @@ export function newRun(app, seed, { skipConfirm = false } = {}) {
   app.placeConfirm = null;
   app.liveCompose = false;
   app.playtestFromEditor = false;
+  app._ffHeld = false;
+  app._speedBeforeFf = undefined;
   app.board.setAtmosphere?.("default");
   app.palette.setAtmosphere?.("default");
   app.enterGame();
@@ -70,6 +72,8 @@ export function continueRun(app) {
   app.speed = 1;
   app.accum = 0;
   app.placeConfirm = null;
+  app._ffHeld = false;
+  app._speedBeforeFf = undefined;
   app.enterGame();
   if (phase === "betweenWaves") {
     app.toast(`Between waves — Call Wave ${(savedWave | 0) + 1}`);
@@ -132,6 +136,8 @@ export function bootLevel(app, lv) {
   app.accum = 0;
   app.placeConfirm = null;
   app.liveCompose = false;
+  app._ffHeld = false;
+  app._speedBeforeFf = undefined;
   app.enterGame();
   
 }

@@ -8,6 +8,7 @@ import {
 import {
   TECH_TREES,
   BASE_START_CASH,
+  BASE_START_LIVES,
   getTechNode,
   techRank,
   techRequiresMet,
@@ -17,7 +18,6 @@ import {
   canAffordTech,
   spendTechCost,
   syncTechDerived,
-  respecAllTech,
 } from "../data/techTree.js";
 import { forgeCost } from "./forgeScreen.js";
 import { techCategoryIcon, techNodeIconHtml } from "./partIcons.js";
@@ -63,7 +63,7 @@ export function showUpgrade(app, returnTo) {
           <span><i>Parts</i>${app.meta.forge}</span>
           <span><i>Lvl Cap</i>L${app.meta.levelCap}</span>
           <span><i>Slots</i>${app.meta.slotCount}</span>
-          <span><i>HP</i>${app.meta.startLives || 3}</span>
+          <span><i>HP</i>${app.meta.startLives || BASE_START_LIVES}</span>
           <span><i>Coin</i>${cash}</span>
         </div>
         <div class="status tech-status" id="status">${app.status}</div>
@@ -72,32 +72,11 @@ export function showUpgrade(app, returnTo) {
       <div class="tech-body">
         ${techTreeHtml(app, tree)}
         <p class="tech-gift">${giftLine}</p>
-        <button type="button" class="btn secondary" data-act="tech-respec">Respec tree (full refund)</button>
       </div>
       ${overlay}
     </div>`;
   app.bindUi();
 }
-
-export function respecTechTree(app) {
-  const ranks = Object.keys(app.meta.tech || {}).length;
-  if (!ranks) {
-    app.toast("No tech ranks to refund");
-    return;
-  }
-  if (!confirm("Refund all Foundations + Arsenal ranks and reset the tree?")) return;
-  const { aether, forge } = respecAllTech(app.meta);
-  app.meta.roster = normalizeRoster(
-    app.meta.roster,
-    app.meta.slotCount,
-    app.meta.levelCap
-  );
-  app.persistMeta();
-  if (app.sim) app._syncSimFromMeta(app.sim, { seedVault: true });
-  app.synth.play("confirm");
-  app.status = `Respec · +${aether} Æ · +${forge} Parts`;
-  if (app.screen === "settings") app.showSettings();
-  else showUpgrade(app);
   
 }
 

@@ -6,6 +6,7 @@ import {
   partLabel,
   doctrineLabel,
   MAX_ROSTER_SLOTS,
+  XP_TO_POINT,
 } from "../data/parts.js";
 import {
   formatTechCost,
@@ -433,7 +434,7 @@ export function syncTowerOverlay(app) {
   const rate = app.sim.sellRefundMult > 0 ? app.sim.sellRefundMult : 0.5;
   if (t) {
     const cap = t.levelCap || 1;
-    const need = t.xpToPoint || 55;
+    const need = t.xpToPoint || XP_TO_POINT;
     const picks = t.pendingPicks | 0;
     const atCap = (t.level || 1) >= cap;
     const refund = (t.paid * rate) | 0;
