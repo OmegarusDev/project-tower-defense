@@ -174,40 +174,56 @@
       // turret-zone foreshorten at 58: an up-aiming barrel REcedes — its
       // zone's height (depth length) must be shorter than when side-aiming.
       // (Zone width is wrong for pods whose tubes spread across the aim.)
-      const tzOf = () => [...document.querySelectorAll("canvas")].map((c) => {
+      const nBase = bases.length * 4;
+      // Zone extents (width AND height) at both pitches. The zone is the top
+      // 45% of each tower — where the turret lives.
+      const ext = (c) => {
         const b = bboxOf(c);
-        if (!b) return 0;
+        if (!b) return { w: 0, h: 0 };
         const zoneBottom = b.minY + Math.round((b.maxY - b.minY) * 0.45);
-        let zMinY = 1e9, zMaxY = -1;
+        let zMinX = 1e9, zMaxX = -1, zMinY = 1e9, zMaxY = -1;
         const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
         for (let y = b.minY; y <= zoneBottom; y++) for (let x = b.minX; x <= b.maxX; x++) {
-          if (d[(y * c.width + x) * 4 + 3] > 8) { if (y < zMinY) zMinY = y; if (y > zMaxY) zMaxY = y; }
+          if (d[(y * c.width + x) * 4 + 3] > 8) {
+            if (x < zMinX) zMinX = x; if (x > zMaxX) zMaxX = x;
+            if (y < zMinY) zMinY = y; if (y > zMaxY) zMaxY = y;
+          }
         }
-        return zMaxY > zMinY ? zMaxY - zMinY + 1 : 0;
+        return { w: zMaxX > zMinX ? zMaxX - zMinX + 1 : 0, h: zMaxY > zMinY ? zMaxY - zMinY + 1 : 0 };
+      };
+      const zone = () => [...document.querySelectorAll("canvas")].map(ext);
+      await awaitPitch(58);
+      const z58 = zone();
+      await awaitPitch(24);
+      const z24 = zone();
+      // Whole-bbox widths are pitch-stable (footprints keep their x-radius),
+      // so a side barrel's LENGTH can be read from the full-tower bbox width.
+      const fullW = () => [...document.querySelectorAll("canvas")].map((c) => {
+        const b = bboxOf(c);
+        return b ? b.maxX - b.minX + 1 : 0;
       });
       await awaitPitch(58);
-      const tz = tzOf();
-      const nBase = bases.length * 4;
-      // Correct invariants (zone height = the barrel's depth length at "up"):
-      //  1. Away-facing barrels RECEDE as pitch rises: up@58 < up@24.
-      //  2. Side-facing barrels keep their length: side@58 ≈ side@24.
-      const tz58 = tzOf();
+      const w58 = fullW();
       await awaitPitch(24);
-      const tz24 = tzOf();
-      let badRecede = 0;
-      let badSide = 0;
-      let avgRecede = 0;
+      const w24 = fullW();
+      let badRecede = 0, badSideLen = 0, badSideThin = 0, avgRecede = 0;
       for (let i = 0; i < barrels.length; i++) {
-        const up58 = tz58[nBase + i * 4 + 1];
-        const up24 = tz24[nBase + i * 4 + 1];
-        const side58 = tz58[nBase + i * 4];
-        const side24 = tz24[nBase + i * 4];
+        // Away-facing (angle up): zone HEIGHT = foreshortened length — recedes
+        const up58 = z58[nBase + i * 4 + 1].h;
+        const up24 = z24[nBase + i * 4 + 1].h;
         if (up58 >= up24) badRecede++;
         else avgRecede += up24 - up58;
-        if (Math.abs(side58 - side24) > Math.max(6, side24 * 0.25)) badSide++;
+        // Side-facing: full width (dominated by base pad + barrel length) stable
+        if (Math.abs(w58[nBase + i * 4] - w24[nBase + i * 4]) > Math.max(6, w24[nBase + i * 4] * 0.12)) badSideLen++;
+        // ...and the turret zone never significantly thins as pitch rises
+        // (V lock — the old cos-scale bug thinned side barrels by ~45%)
+        const h58 = z58[nBase + i * 4].h;
+        const h24 = z24[nBase + i * 4].h;
+        if (h58 < h24 * 0.8) badSideThin++;
       }
       check(badRecede === 0, "away barrels recede as pitch rises", `${badRecede} not receding (avg ${(avgRecede / Math.max(1, barrels.length - badRecede)).toFixed(1)}px)`);
-      check(badSide === 0, "side barrels keep length & thickness", `${badSide} drifted`);
+      check(badSideLen === 0, "side barrels keep their length", `${badSideLen} drifted`);
+      check(badSideThin === 0, "side barrels never thin with pitch (V lock)", `${badSideThin} thinned`);
       // unknown/future parts must fall back gracefully (palette + painter defaults)
       const scratch = makeCanvas("future_part");
       let threw = false;

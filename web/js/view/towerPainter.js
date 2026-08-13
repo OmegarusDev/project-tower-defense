@@ -352,18 +352,20 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
   const metal = palette.barrelColor(barrel);
   const tip = palette.payloadColor(payload);
   // Engine ground basis: one source of truth for angle -> screen vectors.
-  // LENGTH foreshortens (f), THICKNESS stays constant (normalized p),
-  // muzzle reads end-on. Nothing in the turret hand-rolls projection.
-  const { f, ax, ay, px, py, depth } = groundBasis(angle);
+  // Under the two-factor camera: LENGTH = L·len (depth factor D), THICKNESS
+  // = 2r·V (vertical factor V) — the tube is the parallelogram between its
+  // top/bottom generators, so it recedes and thickens at the same rates as
+  // the ground and the towers. Nothing in the turret hand-rolls projection.
+  const b = groundBasis(angle);
 
   ctx.save();
   ctx.translate(cx, cy);
   const hubR = s * 0.125;
-  drawHub(ctx, metal, hubR, f);
+  drawHub(ctx, metal, hubR, b.D);
 
   const cannon = (len, th, off, sub = 0) => {
-    const b = groundBasis(angle + sub);
-    drawCannon(ctx, metal, tip, len, th, payload, b.depth, b.ax, b.ay, b.px, b.py, off * b.px, off * b.py);
+    const bb = groundBasis(angle + sub);
+    drawCannon(ctx, metal, tip, len, th, payload, bb, off * bb.px, off * bb.py);
   };
 
   switch (barrel) {
@@ -384,26 +386,26 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
     case "pulse": {
       const dishR = s * 0.22;
       // Dish bowl aimed along the aim vector; depth-squashed like a ground disc
-      const ddx = ax * s * 0.12;
-      const ddy = ay * s * 0.12;
+      const ddx = b.ax * s * 0.12;
+      const ddy = b.ay * s * 0.12;
       ctx.fillStyle = shade(metal, -0.22);
       ctx.beginPath();
-      ctx.ellipse(ddx, ddy + s * 0.04, dishR, dishR * f, angle, 0, Math.PI * 2);
+      ctx.ellipse(ddx, ddy + s * 0.04, dishR, dishR * b.D, angle, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = shade(metal, -0.05);
       ctx.beginPath();
-      ctx.ellipse(ddx, ddy, dishR, dishR * f, angle, 0, Math.PI * 2);
+      ctx.ellipse(ddx, ddy, dishR, dishR * b.D, angle, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = shade(metal, 0.12);
       ctx.beginPath();
-      ctx.ellipse(ddx, ddy - s * 0.02, dishR * 0.7, dishR * 0.7 * f, angle, 0, Math.PI * 2);
+      ctx.ellipse(ddx, ddy - s * 0.02, dishR * 0.7, dishR * 0.7 * b.D, angle, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = withAlpha(tip, 0.55);
       ctx.beginPath();
-      ctx.ellipse(ddx, ddy, dishR * 0.4, dishR * 0.4 * f, angle, 0, Math.PI * 2);
+      ctx.ellipse(ddx, ddy, dishR * 0.4, dishR * 0.4 * b.D, angle, 0, Math.PI * 2);
       ctx.fill();
       ctx.save();
-      ctx.translate(ax * s * 0.24, ay * s * 0.24);
+      ctx.translate(b.ax * s * 0.24, b.ay * s * 0.24);
       ctx.rotate(angle);
       drawPayloadGem(ctx, tip, payload, 0, 0, s * 0.08);
       ctx.restore();
@@ -413,30 +415,32 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
       const len = s * 0.58;
       const th = s * 0.1;
       // Housing block behind the pivot
-      segQuad(ctx, ax, ay, px, py, 0, 0, 0, 0.24, s * 0.12, shade(metal, -0.25));
-      segQuad(ctx, ax, ay, px, py, 0, 0, 0, 0.24, s * 0.12, shade(metal, -0.05), -s * 0.02);
-      segQuad(ctx, ax, ay, px, py, 0, 0, 0.03, 0.2, s * 0.09, shade(metal, 0.12), -s * 0.04);
+      segQuad(ctx, b, 0, 0, 0, 0.24, s * 0.12, shade(metal, -0.25));
+      segQuad(ctx, b, 0, 0, 0, 0.24, s * 0.12, shade(metal, -0.05), -s * 0.02);
+      segQuad(ctx, b, 0, 0, 0.03, 0.2, s * 0.09, shade(metal, 0.12), -s * 0.04);
       cannon(len, th, 0);
       break;
     }
     case "launcher": {
       const len = s * 0.34;
       const th = s * 0.2;
-      drawCannon(ctx, metal, tip, len, th, "kinetic", depth, ax, ay, px, py, 0, 0);
-      // Nose cone
-      const nx = ax * len;
-      const ny = ay * len;
+      drawCannon(ctx, metal, tip, len, th, "kinetic", b, 0, 0);
+      // Nose cone (end-on cap scaled to the two factors)
+      const nx = b.ax * len;
+      const ny = b.ay * len;
+      const crx = th * 0.5 * b.D;
+      const cry = th * 0.36 * b.V;
       ctx.fillStyle = shade(tip, -0.2);
       ctx.beginPath();
-      ctx.ellipse(nx + ax * th * 0.4, ny + ay * th * 0.4 + s * 0.03, th * 0.55, th * 0.4 * f, angle, 0, Math.PI * 2);
+      ctx.ellipse(nx + b.ax * th * 0.4, ny + b.ay * th * 0.4 + s * 0.03, crx, cry, angle, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = tip;
       ctx.beginPath();
-      ctx.ellipse(nx + ax * th * 0.4, ny + ay * th * 0.4, th * 0.5, th * 0.36 * f, angle, 0, Math.PI * 2);
+      ctx.ellipse(nx + b.ax * th * 0.4, ny + b.ay * th * 0.4, crx, cry, angle, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = shade(tip, 0.22);
       ctx.beginPath();
-      ctx.ellipse(nx + ax * th * 0.3, ny + ay * th * 0.3 - th * 0.08, th * 0.18, th * 0.12 * f, angle, 0, Math.PI * 2);
+      ctx.ellipse(nx + b.ax * th * 0.3, ny + b.ay * th * 0.3 - th * 0.08, th * 0.18 * b.D, th * 0.12 * b.V, angle, 0, Math.PI * 2);
       ctx.fill();
       break;
     }
@@ -445,7 +449,7 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
       for (const dy of [-0.12, -0.04, 0.04, 0.12]) {
         cannon(s * 0.32, s * 0.06, s * dy);
       }
-      segQuad(ctx, ax, ay, px, py, 0, 0, 0, 0.2, s * 0.1, shade(metal, -0.15));
+      segQuad(ctx, b, 0, 0, 0, 0.2, s * 0.1, shade(metal, -0.15));
       break;
     }
     case "single":
@@ -455,22 +459,22 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
     }
   }
 
-  drawHubCap(ctx, metal, hubR * 0.72, f);
+  drawHubCap(ctx, metal, hubR * 0.72, b.D);
   ctx.restore();
 }
 
 /** Quad along the aim vector between t0 and t1, half-width w, dy screen offset. */
-function segQuad(ctx, ax, ay, px, py, ox, oy, t0, t1, w, fill, dy = 0) {
-  const x0 = ox + ax * t0;
-  const y0 = oy + ay * t0;
-  const x1 = ox + ax * t1;
-  const y1 = oy + ay * t1;
+function segQuad(ctx, b, ox, oy, t0, t1, w, fill, dy = 0) {
+  const x0 = ox + b.ax * t0;
+  const y0 = oy + b.ay * t0;
+  const x1 = ox + b.ax * t1;
+  const y1 = oy + b.ay * t1;
   ctx.fillStyle = fill;
   ctx.beginPath();
-  ctx.moveTo(x0 + px * w, y0 + py * w + dy);
-  ctx.lineTo(x0 - px * w, y0 - py * w + dy);
-  ctx.lineTo(x1 - px * w, y1 - py * w + dy);
-  ctx.lineTo(x1 + px * w, y1 + py * w + dy);
+  ctx.moveTo(x0 + b.px * w, y0 + b.py * w + dy);
+  ctx.lineTo(x0 - b.px * w, y0 - b.py * w + dy);
+  ctx.lineTo(x1 - b.px * w, y1 - b.py * w + dy);
+  ctx.lineTo(x1 + b.px * w, y1 + b.py * w + dy);
   ctx.closePath();
   ctx.fill();
 }
@@ -513,26 +517,30 @@ function drawHubCap(ctx, metal, r, f) {
 }
 
 /**
- * Barrel in SCREEN space: length foreshortened by the aim vector (depth factor
- * f), thickness constant along the normalized perpendicular, muzzle end-on.
- * ox/oy = lateral offset from the pivot along the perpendicular.
+ * Barrel in SCREEN space — the tube is the parallelogram between its
+ * top/bottom generators: length L·len (depth factor D), vertical thickness
+ * 2r·V (vertical factor V). It recedes and thickens at exactly the same
+ * rates as the ground footprints and the tower heights — one camera, two
+ * factors, no drift. ox/oy = lateral offset along the unit perpendicular.
  */
-function drawCannon(ctx, metal, tip, length, th, payload, depth, ax, ay, px, py, ox = 0, oy = 0) {
+function drawCannon(ctx, metal, tip, length, th, payload, b, ox = 0, oy = 0) {
   const h = th;
   const rise = h * 0.35;
-  const hw = h / 2;
+  const top = (h / 2) * b.V; // tube half-thickness — locked to verticals
   const dark = shade(metal, -0.22);
   const mid = metal;
   const light = shade(metal, 0.18);
+  const ex = ox + b.ax * length * b.len;
+  const ey = oy + b.ay * length * b.len;
 
   // Ground shadow streak — anchors the receding tube to the deck
-  if (depth > 0.05) {
-    ctx.fillStyle = `rgba(0,0,0,${(0.14 + depth * 0.1).toFixed(3)})`;
+  if (b.depth > 0.05) {
+    ctx.fillStyle = `rgba(0,0,0,${(0.14 + b.depth * 0.1).toFixed(3)})`;
     ctx.beginPath();
     ctx.ellipse(
-      ox + ax * length * 0.5,
-      oy + ay * length * 0.5 + h * 1.05,
-      length * 0.5,
+      ox + (ex - ox) * 0.5,
+      oy + (ey - oy) * 0.5 + h * 1.05,
+      Math.abs(ex - ox) * 0.55,
       h * 0.32,
       0,
       0,
@@ -541,40 +549,64 @@ function drawCannon(ctx, metal, tip, length, th, payload, depth, ax, ay, px, py,
     ctx.fill();
   }
 
-  // under-lip (tube underside, toward screen bottom), then body, then light
-  segQuad(ctx, ax, ay, px, py, ox, oy, 0, 1, hw, dark, rise);
-  segQuad(ctx, ax, ay, px, py, ox, oy, 0, 1, hw, mid, 0);
-  segQuad(ctx, ax, ay, px, py, ox, oy, 0.06, 0.7, hw * 0.4, light, -h * 0.2);
+  // Parallelogram between the generators: vertical edges at ±top
+  const band = (yOff, half, fill) => {
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.moveTo(ox, oy + yOff - half);
+    ctx.lineTo(ex, ey + yOff - half);
+    ctx.lineTo(ex, ey + yOff + half);
+    ctx.lineTo(ox, oy + yOff + half);
+    ctx.closePath();
+    ctx.fill();
+  };
+  // Partial band (e.g. tip) between aim fractions tA..tB
+  const seg = (tA, tB, yOff, half, fill) => {
+    const x0 = ox + (ex - ox) * tA;
+    const y0 = oy + (ey - oy) * tA;
+    const x1 = ox + (ex - ox) * tB;
+    const y1 = oy + (ey - oy) * tB;
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0 + yOff - half);
+    ctx.lineTo(x1, y1 + yOff - half);
+    ctx.lineTo(x1, y1 + yOff + half);
+    ctx.lineTo(x0, y0 + yOff + half);
+    ctx.closePath();
+    ctx.fill();
+  };
+  band(rise, top, dark); // under-lip (tube underside)
+  band(0, top, mid); // body
+  band(-h * 0.22, top * 0.4, light); // light top band
 
-  // Reinforcing rings — screen-aligned bands across the tube
+  // Reinforcing rings — vertical bands across the tube
   ctx.fillStyle = shade(metal, -0.35);
   for (const t of [0.28, 0.55]) {
-    ctx.fillRect(
-      ox + ax * length * t - h * 0.09,
-      oy + ay * length * t - h * 0.42,
-      h * 0.18,
-      h * 0.72
-    );
+    const rx = ox + (ex - ox) * t;
+    const ry = oy + (ey - oy) * t;
+    ctx.fillRect(rx - h * 0.09, ry - top, h * 0.18, top * 2);
   }
 
-  // Tip band + end-on muzzle cap + bore
-  const band = Math.max(2.5, length * 0.16);
-  segQuad(ctx, ax, ay, px, py, ox, oy, 1 - band / length, 1, hw * 0.98, shade(tip, -0.15), 0);
-  const mx = ox + ax * length;
-  const my = oy + ay * length;
+  // Tip band + end-on muzzle cap + bore (cap ellipse: rx = r·D, ry = r·V)
+  const capT = Math.max(2.5, length * 0.16);
+  seg(1 - capT / length, 1, 0, top, shade(tip, -0.15)); // tip band
+  ctx.fillStyle = shade(tip, -0.3);
+  ctx.beginPath();
+  ctx.ellipse(ex, ey, capT * 0.5 * b.D, capT * 0.5 * b.V, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.fillStyle = tip;
   ctx.beginPath();
-  ctx.ellipse(mx, my, band * 0.5, band * 0.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(ex, ey, capT * 0.4 * b.D, capT * 0.4 * b.V, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = withAlpha("#0a0c10", 0.7);
   ctx.beginPath();
-  ctx.ellipse(mx, my, band * 0.22, band * 0.22, 0, 0, Math.PI * 2);
+  ctx.ellipse(ex, ey, capT * 0.17 * b.D, capT * 0.17 * b.V, 0, 0, Math.PI * 2);
   ctx.fill();
 
   if (payload && payload !== "kinetic") {
     ctx.save();
-    ctx.translate(mx + ax * h * 0.1, my + ay * h * 0.1);
-    ctx.rotate(Math.atan2(ay, ax));
+    ctx.translate(ex + b.ax * h * 0.1, ey + b.ay * h * 0.1);
+    ctx.rotate(Math.atan2(b.ay, b.ax));
     drawPayloadGem(ctx, tip, payload, 0, 0, h * 0.5);
     ctx.restore();
   }

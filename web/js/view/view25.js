@@ -46,12 +46,17 @@ function syncCamera() {
   const p = (VIEW25.pitchDeg * Math.PI) / 180;
   const cos = Math.cos(p);
   const sin = Math.sin(p);
-  VIEW25.yScale = Math.max(0.42, cos);
-  VIEW25.deckRatio = Math.max(0.42, cos);
+  // Depth factor D — ONE curve for the entire ground plane (board depth,
+  // footprints, ground-line lengths). Mild stylization (cos^1.5) so receding
+  // barrels read without the board changing character at default pitch; the
+  // exponent is the single readability knob.
+  const D = Math.max(0.42, Math.pow(cos, 1.5));
+  VIEW25.yScale = D;
+  VIEW25.deckRatio = D;
   VIEW25.farScale = Math.max(0.35, 1 - sin * VIEW25.trap);
   VIEW25.nearScale = 1;
-  // Side-on (high pitch): taller sprites; above (low pitch): squat footprints
-  // sin≈0.14@8°, 0.41@24°, 0.85@58°
+  // Vertical factor V — ONE curve for every vertical dimension (heights AND
+  // tube thicknesses). Side-on (high pitch): taller sprites; above: squat.
   VIEW25.vExag = 0.72 + 0.92 * sin;
   VIEW25.rise = 0.13 + 0.28 * sin;
   VIEW25.boxSkew = 0.1 + 0.14 * sin;
@@ -66,48 +71,30 @@ export function deckRy(rx) {
 }
 
 /**
- * Unified ground-plane foreshortening for rotating sprites (turret barrels,
- * any body that yaws across the board). Apply AFTER ctx.rotate(angle):
- * a ground direction at angle θ then maps to screen length
- * √(cos²θ + f²·sin²θ) — the same depth squash deckRy() uses — so a
- * barrel pointing up the board reads shorter than one pointing sideways.
- * Forge previews must NOT pre-scale; the painter owns the transform.
- */
-export function groundForeshorten(ctx) {
-  ctx.scale(1, VIEW25.yScale);
-}
-
-/**
- * Stylized barrel foreshortening factor — the LENGTH squash for ground
- * tubes. The raw ground squash (cos pitch) sits near 1 at the pitches
- * players actually use (default 24° → 0.91), so receding barrels read as
- * full-length. This curve is strong enough to be legible at any pitch:
- * ~31% shorter at 24°, floored at 0.4 side-on.
- */
-export function barrelDepthFactor() {
-  const p = (VIEW25.pitchDeg * Math.PI) / 180;
-  return Math.max(0.4, Math.pow(Math.cos(p), 4.2));
-}
-
-/**
  * THE ground-plane basis — the only place a board angle becomes screen
- * vectors. Every ground-oriented drawing (barrels, housings, pods, gems,
- * dishes) derives from this, so the projection can never drift:
- *  - ax, ay  = foreshortened AIM vector (length × barrelDepthFactor)
- *  - px, py  = normalized PERPENDICULAR — thickness stays constant
- *  - depth   = away-facing cue (aiming up the board)
+ * vectors. Every ground-oriented drawing derives from this, so the
+ * projection can never drift. Under the two-factor camera (D = depth,
+ * V = vertical), a horizontal tube's silhouette is the parallelogram
+ * between its top/bottom generators: length L·len, thickness 2r·V.
+ *  - ax, ay = AIM vector per unit ground length (depth component × D)
+ *  - px, py = normalized PERPENDICULAR (unit — offset direction)
+ *  - len    = on-screen length factor of a ground segment at this angle
+ *  - depth  = away-facing cue (aiming up the board)
+ *  - D, V   = the two camera factors (ground / vertical)
  */
 export function groundBasis(angle) {
-  const f = barrelDepthFactor();
+  const D = VIEW25.yScale;
   const ax = Math.cos(angle);
-  const ay = Math.sin(angle) * f;
-  const pl = Math.hypot(Math.sin(angle), f * Math.cos(angle)) || 1;
+  const ay = Math.sin(angle) * D;
+  const pl = Math.hypot(Math.sin(angle), D * Math.cos(angle)) || 1;
   return {
-    f,
+    D,
+    V: VIEW25.vExag,
     ax,
     ay,
     px: -Math.sin(angle) / pl,
-    py: (f * Math.cos(angle)) / pl,
+    py: (D * Math.cos(angle)) / pl,
+    len: Math.hypot(ax, ay),
     depth: Math.max(0, Math.min(1, -Math.sin(angle))),
   };
 }
