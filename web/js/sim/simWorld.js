@@ -1,4 +1,4 @@
-import { BoardGrid } from "./boardGrid.js";
+import { BoardGrid, INF } from "./boardGrid.js";
 import { Economy } from "./economy.js";
 import { CombatSystem } from "./combat.js";
 import { WaveManager } from "./waves.js";
@@ -216,6 +216,29 @@ export class SimWorld {
     this.emit("grid_grew", { rows: this.grid.rows, cols: this.grid.cols });
   }
 
+  /** True if a ground enemy at (cx,cy) would freeze (no reachable downhill step). */
+  stallsAt(cx, cy) {
+    const g = this.grid;
+    if (!g.inBounds(cx, cy)) return true;
+    const cur = g.groundDist[g.idx(cx, cy)];
+    if (cur >= INF) return true;
+    const dirs = [
+      [0, 1],
+      [1, 0],
+      [0, -1],
+      [-1, 0],
+    ];
+    for (const [dx, dy] of dirs) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      if (!g.inBounds(nx, ny)) continue;
+      if (g.isBlocked(nx, ny)) continue;
+      const nd = g.groundDist[g.idx(nx, ny)];
+      if (nd < INF && nd < cur) return false;
+    }
+    return true;
+  }
+
   tryPlaceWall(x, y) {
     if (!this.grid.isBuildable(x, y)) return { ok: false, reason: "blocked" };
     const cost = this.economy.wallCost(this.playerWallCount());
@@ -225,6 +248,19 @@ export class SimWorld {
       this.grid.setBlocked(x, y, false);
       this.grid.recompute();
       return { ok: false, reason: "path_sealed" };
+    }
+    // Never wall a live enemy into a stall (its cell OR its glide target
+    // losing every reachable downhill step) — the wave would never end.
+    const sealed = this.enemies.some(
+      (e) =>
+        !e.flying &&
+        (this.stallsAt(e.cell.x, e.cell.y) ||
+          (e._pick && this.stallsAt(e._pick.bx, e._pick.by)))
+    );
+    if (sealed) {
+      this.grid.setBlocked(x, y, false);
+      this.grid.recompute();
+      return { ok: false, reason: "seals_enemy" };
     }
     this.economy.spendBattle(cost);
     const wall = { id: this.allocId(), cell: { x, y }, paid: cost };

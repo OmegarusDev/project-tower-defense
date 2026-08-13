@@ -250,6 +250,7 @@ export function handlePlace(app, res, label) {
   }
   const map = {
     path_sealed: "Can't seal the path",
+    seals_enemy: "Can't wall enemies in",
     need_battle: `Need ${res.need} Coin`,
     incomplete_triad: "Compose a full triad in Forge first",
     blocked: "Cell blocked",

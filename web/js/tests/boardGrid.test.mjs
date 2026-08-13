@@ -115,4 +115,42 @@ assert(g2.airDist[g2.idx(g2.spawn.x, g2.spawn.y)] < INF, "air ok");
   assert(Math.abs(vals[0] - vals[1]) <= 1, `tie-split alternates evenly (${[...counts.entries()].map(([k, v]) => `${k}:${v}`).join(",")})`);
 }
 
+{
+  // Softlock regression: walling the last exit of a pocket around a live
+  // enemy must be rejected — a sealed enemy stalls forever and the wave
+  // never ends. Walls that leave a downhill route stay legal.
+  const sim = new SimWorld();
+  sim.setup(9, 8, 5, true);
+  sim.lives = 5000;
+  sim.economy.battle = 5000;
+  sim.waves._queue = Array(1).fill("mite");
+  sim.waves.toSpawn = 1;
+  sim.waves.spawnTimer = 0;
+  sim.startWave({ earlyBonus: 0 });
+  // startWave re-composes the queue — pin it to a single mite.
+  sim.waves._queue = ["mite"];
+  sim.waves.toSpawn = 1;
+  for (let t = 0; t < 240; t++) sim.tick(); // mite walks to mid-board
+  const e = sim.enemies[0];
+  assert(e, "mite spawned");
+  const cx = e.cell.x;
+  const cy = e.cell.y;
+  assert(cy >= 2 && cy <= 5, `mite mid-board (${cx},${cy})`);
+  // Box the mite: above, left, right, then try closing the exit below.
+  const box = [
+    { x: cx, y: cy - 1 },
+    { x: cx - 1, y: cy },
+    { x: cx + 1, y: cy },
+  ];
+  for (const w of box) {
+    const r = sim.tryPlaceWall(w.x, w.y);
+    assert(r.ok, "box side wall places");
+  }
+  const mouth = { x: cx, y: cy + 1 };
+  assert(sim.grid.isBuildable(mouth.x, mouth.y), "mouth open");
+  const res = sim.tryPlaceWall(mouth.x, mouth.y);
+  assert(res.reason === "seals_enemy", `closing the pocket rejected (got ${res.reason || res.ok})`);
+  assert(!sim.walls.some((w) => w.cell.x === mouth.x && w.cell.y === mouth.y), "sealing wall not placed");
+}
+
 console.log("ALL boardGrid tests passed");
