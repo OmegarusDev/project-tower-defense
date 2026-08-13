@@ -10,6 +10,23 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
+// Wave 1 always opens at the default centre; roaming starts wave 2
+{
+  const w = new SimWorld();
+  w.setup(9, 8, 7, true);
+  w.startWave();
+  assert(w.portal.x === w.grid.spawn.x, "wave 1 portal pins to the centre seam");
+  const center = w.portal.x;
+  w.waves._queue = Array(30).fill("mite");
+  w.waves.toSpawn = 30;
+  w.lives = 5000;
+  for (let i = 0; i < 2000; i++) w.tick(); // long wave: dwell relocation fires
+  const endWave1 = w.portal.x;
+  assert(endWave1 !== center, "wave 1 can relocate after its dwell stretch");
+  w.startWave();
+  assert(w.portal.x !== endWave1, "wave 2 opens on a fresh seam cell");
+}
+
 // Determinism: same seed, same waves, same portal sequence
 {
   const seq = (seed) => {

@@ -148,8 +148,13 @@ export class WaveManager {
     this._portalCycle = cycle;
     this._portalIdx = 0;
     this._portalTimer = this._dwellFor(w);
-    this._lastPortalX = -1;
-    this._relocatePortal();
+    this._lastPortalX = world.portal ? world.portal.x : -1;
+    if (w <= 1) {
+      // The seam always opens at the default centre on wave 1; roaming from wave 2.
+      world.portal = { x: world.grid.spawn.x, y: 0 };
+    } else {
+      this._relocatePortal();
+    }
   }
 
   _relocatePortal() {

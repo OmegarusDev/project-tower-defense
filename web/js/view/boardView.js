@@ -850,8 +850,10 @@ export class BoardView {
   }
 
   _pathPoints(g) {
-    const pts = [this.cam.projectCell(g.spawn.x, g.spawn.y)];
-    let cell = { x: g.spawn.x, y: g.spawn.y };
+    // Flow preview starts at the live seam — the portal's current cell.
+    const start = this.sim?.portal || { x: g.spawn.x, y: 0 };
+    const pts = [this.cam.projectCell(start.x, start.y)];
+    let cell = { x: start.x, y: start.y };
     for (let i = 0; i < 120; i++) {
       const next = g.nextGround(cell.x, cell.y);
       if (next.x === cell.x && next.y === cell.y) break;

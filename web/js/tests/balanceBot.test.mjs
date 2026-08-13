@@ -12,7 +12,7 @@ function assert(cond, msg) {
 {
   const m = runSim(
     freshScenario({
-      seed: 42,
+      seed: 1,
       maxWaves: 3,
       maxTicks: 60 * 60 * 2,
     })
