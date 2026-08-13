@@ -91,7 +91,7 @@ Main Menu entry at launch: grid, spawn/exit, pre-walls, wave scripts or formula,
 
 **Start of run/level:** Battle grant only. Forge and Aether balances carry from meta (may be 0). No Forge/Aether start grant.
 
-**Starter ownership (free, no Forge):** `sentry`, `single`, `kinetic`. Slot 1 pre-equipped with that triad. Other parts locked until purchased/unlocked (Forge) or gifted by endless best-wave milestones.
+**Starter ownership (free, no Forge):** `sentry`, `single`, `kinetic`. Slot 1 pre-equipped with that triad. Other parts locked until purchased (Forge).
 
 **Place cost:** sum of part costs after discounts, paid in Battle. Optional board-density surcharge after the first towers.  
 **Sell tower/wall:** Salvager tech sets refund **50% / 60% / 75%** of **that instance’s recorded Battle paid** (levels/branch ranks not refunded).
@@ -170,7 +170,7 @@ If launcher target dies in flight: detonate AoE at last position; other homing s
 
 ## 10. Upgrade orthogonality
 
-Tags + channels + stack mode (`add`/`mult`/`max`/`override`). Mutex one base/barrel/payload. Documented synergies only. Flat levels + branch nodes; refundable. Validate max combos in tests.
+Tags + channels + stack mode (`add`/`mult`/`max`/`override`). Mutex one base/barrel/payload. Documented synergies only. Flat levels + branch nodes; ranks permanent (no respec). Validate max combos in tests.
 
 ## 11. Enemies & waves
 
@@ -182,6 +182,8 @@ Tags + channels + stack mode (`add`/`mult`/`max`/`override`). Mutex one base/bar
 | Flying | Air path; ignores walls/towers |
 | Shielded | Extra mitigation / shield HP (data) |
 | Splitter | On death, spawns weaker children |
+| Spawner | Periodic spawns (Kiln → mites) |
+| Aura Carrier | Buffs nearby enemies while alive (Ward → +armor) |
 | Boss | High threat; campaign and endless |
 
 Leak damage by type. Abilities data-driven. Formula waves default; editor scripts OK. No wave preview. Call Early (small Battle bonus); no skip. Difficulty tune in playtests.
@@ -192,7 +194,7 @@ Leak damage by type. Abilities data-driven. Formula waves default; editor script
 
 ## 12. Meta
 
-- Aether: full refundable tech graph (slots, caps, economy, lives path, discounts, perks, …) — **Respec tree** refunds all Foundations + Arsenal ranks
+- Aether: full tech graph (slots, caps, economy, lives path, discounts, perks, …) — **ranks are permanent** (respec removed by design)
 - Forge: part buy/upgrade (escalating Parts price via `forgeBuys`)
 - Prestige/endgame: out of scope for v1
 - No tutorial — self-explanatory UI
@@ -211,7 +213,7 @@ HUD Endless: HP, Coin, Forge/Aether readouts, Wave, Call Early (hold for 5×), C
 HUD Campaign: same without compose/Forge/tech.  
 
 Pause: Resume, Speed 1/2/3, Quit (confirm). Pause copy distinguishes mid-wave vs between-wave checkpoint.  
-Settings: volumes, particles, colorblind, camera pitch, tech respec, IAP stub.  
+Settings: volumes, particles, colorblind, camera pitch, IAP stub.  
 Desktop hotkeys: `1`–`9`/`0` slots 1–10, `-`/`=` slots 11–12, `Space` Call Early, `Esc` pause, `U` pending branch as Damage, `X` sell, `W` wall, `B` compose (Endless), `Z` undo.
 
 ---

@@ -183,7 +183,7 @@ export const PARTS = {
       speed: 9,
       cost: 12,
       forgeCost: 6,
-      blurb: "Fire + burn DoT",
+      blurb: "Fire + burn DoT — burning targets take +50% poison damage",
     },
     shock: {
       damage: 9,
@@ -195,7 +195,7 @@ export const PARTS = {
       speed: 12,
       cost: 16,
       forgeCost: 9,
-      blurb: "Yellow lightning — chains (tech-upgradeable)",
+      blurb: "Yellow lightning — chains (tech-upgradeable); +15% dmg vs slowed",
     },
     frost: {
       damage: 7,
@@ -204,7 +204,7 @@ export const PARTS = {
       speed: 8,
       cost: 9,
       forgeCost: 5,
-      blurb: "Frost + slow",
+      blurb: "Frost + slow — slows make shock chains leap 40% further",
     },
     poison: {
       damage: 5,
@@ -225,7 +225,7 @@ export const PARTS = {
       speed: 9,
       cost: 12,
       forgeCost: 8,
-      blurb: "Green acid — shreds armor for a few seconds",
+      blurb: "Green acid — shreds armor; stripped plates lose heat resistance",
     },
     breach: {
       damage: 11,

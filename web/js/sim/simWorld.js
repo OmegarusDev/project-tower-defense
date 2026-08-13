@@ -434,6 +434,21 @@ export class SimWorld {
           e.hp = Math.min(e.maxHp, e.hp + e.regen * 0.5);
         }
       }
+      // Kiln spawner: periodically bakes a mite out of the trail behind it
+      if ((e.spawns | 0) > 0 && (e.spawnedTotal | 0) < e.spawns) {
+        e._spawnAcc = (e._spawnAcc || 0) + this.dt;
+        if (e._spawnAcc >= (e.spawnEvery || 7)) {
+          e._spawnAcc = 0;
+          e.spawnedTotal = (e.spawnedTotal | 0) + 1;
+          const child = this.waves.makeEnemy(e.spawnKind || "mite", this.waveIndex, {
+            scale: 1,
+            pos: { x: e.pos.x - 0.12, y: e.pos.y - 0.12 },
+            cell: { x: e.cell.x, y: e.cell.y },
+          });
+          child.battleDrop = 1;
+          this.enemies.push(child);
+        }
+      }
       this._advance(e);
       if (e.reachedExit) {
         this.lives = Math.max(0, this.lives - (e.leakDamage || 1));

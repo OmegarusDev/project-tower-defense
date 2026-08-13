@@ -18,9 +18,27 @@ export class CombatSystem {
 
   tick() {
     if (this.aurasDirty) this._rebuildAuras();
+    this._refreshEnemyAuras();
     for (const t of this.world.towers) this._tickTower(t);
     this._tickProjectiles();
     this._tickStatus();
+  }
+
+  /** Ward shells project a small armor aura onto nearby enemies while alive. */
+  _refreshEnemyAuras() {
+    const es = this.world.enemies;
+    for (const e of es) e.auraArmor = 0;
+    for (const w of es) {
+      const a = w.aura;
+      if (!a || w.hp <= 0 || !(a.armor > 0)) continue;
+      const r = a.radius || 1.5;
+      for (const e of es) {
+        if (e === w) continue;
+        if (Math.hypot(e.pos.x - w.pos.x, e.pos.y - w.pos.y) <= r) {
+          e.auraArmor = Math.max(e.auraArmor, a.armor || 0);
+        }
+      }
+    }
   }
 
   _planOpts(t) {
@@ -339,7 +357,8 @@ export class CombatSystem {
     let dmg = damage;
     let from = { ...fromEnemy.pos };
     let left = jumps;
-    const maxChain = plan.chainRange || 2.5;
+    // Frost x shock: chains leap further from a slowed enemy (frozen lightning)
+    const maxChain = (plan.chainRange || 2.5) * ((fromEnemy.slowT || 0) > 0 ? 1.4 : 1);
     while (left-- > 0) {
       dmg *= plan.chainFalloff;
       let best = null;
@@ -406,14 +425,20 @@ export class CombatSystem {
     // Pyro bonus vs soft (no armor)
     if (dtype === "fire" && armorKind === "none") raw *= 1.35;
 
-    // Plate / insulated heat block (extra on top of resist map)
-    if (dtype === "fire" && (armorKind === "plate" || armorKind === "insulated")) {
+    // Plate / insulated heat block (extra on top of resist map).
+    // Shred synergy: a fully stripped target loses the plate's heat resistance.
+    const heatBlock =
+      dtype === "fire" && (armorKind === "plate" || armorKind === "insulated") &&
+      (e.shred || 0) < Math.max(1, (e.armorFlat || 0) - (plan.armorPierce || 0));
+    if (heatBlock) {
       raw *= 0.55;
     }
     // Insulated shock dampen
     if (dtype === "shock" && armorKind === "insulated" && !plan.emp) {
       raw *= 0.35;
     }
+    // Frost x shock: slowed enemies surge — shock deals bonus damage into them
+    if (dtype === "shock" && (e.slowT || 0) > 0) raw *= 1.15;
 
     if (tower) {
       const ox = tower.cell.x + 0.5;
@@ -432,7 +457,7 @@ export class CombatSystem {
     } else if ((plan.airDamageMult || 1) > 1 && e.flying) {
       raw *= plan.airDamageMult;
     }
-    const armor = Math.max(0, (e.armorFlat || 0) - (e.shred || 0) - (plan.armorPierce || 0));
+    const armor = Math.max(0, (e.armorFlat || 0) + (e.auraArmor || 0) - (e.shred || 0) - (plan.armorPierce || 0));
     const resist = (e.resist && e.resist[dtype]) || 0;
     let dmg = Math.max(0, raw - armor) * (1 - Math.min(0.95, resist));
     if ((e.shieldHp || 0) > 0) {
@@ -530,7 +555,7 @@ export class CombatSystem {
           e.burnAcc -= e.burnEvery || 0.5;
           let tick = e.burnDps || 1;
           if ((e.armorKind || "none") === "none") tick *= 1.35;
-          if (e.armorKind === "plate" || e.armorKind === "insulated") tick *= 0.55;
+          else if ((e.armorKind === "plate" || e.armorKind === "insulated") && (e.shred || 0) < (e.armorFlat || 0)) tick *= 0.55;
           e.hp -= tick;
         }
         e._fxBurn = (e._fxBurn || 0) + dt;
@@ -544,7 +569,10 @@ export class CombatSystem {
         e.poisonAcc = (e.poisonAcc || 0) + dt;
         if (e.poisonAcc >= (e.poisonEvery || 0.5)) {
           e.poisonAcc -= e.poisonEvery || 0.5;
-          e.hp -= e.poisonDps || 1;
+          let tick = e.poisonDps || 1;
+          // Burn x poison: flames cook the toxin — burning targets take +50% poison
+          if ((e.burnT || 0) > 0) tick *= 1.5;
+          e.hp -= tick;
         }
         e._fxPoison = (e._fxPoison || 0) + dt;
         if (e._fxPoison > 0.16) {

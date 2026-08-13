@@ -56,14 +56,23 @@ node js/balance/monteCarlo.mjs --runs 4 --preset midMeta --max-waves 45
 Presets ladder the Forge progression (all bots are greedy — real players do better):
 `fresh` (starters only, cap 1) → `earlyAA` (+rail) → `parts2` (+rail/twin/bulwark, cap 2) → `midMeta` (cap 4 + tech).
 Measured on the shipped endless map (`ENDLESS_GRID`, 9×8).
+Post-refactor (2026-08-13) 12-run medians: fresh 7.25w/GO .83, earlyAA 8.9w/GO .75,
+parts2 12.1w/GO .75, midMeta 32.4w/GO 1.0 — baseline held after synergies + enemy identity.
 `node js/balance/diagRun.mjs --preset fresh --seed 1` gives per-wave leak/kill detail.
 
 Enemy HP: ×1.05/wave, accelerating ×1.02/wave extra past wave 15 so late endless
 outpaces meta investment. Wave-gift unlocks were removed (2026-08-13) — all
 parts are Forge purchases; legacy saves keep gifted parts (migrated as paid).
 
-> Note: the aura system (`providesAura`, `_rebuildAuras`) is currently dead code —
-> no base defines an aura. Keep the scaffolding until the combat refactor decides.
+> Note (2026-08-13): the combat refactor landed. Cross-status synergies are live
+> in `CombatSystem`: burn×poison (+50% poison tick while burning), shred×fire
+> (fully stripped plates lose their 0.55 heat block on hits + burn ticks),
+> frost×shock (+15% shock into slowed targets; chains leap 1.4× from a slowed
+> source). Enemy identity: kilns spawn up to 4 wave-scaled mites (7s cadence);
+> ward shells project +1 armor flat to enemies within 1.6 cells while alive
+> (`_refreshEnemyAuras`, O(n²) — fine at current pack sizes). The tower-side
+> aura scaffolding (`providesAura`, `_rebuildAuras`) remains dead code — keep
+> until a tower-aura design lands.
 
 ## Run
 
