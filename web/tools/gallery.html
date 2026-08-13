@@ -171,56 +171,43 @@
       // render at default pitch first
       await awaitPitch(24);
       runSelfCheck();
-      // turret-zone foreshorten at 58: up-aiming narrower than side-aiming
+      // turret-zone foreshorten at 58: an up-aiming barrel REcedes — its
+      // zone's height (depth length) must be shorter than when side-aiming.
+      // (Zone width is wrong for pods whose tubes spread across the aim.)
+      const tzOf = () => [...document.querySelectorAll("canvas")].map((c) => {
+        const b = bboxOf(c);
+        if (!b) return 0;
+        const zoneBottom = b.minY + Math.round((b.maxY - b.minY) * 0.45);
+        let zMinY = 1e9, zMaxY = -1;
+        const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+        for (let y = b.minY; y <= zoneBottom; y++) for (let x = b.minX; x <= b.maxX; x++) {
+          if (d[(y * c.width + x) * 4 + 3] > 8) { if (y < zMinY) zMinY = y; if (y > zMaxY) zMaxY = y; }
+        }
+        return zMaxY > zMinY ? zMaxY - zMinY + 1 : 0;
+      });
       await awaitPitch(58);
-      const tz = [...document.querySelectorAll("canvas")].map((c) => {
-        const b = bboxOf(c);
-        if (!b) return 0;
-        const zoneBottom = b.minY + Math.round((b.maxY - b.minY) * 0.45);
-        let zMinX = 1e9, zMaxX = -1;
-        const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
-        for (let y = b.minY; y <= zoneBottom; y++) for (let x = b.minX; x <= b.maxX; x++) {
-          if (d[(y * c.width + x) * 4 + 3] > 8) { if (x < zMinX) zMinX = x; if (x > zMaxX) zMaxX = x; }
-        }
-        return zMaxX > zMinX ? zMaxX - zMinX + 1 : 0;
-      });
+      const tz = tzOf();
       const nBase = bases.length * 4;
-      const measure = () => {
-        let bad = 0;
-        let shrink = 0;
-        for (let i = 0; i < barrels.length; i++) {
-          const side = tz[nBase + i * 4];
-          const up = tz[nBase + i * 4 + 1];
-          if (up >= side) bad++;
-          else shrink += side - up;
-        }
-        return { bad, shrink };
-      };
-      let r = measure();
-      check(r.bad === 0, "barrels foreshorten along depth (pitch 58)", `${r.bad} not foreshortened`);
-      // The stylized squash must be legible at the DEFAULT pitch too — this is
-      // the regression that made away-facing barrels read as standing up.
+      // Correct invariants (zone height = the barrel's depth length at "up"):
+      //  1. Away-facing barrels RECEDE as pitch rises: up@58 < up@24.
+      //  2. Side-facing barrels keep their length: side@58 ≈ side@24.
+      const tz58 = tzOf();
       await awaitPitch(24);
-      const tz24 = [...document.querySelectorAll("canvas")].map((c) => {
-        const b = bboxOf(c);
-        if (!b) return 0;
-        const zoneBottom = b.minY + Math.round((b.maxY - b.minY) * 0.45);
-        let zMinX = 1e9, zMaxX = -1;
-        const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
-        for (let y = b.minY; y <= zoneBottom; y++) for (let x = b.minX; x <= b.maxX; x++) {
-          if (d[(y * c.width + x) * 4 + 3] > 8) { if (x < zMinX) zMinX = x; if (x > zMaxX) zMaxX = x; }
-        }
-        return zMaxX > zMinX ? zMaxX - zMinX + 1 : 0;
-      });
-      let bad24 = 0;
-      let shrink24 = 0;
+      const tz24 = tzOf();
+      let badRecede = 0;
+      let badSide = 0;
+      let avgRecede = 0;
       for (let i = 0; i < barrels.length; i++) {
-        const side = tz24[nBase + i * 4];
-        const up = tz24[nBase + i * 4 + 1];
-        if (up >= side) bad24++;
-        else shrink24 += side - up;
+        const up58 = tz58[nBase + i * 4 + 1];
+        const up24 = tz24[nBase + i * 4 + 1];
+        const side58 = tz58[nBase + i * 4];
+        const side24 = tz24[nBase + i * 4];
+        if (up58 >= up24) badRecede++;
+        else avgRecede += up24 - up58;
+        if (Math.abs(side58 - side24) > Math.max(6, side24 * 0.25)) badSide++;
       }
-      check(bad24 === 0, "barrels foreshorten along depth (pitch 24)", `${bad24} not foreshortened (avg shrink ${(shrink24 / Math.max(1, barrels.length - bad24)).toFixed(1)}px)`);
+      check(badRecede === 0, "away barrels recede as pitch rises", `${badRecede} not receding (avg ${(avgRecede / Math.max(1, barrels.length - badRecede)).toFixed(1)}px)`);
+      check(badSide === 0, "side barrels keep length & thickness", `${badSide} drifted`);
       // unknown/future parts must fall back gracefully (palette + painter defaults)
       const scratch = makeCanvas("future_part");
       let threw = false;
