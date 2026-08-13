@@ -9,7 +9,7 @@
  * Part mastery nodes set partId + key → meta.partUpgrades[partId][key].
  */
 
-import { PARTS, partLabel, MIN_ROSTER_SLOTS, MAX_ROSTER_SLOTS } from "./parts.js";
+import { PARTS, partLabel, MIN_ROSTER_SLOTS } from "./parts.js";
 
 const AE_CHAIN = (a, b, c) => [{ aether: a }, { aether: b }, { aether: c }];
 const FG_CHAIN = (a, b, c) => [{ forge: a }, { forge: b }, { forge: c }];

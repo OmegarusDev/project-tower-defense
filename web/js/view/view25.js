@@ -65,13 +65,22 @@ export function deckRy(rx) {
   return rx * VIEW25.deckRatio;
 }
 
+/**
+ * Unified ground-plane foreshortening for rotating sprites (turret barrels,
+ * any body that yaws across the board). Apply AFTER ctx.rotate(angle):
+ * a ground direction at angle θ then maps to screen length
+ * √(cos²θ + yScale²·sin²θ) — the same depth squash deckRy() uses — so a
+ * barrel pointing up the board reads shorter than one pointing sideways.
+ * Forge previews must NOT pre-scale; the painter owns the transform.
+ */
+export function groundForeshorten(ctx) {
+  ctx.scale(1, VIEW25.yScale);
+}
+
 export function aimToDrawAngle(aimAngle) {
   return Number.isFinite(aimAngle) ? aimAngle : -Math.PI / 2;
 }
 
-export function boardScreenHeight(rows, cell) {
-  return rows * cell * VIEW25.yScale;
-}
 
 /**
  * Perspective projector for a board of size (cols, rows) and cell size.

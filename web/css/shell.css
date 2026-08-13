@@ -656,6 +656,57 @@ label.btn input {
   margin-top: 8px;
 }
 
+/* Camera pitch slider — matches the in-game cam rail language */
+.set-block input[type="range"]#pitch {
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6aaf7e, #3a5a72 55%, #d4783a);
+  border: 1px solid #1a2230;
+  cursor: pointer;
+}
+
+.set-block input[type="range"]#pitch::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #f0e6c8, #c9a227);
+  border: 1px solid #8a7020;
+  box-shadow:
+    0 0 0 3px rgba(201, 162, 39, 0.15),
+    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 2px 5px rgba(0, 0, 0, 0.45);
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
+}
+
+.set-block input[type="range"]#pitch:hover::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 4px rgba(201, 162, 39, 0.25),
+    0 0 12px rgba(201, 162, 39, 0.5),
+    0 1px 0 rgba(255, 255, 255, 0.35) inset;
+}
+
+.set-block input[type="range"]#pitch:active::-webkit-slider-thumb {
+  transform: scale(1.1);
+}
+
+.set-block input[type="range"]#pitch::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6aaf7e, #3a5a72 55%, #d4783a);
+  border: 1px solid #1a2230;
+}
+
+.set-block input[type="range"]#pitch::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #f0e6c8, #c9a227);
+  border: 1px solid #8a7020;
+}
+
 /* ——— Forgeworks flourish layer ——— */
 @keyframes ember-pulse {
   0%, 100% { opacity: 0.55; filter: brightness(1); }

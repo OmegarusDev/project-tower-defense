@@ -30,7 +30,6 @@ export function undoLast(app) {
     app.sim.grid.setTower(t.cell.x, t.cell.y, false);
     app.sim.towers = app.sim.towers.filter((x) => x.id !== t.id);
     app.sim.grid.recompute();
-    app.sim.combat.dirtyAuras();
     app.selectedTowerId = -1;
     app.board?.invalidateStatic?.();
     app.toast("Undid tower place");
@@ -70,7 +69,6 @@ export function undoLast(app) {
     app.sim.grid.setTower(t.cell.x, t.cell.y, true);
     app.sim.towers.push(t);
     app.sim.grid.recompute();
-    app.sim.combat.dirtyAuras();
     app.board?.invalidateStatic?.();
     app.toast("Undid tower sell");
     app.refreshHud();

@@ -33,10 +33,6 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
     chainRange: payload.chainRange ?? 2.5,
     homing: barrel.homing !== false,
     doctrine: base.doctrine || "first",
-    auraDamageMult: base.auraDamageMult ?? 1,
-    auraRofMult: base.auraRofMult ?? 1,
-    auraRadius: base.auraRadius ?? 0,
-    providesAura: !!base.aura,
     pointBlankMult: base.pointBlankMult ?? 1,
     pointBlankRange: base.pointBlankRange ?? 0,
     airDamageMult: (base.airDamageMult ?? 1) * (barrel.airDamageMult ?? 1),
@@ -68,11 +64,6 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
     plan.damage *= 1 + 0.04 * lvl;
     plan.fireInterval /= 1 + 0.03 * lvl;
     plan.rangeCells *= 1 + 0.03 * lvl;
-  }
-  // Light aura flavor for aura bases (not the main power curve).
-  if (base.levelBias === "aura" && lvl > 0) {
-    plan.auraDamageMult *= 1 + 0.03 * lvl;
-    plan.auraRofMult *= 1 + 0.03 * lvl;
   }
 
   const branch = opts.branch || {};

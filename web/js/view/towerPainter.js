@@ -1,6 +1,6 @@
 /** Procedural tower = grounded Base + rotating turret (Barrel + Payload tip). */
 
-import { VIEW25, aimToDrawAngle, deckRy } from "./view25.js";
+import { VIEW25, aimToDrawAngle, deckRy, groundForeshorten } from "./view25.js";
 import { shade, withAlpha, roundRect, facePoly, matsFrom } from "./drawUtil.js";
 
 /** Relative sizes vs the cell sprite scale. */
@@ -445,8 +445,12 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
   const tip = palette.payloadColor(payload);
   ctx.save();
   ctx.translate(cx, cy);
-  // Yaw only — board (or forge preview) already applies VIEW25.yScale
+  // Yaw first, then the unified ground-plane squash: the barrel's depth axis
+  // foreshortens exactly like deckRy, so barrels pointing up the board read
+  // shorter, side-on barrels full length. Draw circles — the transform makes
+  // the correct ellipses (no hand-tuned ratios).
   ctx.rotate(angle);
+  groundForeshorten(ctx);
 
   const hubR = s * 0.125;
   drawHub(ctx, metal, hubR);
@@ -475,19 +479,19 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
       const dishR = s * 0.22;
       ctx.fillStyle = shade(metal, -0.22);
       ctx.beginPath();
-      ctx.ellipse(s * 0.12, s * 0.04, dishR, dishR * 0.55, 0, 0, Math.PI * 2);
+      ctx.ellipse(s * 0.12, s * 0.04, dishR, dishR, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = shade(metal, -0.05);
       ctx.beginPath();
-      ctx.ellipse(s * 0.12, 0, dishR, dishR * 0.55, 0, 0, Math.PI * 2);
+      ctx.ellipse(s * 0.12, 0, dishR, dishR, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = shade(metal, 0.12);
       ctx.beginPath();
-      ctx.ellipse(s * 0.1, -s * 0.02, dishR * 0.7, dishR * 0.38, 0, 0, Math.PI * 2);
+      ctx.ellipse(s * 0.1, -s * 0.02, dishR * 0.7, dishR * 0.7, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = withAlpha(tip, 0.55);
       ctx.beginPath();
-      ctx.ellipse(s * 0.14, 0, dishR * 0.4, dishR * 0.26, 0, 0, Math.PI * 2);
+      ctx.ellipse(s * 0.14, 0, dishR * 0.4, dishR * 0.4, 0, 0, Math.PI * 2);
       ctx.fill();
       drawPayloadGem(ctx, tip, payload, s * 0.24, 0, s * 0.08);
       break;
@@ -548,38 +552,39 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
 }
 
 function drawHub(ctx, metal, r) {
+  // Circles — groundForeshorten makes the correct deck ellipses
   ctx.fillStyle = shade(metal, -0.3);
   ctx.beginPath();
-  ctx.ellipse(0, r * 0.15, r, r * 0.85, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, r * 0.15, r, r, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = shade(metal, -0.08);
   ctx.beginPath();
-  ctx.ellipse(0, 0, r, r * 0.85, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, r, r, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = withAlpha("#fff8e0", 0.16);
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.ellipse(-r * 0.15, -r * 0.1, r * 0.55, r * 0.4, -0.4, Math.PI * 1.1, Math.PI * 1.85);
+  ctx.ellipse(-r * 0.15, -r * 0.1, r * 0.55, r * 0.45, -0.4, Math.PI * 1.1, Math.PI * 1.85);
   ctx.stroke();
 }
 
 function drawHubCap(ctx, metal, r) {
   ctx.fillStyle = shade(metal, 0.14);
   ctx.beginPath();
-  ctx.ellipse(0, -r * 0.05, r, r * 0.8, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -r * 0.05, r, r, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = withAlpha(shade(metal, -0.35), 0.7);
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.ellipse(0, -r * 0.05, r * 0.72, r * 0.58, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -r * 0.05, r * 0.72, r * 0.72, 0, 0, Math.PI * 2);
   ctx.stroke();
   ctx.fillStyle = shade(metal, -0.22);
   ctx.beginPath();
-  ctx.ellipse(0, 0, r * 0.35, r * 0.28, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, r * 0.35, r * 0.35, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = withAlpha("#fff8e0", 0.25);
   ctx.beginPath();
-  ctx.ellipse(-r * 0.08, -r * 0.12, r * 0.12, r * 0.08, 0, 0, Math.PI * 2);
+  ctx.ellipse(-r * 0.08, -r * 0.12, r * 0.12, r * 0.12, 0, 0, Math.PI * 2);
   ctx.fill();
 }
 

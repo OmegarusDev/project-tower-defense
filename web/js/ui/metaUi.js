@@ -5,7 +5,7 @@
 import { buildAttackPlan } from "../sim/attackPlan.js";
 import { PARTS, partLabel, doctrineLabel } from "../data/parts.js";
 import { enemyDef } from "../data/enemies.js";
-import { WAVE_PACKS, resolveCampaignWave } from "../data/waveScripts.js";
+import { resolveCampaignWave } from "../data/waveScripts.js";
 import { ENDLESS_THEMES } from "../data/waveScripts.js";
 
 const THREAT_LABEL = {

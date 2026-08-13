@@ -24,7 +24,6 @@ const base = scenarioByName(preset);
 const simEvents = [];
 const origRun = runSim;
 // easier: replicate runSim with listeners
-import { TICK_DT } from "../sim/simWorld.js";
 import { makeSlot } from "../data/parts.js";
 import { ENDLESS_GRID } from "../data/endlessGrid.js";
 

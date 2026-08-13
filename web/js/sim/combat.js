@@ -6,18 +6,10 @@ import { INF } from "./boardGrid.js";
 export class CombatSystem {
   constructor(world) {
     this.world = world;
-    this.auraDamage = null;
-    this.auraRof = null;
-    this.aurasDirty = true;
     this.altToggle = new Map();
   }
 
-  dirtyAuras() {
-    this.aurasDirty = true;
-  }
-
   tick() {
-    if (this.aurasDirty) this._rebuildAuras();
     this._refreshEnemyAuras();
     for (const t of this.world.towers) this._tickTower(t);
     this._tickProjectiles();
@@ -27,7 +19,23 @@ export class CombatSystem {
   /** Ward shells project a small armor aura onto nearby enemies while alive. */
   _refreshEnemyAuras() {
     const es = this.world.enemies;
+    // Skip the O(n^2) pass entirely unless a live ward is on the board.
+    let ward = null;
+    for (const e of es) {
+      if (e.aura && e.hp > 0 && (e.aura.armor || 0) > 0) {
+        ward = e;
+        break;
+      }
+    }
+    if (!ward) {
+      if (this._auraApplied) {
+        for (const e of es) e.auraArmor = 0;
+        this._auraApplied = false;
+      }
+      return;
+    }
     for (const e of es) e.auraArmor = 0;
+    this._auraApplied = false;
     for (const w of es) {
       const a = w.aura;
       if (!a || w.hp <= 0 || !(a.armor > 0)) continue;
@@ -36,6 +44,7 @@ export class CombatSystem {
         if (e === w) continue;
         if (Math.hypot(e.pos.x - w.pos.x, e.pos.y - w.pos.y) <= r) {
           e.auraArmor = Math.max(e.auraArmor, a.armor || 0);
+          this._auraApplied = true;
         }
       }
     }
@@ -47,10 +56,6 @@ export class CombatSystem {
 
   _tickTower(t) {
     const plan = buildAttackPlan(t.base, t.barrel, t.payload, t.level, this._planOpts(t));
-    const g = this.world.grid;
-    const i = g.idx(t.cell.x, t.cell.y);
-    plan.fireInterval /= Math.max(0.05, this.auraRof[i] || 1);
-    plan.damage *= this.auraDamage[i] || 1;
 
     const target = this._selectTarget(t, plan);
     if (target) {
@@ -517,7 +522,6 @@ export class CombatSystem {
       tower.level = (tower.level | 0) + 1;
       tower.pendingPicks = (tower.pendingPicks | 0) + 1;
       gained += 1;
-      this.dirtyAuras();
       this.world.emit("tower_leveled", {
         tower,
         level: tower.level,
@@ -666,29 +670,5 @@ export class CombatSystem {
       }
     }
     return best;
-  }
-
-  _rebuildAuras() {
-    const g = this.world.grid;
-    const n = g.cols * g.rows;
-    this.auraDamage = new Float32Array(n).fill(1);
-    this.auraRof = new Float32Array(n).fill(1);
-    for (const t of this.world.towers) {
-      const plan = buildAttackPlan(t.base, t.barrel, t.payload, t.level);
-      if (!plan.providesAura) continue;
-      const r = Math.ceil(plan.auraRadius);
-      for (let dy = -r; dy <= r; dy++) {
-        for (let dx = -r; dx <= r; dx++) {
-          const x = t.cell.x + dx;
-          const y = t.cell.y + dy;
-          if (!g.inBounds(x, y)) continue;
-          if (Math.hypot(dx, dy) > plan.auraRadius) continue;
-          const i = g.idx(x, y);
-          this.auraDamage[i] = Math.max(this.auraDamage[i], plan.auraDamageMult);
-          this.auraRof[i] = Math.max(this.auraRof[i], plan.auraRofMult);
-        }
-      }
-    }
-    this.aurasDirty = false;
   }
 }

@@ -189,7 +189,6 @@ export class SimWorld {
     t.pendingPicks = (t.pendingPicks | 0) - 1;
     if (!t.branch) t.branch = { damage: 0, rof: 0, range: 0 };
     t.branch[branch] = (t.branch[branch] | 0) + 1;
-    this.combat.dirtyAuras();
     this.logAction("level_branch", {
       id: towerId,
       branch,
@@ -272,7 +271,6 @@ export class SimWorld {
     this.towers.push(tower);
     this.grid.setTower(x, y, true);
     this.grid.recompute();
-    this.combat.dirtyAuras();
     this.logAction("place_tower", { x, y, slot: slotIndex });
     this.emit("tower_placed", { tower, surcharge });
     return { ok: true, tower, surcharge };
@@ -289,7 +287,6 @@ export class SimWorld {
     this.grid.setTower(t.cell.x, t.cell.y, false);
     this.towers.splice(i, 1);
     this.grid.recompute();
-    this.combat.dirtyAuras();
     this.logAction("sell_tower", { id });
     this.emit("tower_sold", { id, refund });
     return { ok: true, refund };
@@ -397,7 +394,6 @@ export class SimWorld {
     }
     for (const w of this.walls) this.grid.setBlocked(w.cell.x, w.cell.y, true);
     this.grid.recompute();
-    this.combat.dirtyAuras();
     this.running = false;
     this.waves.waveActive = false;
     this.waves.toSpawn = 0;

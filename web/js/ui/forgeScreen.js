@@ -15,7 +15,6 @@ import {
   canAffordTech,
   spendTechCost,
 } from "../data/techTree.js";
-import { VIEW25 } from "../view/view25.js";
 import { drawComposedTower } from "../view/towerPainter.js";
 import { forgePlanSummary } from "./menuScreens.js";
 import { rosterSlotButtons } from "../app/gameChrome.js";
@@ -218,13 +217,9 @@ export function paintForgePreview(app) {
   const size = 72;
   const px = (css - size) / 2;
   const py = (css - size) / 2;
-  // Match board pitch foreshortening on the preview
-  ctx.save();
-  ctx.translate(css / 2, css / 2);
-  ctx.scale(1, VIEW25.yScale);
-  ctx.translate(-css / 2, -css / 2);
+  // The painter owns ground-plane foreshortening (groundForeshorten in the
+  // turret) — no pre-scale here, or barrels would double-squash.
   drawComposedTower(ctx, app.palette, t, px, py, size, false);
-  ctx.restore();
   
 }
 
