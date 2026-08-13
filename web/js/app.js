@@ -74,6 +74,11 @@ export class App {
     this.score.setMusicVolume(this.meta.settings?.musicVolume ?? 0.4);
 
     this.board.onTap = (cell) => this.onCellTap(cell);
+    this.board.onPanStart = () => {
+      if (this.placeConfirm) this.cancelPlaceConfirm();
+      this.board.hover = null;
+      this._syncGhostPlan();
+    };
     window.addEventListener("resize", () => this.board._fit(true));
     window.addEventListener("keydown", (e) => this.onKeyDown(e));
     document.addEventListener("visibilitychange", () => {
@@ -277,7 +282,7 @@ export class App {
   renderGameChrome() { return chrome.renderGameChrome(this); }
   toggleLiveCompose() { return chrome.toggleLiveCompose(this); }
   applyLiveComposePart(k, id) { return chrome.applyLiveComposePart(this, k, id); }
-  paintSlotPreviews() { return chrome.paintSlotPreviews(this); }
+  paintSlotPreviews(force = false) { return chrome.paintSlotPreviews(this, force); }
   refreshHud() { return chrome.refreshHud(this); }
   _refreshThemeChip(t, e) { return chrome.refreshThemeChip(this, t, e); }
   syncTowerOverlay() { return chrome.syncTowerOverlay(this); }

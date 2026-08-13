@@ -356,19 +356,11 @@
   pointer-events: auto;
 }
 
-.cam-rail-label,
-.cam-rail-val {
-  font-family: var(--font-btn);
-  font-size: 0.52rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #a89878;
-}
-
-.cam-rail-val {
-  color: #e8e0d0;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+.cam-glyph {
+  width: 18px;
+  height: 13px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
 }
 
 .cam-pitch {
@@ -453,11 +445,6 @@
     0 0 0 4px rgba(212, 120, 58, 0.3),
     0 0 14px rgba(212, 120, 58, 0.6),
     0 1px 0 rgba(255, 255, 255, 0.35) inset;
-}
-
-.cam-rail-label {
-  font-weight: 700;
-  color: #c9a227;
 }
 
 /* ── Pause overlay ── */

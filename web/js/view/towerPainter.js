@@ -361,6 +361,10 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
   groundForeshorten(ctx);
 
   const hubR = s * 0.125;
+  // depth = how far the barrel points away (up the board): sin<0 aims at the
+  // top of the screen in the squashed frame; the painter uses it to lay the
+  // barrel flat along the deck (shadow streak, taper, bore cap).
+  const depth = Math.max(0, Math.min(1, -Math.sin(angle)));
   drawHub(ctx, metal, hubR);
 
   switch (barrel) {
@@ -368,8 +372,8 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
       const len = s * 0.42;
       const th = s * 0.1;
       const gap = s * 0.11;
-      drawCannon(ctx, metal, tip, hubR * 0.55, -gap, len, th, payload);
-      drawCannon(ctx, metal, tip, hubR * 0.55, gap, len, th, payload);
+      drawCannon(ctx, metal, tip, hubR * 0.55, -gap, len, th, payload, depth);
+      drawCannon(ctx, metal, tip, hubR * 0.55, gap, len, th, payload, depth);
       break;
     }
     case "scatter": {
@@ -378,7 +382,7 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
       for (const a of [-0.34, 0, 0.34]) {
         ctx.save();
         ctx.rotate(a);
-        drawCannon(ctx, metal, tip, hubR * 0.5, 0, len, th, payload);
+        drawCannon(ctx, metal, tip, hubR * 0.5, 0, len, th, payload, depth);
         ctx.restore();
       }
       break;
@@ -416,13 +420,13 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
       ctx.fillStyle = shade(metal, 0.12);
       roundRect(ctx, -s * 0.04, -s * 0.09, s * 0.18, s * 0.1, 2);
       ctx.fill();
-      drawCannon(ctx, metal, tip, s * 0.12, 0, len, th, payload);
+      drawCannon(ctx, metal, tip, s * 0.12, 0, len, th, payload, depth);
       break;
     }
     case "launcher": {
       const len = s * 0.34;
       const th = s * 0.2;
-      drawCannon(ctx, metal, tip, hubR * 0.4, 0, len, th, "kinetic");
+      drawCannon(ctx, metal, tip, hubR * 0.4, 0, len, th, "kinetic", depth);
       const noseX = hubR * 0.4 + len;
       ctx.fillStyle = shade(tip, -0.2);
       ctx.beginPath();
@@ -441,7 +445,7 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
     case "flak": {
       // Short multi-tube burst pod
       for (const dy of [-0.12, -0.04, 0.04, 0.12]) {
-        drawCannon(ctx, metal, tip, hubR * 0.35, s * dy, s * 0.32, s * 0.06, payload);
+        drawCannon(ctx, metal, tip, hubR * 0.35, s * dy, s * 0.32, s * 0.06, payload, depth);
       }
       ctx.fillStyle = shade(metal, -0.15);
       roundRect(ctx, -s * 0.08, -s * 0.18, s * 0.2, s * 0.36, 3);
@@ -450,7 +454,7 @@ function drawTurret(ctx, palette, barrel, payload, cx, cy, s, angle) {
     }
     case "single":
     default: {
-      drawCannon(ctx, metal, tip, hubR * 0.55, 0, s * 0.46, s * 0.11, payload);
+      drawCannon(ctx, metal, tip, hubR * 0.55, 0, s * 0.46, s * 0.11, payload, depth);
       break;
     }
   }
@@ -497,19 +501,63 @@ function drawHubCap(ctx, metal, r) {
 }
 
 /** Axis-aligned cannon along +X. y is lateral offset from pivot axis. */
-function drawCannon(ctx, metal, tip, x0, y, length, thickness, payload) {
+/**
+ * Axis-aligned cannon along +X. `depth` ∈ [0,1] = how far the barrel points
+ * away from the viewer (up the board): away-facing tubes get a ground shadow
+ * streak, a stepped taper and a bore cap so they read as lying FLAT on the
+ * ground instead of standing up. y is lateral offset from the pivot axis.
+ */
+function drawCannon(ctx, metal, tip, x0, y, length, thickness, payload, depth = 0) {
   const h = thickness;
   const rise = h * 0.35;
   const dark = shade(metal, -0.22);
   const mid = metal;
   const light = shade(metal, 0.18);
+  const away = Math.max(0, Math.min(1, depth));
+
+  // Ground shadow streak — anchors the barrel to the deck
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.beginPath();
+  ctx.ellipse(
+    x0 + length * 0.5,
+    y + h * 1.15,
+    length * (0.5 + away * 0.08),
+    h * 0.34,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
+  const taper = 1 - 0.2 * away; // away-facing muzzle reads slightly narrower
+  const t0 = h / 2;
+  const t1 = (h / 2) * taper;
+  const stepX = x0 + length * 0.74;
 
   ctx.fillStyle = dark;
-  roundRect(ctx, x0, y - h / 2 + rise, length, h, h * 0.4);
+  roundRect(ctx, x0, y - t0 + rise, length, h, h * 0.4);
   ctx.fill();
+  // tapered tip over the far end
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.moveTo(stepX, y - t0 + rise);
+  ctx.lineTo(x0 + length, y - t1 + rise * taper);
+  ctx.lineTo(x0 + length, y + t1 + rise * taper);
+  ctx.lineTo(stepX, y + t0 + rise);
+  ctx.closePath();
+  ctx.fill();
+
   ctx.fillStyle = mid;
-  roundRect(ctx, x0, y - h / 2, length, h * 0.78, h * 0.35);
+  roundRect(ctx, x0, y - t0, length, h * 0.78, h * 0.35);
   ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(stepX, y - t0);
+  ctx.lineTo(x0 + length, y - t1);
+  ctx.lineTo(x0 + length, y + t1 * 0.78);
+  ctx.lineTo(stepX, y + t0 * 0.78);
+  ctx.closePath();
+  ctx.fill();
+
   ctx.fillStyle = light;
   roundRect(ctx, x0 + length * 0.08, y - h * 0.42, length * 0.65, h * 0.28, h * 0.18);
   ctx.fill();
@@ -528,6 +576,16 @@ function drawCannon(ctx, metal, tip, x0, y, length, thickness, payload) {
   ctx.fillRect(x0 + length - band * 0.7, y - h * 0.38, band * 0.7, h * 0.55);
   ctx.fillStyle = withAlpha("#fff8e0", 0.28);
   ctx.fillRect(x0 + length - band * 0.45, y - h * 0.32, band * 0.2, h * 0.18);
+
+  // Bore cap — the receding tube's far end
+  ctx.fillStyle = shade(tip, -0.45);
+  ctx.beginPath();
+  ctx.ellipse(x0 + length - band * 0.2, y, band * 0.34, band * 0.34 * (0.7 + 0.3 * away), 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = withAlpha("#0a0c10", 0.65);
+  ctx.beginPath();
+  ctx.ellipse(x0 + length - band * 0.18, y, band * 0.16, band * 0.16 * (0.7 + 0.3 * away), 0, 0, Math.PI * 2);
+  ctx.fill();
 
   if (payload && payload !== "kinetic") {
     drawPayloadGem(ctx, tip, payload, x0 + length + h * 0.1, y - h * 0.05, h * 0.5);

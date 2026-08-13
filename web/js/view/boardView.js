@@ -23,6 +23,12 @@ export class BoardView {
     this.zoom = 1;
     this.panX = 0;
     this.panY = 0;
+    // Camera glide targets — inputs write here, draw() damps toward them.
+    this._zoomT = 1;
+    this._panXT = 0;
+    this._panYT = 0;
+    this._direct = false;
+    this._zoomAnchor = null;
     this.panMinX = 0;
     this.panMaxX = 0;
     this.panMin = 0;
@@ -68,15 +74,14 @@ export class BoardView {
       (e) => {
         if (!this.sim) return;
         e.preventDefault();
-        // Ctrl / ⌘ + wheel → zoom (desktop twin of pinch)
+        // Ctrl / ⌘ + wheel → zoom about the cursor (desktop twin of pinch)
         if (e.ctrlKey || e.metaKey) {
           const factor = Math.exp(-e.deltaY * 0.0018);
-          this.setZoom(this.zoom * factor);
+          this.zoomAbout(this._zoomT * factor, e.clientX, e.clientY);
           return;
         }
-        this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY - e.deltaY * 0.45));
-        this.panX = Math.max(this.panMinX, Math.min(this.panMaxX, this.panX - e.deltaX * 0.45));
-        this._fit(true);
+        this._panYT = Math.max(this.panMin, Math.min(this.panMax, this._panYT - e.deltaY * 0.45));
+        this._panXT = Math.max(this.panMinX, Math.min(this.panMaxX, this._panXT - e.deltaX * 0.45));
       },
       { passive: false }
     );
@@ -93,9 +98,9 @@ export class BoardView {
     this.sim = sim;
     this._stains.length = 0;
     this.recoil.clear();
-    this.panX = 0;
-    this.panY = 0;
-    this.zoom = 1;
+    this._panXT = this.panX = 0;
+    this._panYT = this.panY = 0;
+    this._zoomT = this.zoom = 1;
     this._handOffT = 0;
     this._themePulse = 0;
     this.invalidateStatic();
@@ -111,9 +116,9 @@ export class BoardView {
     if (!this.sim) return;
     this._handOffT = 0;
     this._themePulse = 0;
-    this.panX = 0;
-    this.panY = 0;
-    this.zoom = 1;
+    this._panXT = this.panX = 0;
+    this._panYT = this.panY = 0;
+    this._zoomT = this.zoom = 1;
     void this.canvas.offsetHeight;
     this._fitKey = "";
     this._fit(true);
@@ -154,17 +159,25 @@ export class BoardView {
   }
 
   resetPan() {
-    this.panY = 0;
-    this.panX = 0;
-    this.zoom = 1;
+    this._panYT = this.panY = 0;
+    this._panXT = this.panX = 0;
+    this._zoomT = this.zoom = 1;
+    this._zoomAnchor = null;
     this._handOffT = 0;
     this.invalidateStatic();
     if (this.sim) this._fit();
   }
 
   setZoom(z) {
-    this.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
-    this._fit(true);
+    this._zoomT = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+  }
+
+  /** Zoom keeping the board point under (cx, cy) fixed (cursor/touch anchor). */
+  zoomAbout(z, cx, cy) {
+    if (!this.sim) return;
+    this._zoomT = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+    const b = this.cam.unproject(cx, cy);
+    this._zoomAnchor = { cx, cy, bx: b.x, by: b.y };
   }
 
   setPitchDeg(deg) {
@@ -177,6 +190,7 @@ export class BoardView {
     this.invalidateStatic();
     this._fit(true);
     this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY - this.cell * 1.5));
+    this._panYT = this.panY;
     this._fit(true);
   }
 
@@ -302,6 +316,7 @@ export class BoardView {
       /* ignore */
     }
 
+    this._direct = true;
     if (this._pointers.size >= 2) {
       this._beginPinch();
       return;
@@ -329,10 +344,21 @@ export class BoardView {
       const dist = this._pointerDist();
       if (!mid || dist < 8) return;
       const scale = dist / this._pinch.dist0;
-      this.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._pinch.zoom0 * scale));
+      const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._pinch.zoom0 * scale));
       // Two-finger scroll pans while pinching
-      this.panX = this._pinch.panX0 + (mid.x - this._pinch.mid0.x);
-      this.panY = this._pinch.panY0 + (mid.y - this._pinch.mid0.y);
+      this._panXT = this.panX = this._pinch.panX0 + (mid.x - this._pinch.mid0.x);
+      this._panYT = this.panY = this._pinch.panY0 + (mid.y - this._pinch.mid0.y);
+      // Zoom anchored at the touch midpoint
+      if (this._pinch.mid0) {
+        const b = this.cam.unproject(this._pinch.mid0.x, this._pinch.mid0.y);
+        this._zoomT = z;
+        this._fit(true);
+        const p = this.cam.project(b.x, b.y);
+        this._panXT = this.panX = this.panX + (this._pinch.mid0.x - p.x);
+        this._panYT = this.panY = this.panY + (this._pinch.mid0.y - p.y);
+      } else {
+        this._zoomT = z;
+      }
       this._fit(true);
       return;
     }
@@ -342,10 +368,14 @@ export class BoardView {
     if (!d || e.pointerId !== d.id) return;
     const dy = e.clientY - d.y0;
     const dx = e.clientX - d.x0;
-    if (!d.moved && Math.hypot(dx, dy) > 8) d.moved = true;
+    if (!d.moved && Math.hypot(dx, dy) > 8) {
+      d.moved = true;
+      // A drag means "look around" — drop any tower currently in hand.
+      if (this.onPanStart) this.onPanStart();
+    }
     if (d.moved) {
-      this.panY = Math.max(this.panMin, Math.min(this.panMax, d.panY0 + dy));
-      this.panX = Math.max(this.panMinX, Math.min(this.panMaxX, d.panX0 + dx));
+      this._panYT = this.panY = Math.max(this.panMin, Math.min(this.panMax, d.panY0 + dy));
+      this._panXT = this.panX = Math.max(this.panMinX, Math.min(this.panMaxX, d.panX0 + dx));
       this._fit(true);
     }
   }
@@ -353,6 +383,7 @@ export class BoardView {
   _onPointerUp(e) {
     if (!this.sim) return;
     this._pointers.delete(e.pointerId);
+    if (this._pointers.size === 0) this._direct = false;
     try {
       this.canvas.releasePointerCapture(e.pointerId);
     } catch (_) {
@@ -377,8 +408,40 @@ export class BoardView {
     if (this.sim.grid.inBounds(c.x, c.y) && this.onTap) this.onTap(c);
   }
 
+  /** Damped camera glide: inputs write targets; draw() eases toward them. */
+  _stepCamera(dt) {
+    if (!this.sim) return;
+    if (this._direct) {
+      this.panX = this._panXT;
+      this.panY = this._panYT;
+      this.zoom = this._zoomT;
+      return;
+    }
+    const pk = 1 - Math.exp(-16 * dt);
+    const zk = 1 - Math.exp(-9 * dt);
+    this.panX += (this._panXT - this.panX) * pk;
+    this.panY += (this._panYT - this.panY) * pk;
+    this.zoom += (this._zoomT - this.zoom) * zk;
+    // Keep the zoom anchor under the cursor while the glide settles
+    const a = this._zoomAnchor;
+    if (a && Math.abs(this._zoomT - this.zoom) > 0.0005) {
+      const p = this.cam.project(a.bx, a.by);
+      const dx = a.cx - p.x;
+      const dy = a.cy - p.y;
+      if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+        this.panX += dx;
+        this.panY += dy;
+        this._panXT += dx;
+        this._panYT += dy;
+      }
+    } else {
+      this._zoomAnchor = null;
+    }
+  }
+
   draw(dt = 0.016) {
     if (!this.sim) return;
+    this._stepCamera(dt);
     this._fit(false);
     if (this._shakeT > 0) {
       this._shakeT = Math.max(0, this._shakeT - dt);

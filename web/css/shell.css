@@ -515,6 +515,14 @@ label.btn input {
   gap: 8px;
 }
 
+.campaign-act {
+  margin: 14px 2px 6px;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #c9a227;
+}
+
 .level-card {
   display: grid;
   grid-template-columns: 72px 1fr;
@@ -721,16 +729,16 @@ label.btn input {
 .frame-bolts {
   pointer-events: none;
   position: absolute;
-  inset: 10px 8px;
+  inset: 7px 5px;
   z-index: 0;
   border: 1px solid rgba(200, 130, 60, 0.2);
   clip-path: var(--plate-clip);
   box-shadow: var(--rim-brass);
   background:
-    radial-gradient(circle at 8px 8px, #e0b84a 0 2px, transparent 3px),
-    radial-gradient(circle at calc(100% - 8px) 8px, #e0b84a 0 2px, transparent 3px),
-    radial-gradient(circle at 8px calc(100% - 8px), #e0b84a 0 2px, transparent 3px),
-    radial-gradient(circle at calc(100% - 8px) calc(100% - 8px), #e0b84a 0 2px, transparent 3px);
+    radial-gradient(circle at 5px 5px, #e0b84a 0 2px, transparent 3px),
+    radial-gradient(circle at calc(100% - 5px) 5px, #e0b84a 0 2px, transparent 3px),
+    radial-gradient(circle at 5px calc(100% - 5px), #e0b84a 0 2px, transparent 3px),
+    radial-gradient(circle at calc(100% - 5px) calc(100% - 5px), #e0b84a 0 2px, transparent 3px);
   opacity: 0.7;
 }
 

@@ -156,7 +156,7 @@ export function wireSettings(app) {
 export function renderCampaign(app) {
   app.screen = "campaign";
   const cleared = app.meta.campaign?.cleared || [];
-  const cards = CAMPAIGN_LEVELS.map((lv) => {
+  const cardHtml = (lv) => {
     const open = isLevelUnlocked(lv.id, cleared);
     const done = cleared.includes(lv.id);
     const tags = threatTagsForLevel(lv, 4)
@@ -175,6 +175,13 @@ export function renderCampaign(app) {
         <div class="threat-row">${tags}</div>
       </div>
     </button>`;
+  };
+  // Group cards under act headers (Outskirts / Foundry / Deep Vein)
+  const ACT_ORDER = ["Outskirts", "Foundry", "Deep Vein"];
+  const acts = ACT_ORDER.map((act) => {
+    const lvs = CAMPAIGN_LEVELS.filter((lv) => (lv.act || "Outskirts") === act);
+    if (!lvs.length) return "";
+    return `<h2 class="campaign-act">${act}</h2><div class="level-grid">${lvs.map(cardHtml).join("")}</div>`;
   }).join("");
   app.ui.innerHTML = `
     <div class="screen scroll meta-screen meta-enter">
@@ -192,7 +199,7 @@ export function renderCampaign(app) {
           <span><i>Clear</i>${cleared.length}/${CAMPAIGN_LEVELS.length}</span>
         </div>
       </header>
-      <div class="level-grid">${cards}</div>
+      ${acts}
       <button class="btn" data-act="forge-from-campaign">Forge</button>
     </div>`;
 }

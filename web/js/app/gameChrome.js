@@ -141,9 +141,12 @@ export function renderGameChrome(app) {
       </header>
       <aside class="left-tools" aria-label="Board tools">
         <div class="cam-rail plate" title="Camera pitch">
-          <span class="cam-rail-label">Ang</span>
+          <svg class="cam-glyph" viewBox="0 0 20 14" aria-hidden="true">
+            <path d="M3.5 2.5h3L8 1h4l1.5 1.5h3A1.5 1.5 0 0 1 18 4v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 2 11.5V4a1.5 1.5 0 0 1 1.5-1.5z" fill="#c9a227" opacity="0.9"/>
+            <circle cx="10" cy="8" r="3.2" fill="#1a2230" stroke="#8a7020" stroke-width="1"/>
+            <circle cx="10" cy="8" r="1.5" fill="#e8e0d0" opacity="0.85"/>
+          </svg>
           <input id="pitchLive" class="cam-pitch" type="range" min="8" max="58" step="1" value="${pitch}" orient="vertical" aria-label="Camera angle" />
-          <span class="cam-rail-val" id="pitchLiveVal">${pitch}°</span>
         </div>
         ${composeBtn}
       </aside>
@@ -236,10 +239,11 @@ export function applyLiveComposePart(app, kind, id) {
 }
 
 /** Tiny rotating loadout previews inside arsenal slot tiles. */
-export function paintSlotPreviews(app) {
+export function paintSlotPreviews(app, force = false) {
   if (app.screen !== "game" || !app.sim) return;
   // The previews rotate on a slow flourish — repaint at ~10fps, not 60.
-  if ((app._previewTick = (app._previewTick | 0) + 1) % 6 !== 0) return;
+  // force (pitch drag) paints immediately for real-time feedback.
+  if (!force && (app._previewTick = (app._previewTick | 0) + 1) % 6 !== 0) return;
   const aim = app.slotPreviewAim || -Math.PI / 2;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const css = 40;

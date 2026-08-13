@@ -68,10 +68,10 @@
     radial-gradient(circle at 70% 60%, rgba(100, 55, 35, 0.12) 0 1.5px, transparent 2.5px),
     radial-gradient(circle at 45% 80%, rgba(40, 44, 50, 0.22) 0 1px, transparent 2px);
   --tex-bolts:
-    radial-gradient(circle at 10px 10px, #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px),
-    radial-gradient(circle at calc(100% - 10px) 10px, #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px),
-    radial-gradient(circle at 10px calc(100% - 10px), #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px),
-    radial-gradient(circle at calc(100% - 10px) calc(100% - 10px), #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px);
+    radial-gradient(circle at 7px 7px, #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px),
+    radial-gradient(circle at calc(100% - 7px) 7px, #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px),
+    radial-gradient(circle at 7px calc(100% - 7px), #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px),
+    radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), #9aa4b0 0 1.4px, #3a424c 2px, transparent 2.6px);
   /* Tight corner bolts for short vault chips (clear of Æ / gear / numbers) */
   --tex-bolts-corner:
     radial-gradient(circle at 4px 4px, #9aa4b0 0 1.15px, #3a424c 1.7px, transparent 2.3px),
