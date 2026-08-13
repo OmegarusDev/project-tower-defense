@@ -6,7 +6,7 @@ import { BASE_START_CASH } from "../data/techTree.js";
  * Parts — every 3rd wave (+ optional Quartermaster).
  * Aether — every 5th wave.
  */
-function waveClearRewards(wave, coinBonus = 0, partsBonus = 0) {
+export function waveClearRewards(wave, coinBonus = 0, partsBonus = 0) {
   const w = Math.max(1, wave | 0);
   const coin = 10 + (w - 1) + (coinBonus | 0);
   const partsBase = w % 3 === 0 ? 3 + Math.floor(w / 3) : 0;

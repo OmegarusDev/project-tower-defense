@@ -121,6 +121,7 @@ export class BoardGrid {
   }
 
   recompute() {
+    this.revision++;
     this._bfs(false, this.groundDist, this.groundNext);
     this._bfs(true, this.airDist, this.airNext);
     this._rebuildTowerProx();

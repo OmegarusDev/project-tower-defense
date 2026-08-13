@@ -418,8 +418,8 @@ export class CombatSystem {
     // EMP: strip energy block / melt shields
     if (plan.emp) {
       if (armorKind === "energy") {
+        // EMP is a permanent strip by design: energy veil gone, resists capped.
         e.energyBlock = false;
-        e._empT = Math.max(e._empT || 0, 4);
         e.resist = { ...(e.resist || {}), fire: Math.min(e.resist?.fire || 0, 0.25), shock: Math.min(e.resist?.shock || 0, 0.25) };
       }
       if ((e.shieldHp || 0) > 0) {
@@ -444,7 +444,8 @@ export class CombatSystem {
     // Shred synergy: a fully stripped target loses the plate's heat resistance.
     const heatBlock =
       dtype === "fire" && (armorKind === "plate" || armorKind === "insulated") &&
-      (e.shred || 0) < Math.max(1, (e.armorFlat || 0) - (plan.armorPierce || 0));
+      (e.shred || 0) <
+        Math.max(1, (e.armorFlat || 0) + (e.auraArmor || 0) - (plan.armorPierce || 0));
     if (heatBlock) {
       raw *= 0.55;
     }
@@ -570,7 +571,7 @@ export class CombatSystem {
           e.burnAcc -= e.burnEvery || 0.5;
           let tick = e.burnDps || 1;
           if ((e.armorKind || "none") === "none") tick *= 1.35;
-          else if ((e.armorKind === "plate" || e.armorKind === "insulated") && (e.shred || 0) < (e.armorFlat || 0)) tick *= 0.55;
+          else if ((e.armorKind === "plate" || e.armorKind === "insulated") && (e.shred || 0) < (e.armorFlat || 0) + (e.auraArmor || 0)) tick *= 0.55;
           e.hp -= tick;
         }
         e._fxBurn = (e._fxBurn || 0) + dt;

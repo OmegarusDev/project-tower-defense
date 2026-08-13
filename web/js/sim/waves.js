@@ -237,7 +237,6 @@ export class WaveManager {
       reachedExit: false,
       _hitFlash: 0,
       _regenAcc: 0,
-      _empT: 0,
     };
     return e;
   }

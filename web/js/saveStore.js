@@ -17,6 +17,8 @@ import {
 
 const META_KEY = "ptd_meta_v1";
 const ENDLESS_KEY = "ptd_endless_v1";
+/** Bump on schema changes; normalizeMeta migrates older saves forward. */
+const META_VERSION = 1;
 
 export function loadMeta() {
   let raw = null;
@@ -30,9 +32,14 @@ export function loadMeta() {
 }
 
 export function normalizeMeta(m) {
+  // Future migrations slot in here (old saves have version 0).
+  if ((m.version | 0) < META_VERSION) {
+    // v0 → v1: no structural changes yet — defaults handle everything.
+  }
   const bestWave = m.bestWave | 0;
   const owned = normalizeOwned(m.owned || defaultOwned());
   const draft = {
+    version: META_VERSION,
     aether: m.aether | 0,
     forge: m.forge | 0,
     bestWave,
