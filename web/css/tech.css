@@ -230,11 +230,6 @@
   gap: 8px;
 }
 
-.ttree-branch-ico {
-  display: inline-flex;
-  flex: 0 0 auto;
-}
-
 .ttree-branch-ico .tech-ico,
 .ttree-node-main .tech-ico {
   display: block;

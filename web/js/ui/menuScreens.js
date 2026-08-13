@@ -14,7 +14,6 @@ import {
   threatTagsForLevel,
   rosterPeekHtml,
   prepSlotButtonsHtml,
-  endlessThemeBlurb,
   paintLevelThumb,
 } from "./metaUi.js";
 
@@ -325,5 +324,3 @@ export function forgePlanSummary(slot) {
     plan.chainJumps ? ` · chain ${plan.chainJumps}` : ""
   }${plan.pulseRadius ? ` · pulse ${plan.pulseRadius.toFixed(1)}` : ""}</span>`;
 }
-
-export { endlessThemeBlurb };

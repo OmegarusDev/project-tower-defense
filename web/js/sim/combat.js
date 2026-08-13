@@ -73,6 +73,7 @@ export class CombatSystem {
     let closestD = INF;
     for (const e of this.world.enemies) {
       if (e.flying && !plan.airCapable) continue;
+      if (e.hp <= 0) continue;
       const dx = e.pos.x - ox;
       const dy = e.pos.y - oy;
       const dist = Math.hypot(dx, dy);
@@ -153,7 +154,13 @@ export class CombatSystem {
         i++;
         continue;
       }
-      const target = w.enemies.find((e) => e.id === p.targetId);
+      // Homing shots respect their range cap too — target alive or not.
+      if (p.traveled >= (p.maxRange || 4)) {
+        if ((p.aoeRadius || 0) > 0) this._detonateAt(p, p.pos);
+        w.projectiles.splice(i, 1);
+        continue;
+      }
+      const target = w.enemies.find((e) => e.id === p.targetId && e.hp > 0);
       if (!target && p.homing) {
         // H11: target died — AoE detonates at last pos; else coast on last velocity.
         if ((p.aoeRadius || 0) > 0) {
@@ -234,6 +241,7 @@ export class CombatSystem {
     if (!p.hitIds) p.hitIds = new Set();
     for (const e of w.enemies) {
       if (p.hitIds.has(e.id)) continue;
+      if (e.hp <= 0) continue;
       if (e.flying && !p.airCapable) continue;
       const d = Math.hypot(e.pos.x - p.pos.x, e.pos.y - p.pos.y);
       if (d < bestD) {
@@ -265,6 +273,7 @@ export class CombatSystem {
     if ((plan.aoeRadius || 0) <= 0) return;
     for (const e of this.world.enemies) {
       if (e.flying && !plan.airCapable) continue;
+      if (e.hp <= 0) continue;
       const d = Math.hypot(e.pos.x - pos.x, e.pos.y - pos.y);
       if (d <= plan.aoeRadius) {
         let dmg = p.damage;
@@ -279,6 +288,7 @@ export class CombatSystem {
    * Pierce: decrement and keep flying (skip already-hit ids).
    */
   _onHit(p, target) {
+    if (target.hp <= 0) return false;
     if (target.flying && !p.airCapable) return false;
     if (!p.hitIds) p.hitIds = new Set();
     if (p.hitIds.has(target.id)) return false;
@@ -302,6 +312,7 @@ export class CombatSystem {
     if (plan.aoeRadius > 0) {
       for (const e of this.world.enemies) {
         if (e.id === target.id) continue;
+        if (e.hp <= 0) continue;
         if (e.flying && !plan.airCapable) continue;
         const d = Math.hypot(e.pos.x - target.pos.x, e.pos.y - target.pos.y);
         if (d <= plan.aoeRadius) {
@@ -335,6 +346,7 @@ export class CombatSystem {
       let bestScore = -1e9;
       for (const e of this.world.enemies) {
         if (hit.has(e.id)) continue;
+        if (e.hp <= 0) continue;
         if (e.flying && !plan.airCapable) continue;
         if (e.armorKind === "insulated") continue;
         const d = Math.hypot(e.pos.x - from.x, e.pos.y - from.y);
@@ -581,6 +593,7 @@ export class CombatSystem {
     const oy = t.cell.y + 0.5;
     const out = [];
     for (const e of this.world.enemies) {
+      if (e.hp <= 0) continue;
       if (e.flying && !plan.airCapable) continue;
       const dist = Math.hypot(e.pos.x - ox, e.pos.y - oy);
       if (dist > plan.rangeCells) continue;

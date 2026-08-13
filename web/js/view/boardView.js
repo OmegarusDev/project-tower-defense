@@ -87,11 +87,6 @@ export class BoardView {
     this._staticDirty = true;
   }
 
-  /** @deprecated kept for callers; entry zoom is settled in prepareEntry. */
-  handOffZoom(_mult = 0.88) {
-    this._handOffT = 0;
-  }
-
   setSim(sim) {
     this.sim = sim;
     this._stains.length = 0;

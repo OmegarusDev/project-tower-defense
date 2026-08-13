@@ -11,7 +11,6 @@ export function handleUiAction(app, act, _ev) {
     app.prepSlot = +act.slice(10) | 0;
     if (app.screen === "prep" && app.prepLevelId) app.showPrep(app.prepLevelId);
   } else if (act?.startsWith("start-level:")) app.startCampaignLevel(+act.slice(12));
-  else if (act?.startsWith("campaign-level:")) app.showPrep(+act.slice(15));
   else if (act === "editor") app.showEditor();
   else if (act === "ed-apply-size") {
     const c = +(app.ui.querySelector("#edCols")?.value || 8);
@@ -76,7 +75,6 @@ export function handleUiAction(app, act, _ev) {
     const [, kind, id] = act.split(":");
     app.unlockPartFromTech(kind, id);
   } else if (act?.startsWith("tech-buy:")) app.buyTechNode(act.slice(9));
-  else if (act?.startsWith("tech:")) app.buyTechNode(act.slice(5));
   else if (act === "settings") app.showSettings();
   else if (act === "newrun") app.newRun();
   else if (act === "continue") app.continueRun();

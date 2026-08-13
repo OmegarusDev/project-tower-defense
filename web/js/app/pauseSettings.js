@@ -101,14 +101,8 @@ export function renderPauseSheet(app) {
         app.playtestFromEditor ? "Editor" : quitLabel
       }</button>
     </div>`;
+  // Delegated [data-act] handling in App.bindUi covers resume/speed/quit —
+  // no direct listeners here (they double-fired the quit confirm dialog).
   app.ui.appendChild(sheet);
-  sheet.querySelectorAll("[data-act]").forEach((el) => {
-    el.addEventListener("click", () => {
-      const act = el.getAttribute("data-act");
-      if (act === "resume") app.resumeGame();
-      else if (act === "quit-run") app.quitToMenu();
-      else if (act?.startsWith("speed:")) app.setSpeed(+act.slice(6));
-    });
-  });
   
 }

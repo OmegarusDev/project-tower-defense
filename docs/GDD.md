@@ -3,8 +3,10 @@
 **Status:** Final brief (systems locked). Balance numbers live in data as placeholders until playtest.  
 **Pair with:** [`CURSOR_PROMPT.md`](CURSOR_PROMPT.md) for implementation agents.  
 **History:** [`DESIGN_HISTORY.md`](DESIGN_HISTORY.md)  
-**Pygame prototype:** `../Tower Defense/` — read-only. Do not modify or delete.  
+**Pygame prototype:** `/Users/toby/cursorthings/ONGOING/Tower Defense` — read-only. Do not modify or delete.  
 **Production:** this repo — vanilla web only (`web/`). No Godot, no npm, no asset packs.
+
+**Reconciled 2026-08-13 (spring cleaning):** repo moved to `~/Documents/Projects/Code/project-tower-defense`. Balance tooling now measures the shipped endless map (`ENDLESS_GRID` 9×8), not the old 11×14 default. Known gaps vs this GDD: Settings has **no IAP stub** yet (GDD §14), and the **aura** system is designed-but-unimplemented (dead branches in `attackPlan.js`/`combat.js` — treat as placeholder until the combat refactor). `docs/CURSOR_PROMPT.md` is superseded by `AGENTS.md`.
 
 ---
 

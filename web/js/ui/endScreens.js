@@ -1,12 +1,14 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { hasEndless, loadEndless } from "../saveStore.js";
 import { CAMPAIGN_LEVELS, getCampaignLevel, isLevelUnlocked } from "../data/campaign.js";
-import { endlessThemeBlurb } from "./menuScreens.js";
+import { endlessThemeBlurb } from "./metaUi.js";
 
 export function showEndlessHub(app) {
   app.screen = "hub";
-  const canContinue = hasEndless();
-  const blob = canContinue ? loadEndless() : null;
+  // Corrupt/partial checkpoints parse to null — treat as no checkpoint rather
+  // than crashing the hub on blob.wave below.
+  const blob = hasEndless() ? loadEndless() : null;
+  const canContinue = blob !== null;
   const best = app.meta.bestWave | 0;
   const themes = endlessThemeBlurb();
   app.ui.innerHTML = `

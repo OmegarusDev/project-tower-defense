@@ -64,7 +64,6 @@ export class App {
     this.prepLevelId = 0;
     this.prepSlot = 0;
     this.playtestFromEditor = false;
-    this.menuBackdrop = false;
     this._ghost = null;
     this._raf = 0;
     this._last = 0;

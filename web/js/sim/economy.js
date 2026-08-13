@@ -1,3 +1,5 @@
+import { BASE_START_CASH } from "../data/techTree.js";
+
 /**
  * Wave-clear payouts (wave is 1-indexed).
  * Coin — every wave, starts at 10 and scales up (+ optional tech Spoils).
@@ -15,7 +17,7 @@ export function waveClearRewards(wave, coinBonus = 0, partsBonus = 0) {
 
 export class Economy {
   constructor() {
-    this.battle = 75;
+    this.battle = BASE_START_CASH;
     this.forge = 0;
     this.aether = 0;
     this.wallBase = 12;

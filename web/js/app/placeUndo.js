@@ -27,6 +27,7 @@ export function undoLast(app) {
     // Full refund of paid Coin (undo ≠ sell).
     app.sim.economy.addBattle(t.paid | 0);
     app.sim.grid.setBlocked(t.cell.x, t.cell.y, false);
+    app.sim.grid.setTower(t.cell.x, t.cell.y, false);
     app.sim.towers = app.sim.towers.filter((x) => x.id !== t.id);
     app.sim.grid.recompute();
     app.sim.combat.dirtyAuras();
@@ -66,6 +67,7 @@ export function undoLast(app) {
     }
     app.sim.economy.spendBattle(entry.refund | 0);
     app.sim.grid.setBlocked(t.cell.x, t.cell.y, true);
+    app.sim.grid.setTower(t.cell.x, t.cell.y, true);
     app.sim.towers.push(t);
     app.sim.grid.recompute();
     app.sim.combat.dirtyAuras();

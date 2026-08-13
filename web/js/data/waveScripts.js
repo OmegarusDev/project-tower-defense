@@ -18,7 +18,6 @@ export const WAVE_PACKS = {
   mixed_mid: ["mite", "courier", "hauler", "duct", "ward", "mite", "courier", "mite"],
   finale_a: ["hauler", "ward", "cask", "duct", "kiln", "siphon", "claim"],
   finale_b: ["phantom", "phantom", "cask", "ward", "hauler", "kiln", "claim"],
-  foundry_mix: ["kiln", "hauler", "kiln", "mite", "ward", "kiln", "siphon"],
   ceramite_line: ["hauler_ceramite", "hauler", "hauler_ceramite", "mite", "ward"],
   volt_wall: ["ward_volt", "hauler", "ward_volt", "duct", "ward"],
   // legacy pack ids → same content under old names for editor saves
@@ -206,20 +205,3 @@ export function resolveCampaignWave(def, waveIndex) {
     speedMult: def.speedMult != null ? def.speedMult : 1,
   };
 }
-
-/** @deprecated editor dropdown compatibility */
-export const WAVE_SCRIPTS = Object.fromEntries(
-  Object.keys(WAVE_PACKS)
-    .filter((id) => Array.isArray(WAVE_PACKS[id]))
-    .filter((id, i, arr) => arr.indexOf(id) === i)
-    .map((id) => [
-      id,
-      {
-        count: () => WAVE_PACKS[id].length,
-        kinds: WAVE_PACKS[id].reduce((acc, k) => {
-          acc[k] = (acc[k] || 0) + 1;
-          return acc;
-        }, {}),
-      },
-    ])
-);

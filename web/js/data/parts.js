@@ -490,6 +490,3 @@ export function doctrineLabel(doctrine) {
       return "First";
   }
 }
-
-/** @deprecated Use TECH_BRANCHES from techTree.js — kept empty for old imports. */
-export const AETHER_UPGRADES = [];

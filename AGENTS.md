@@ -1,11 +1,8 @@
-# Cursor Prompt — Project Tower Defense
+# Project Tower Defense — Agent Instructions
 
-> **SUPERSEDED (2026-08-13):** Workflow migrated to opencode. The live brief is
-> [`AGENTS.md`](../AGENTS.md). This file is kept as history.
+Obey this file and [`docs/GDD.md`](docs/GDD.md). If they conflict, stop and ask.
 
-**Final implementation brief.** Obey this file and [`GDD.md`](GDD.md). If they conflict, stop and ask.
-
-You are building **Project Tower Defense** — vanilla web only (`web/`).
+This is a vanilla web-only project (`web/`). No npm, no bundler, no frameworks.
 
 ---
 
@@ -28,10 +25,12 @@ You are building **Project Tower Defense** — vanilla web only (`web/`).
 ```text
 Project Tower Defense/
   web/           # entire product
-  docs/
+  docs/          # design docs (GDD, ARCHITECTURE, CURSOR_PROMPT, ...)
   PLAY.html      # Pages launcher
   .github/       # Pages deploy
 ```
+
+Design docs: `docs/GDD.md` (game spec), `docs/ARCHITECTURE.md` (code structure), `docs/CURSOR_PROMPT.md` (legacy Cursor brief).
 
 ---
 
@@ -53,8 +52,8 @@ Project Tower Defense/
 | forge | Wave clear; full-campaign bonus | Parts buy/upgrade | Meta |
 | battle | Start grant; enemy drops; Call Early | Place; walls | Run / campaign-level |
 
-Start grant = **Battle only**. Free starter parts: **sentry + single + kinetic** (slot 1 pre-filled).  
-Sell tower/wall = Salvager **50%/60%/75%** of **recorded** Battle paid for that instance.  
+Start grant = **Battle only**. Free starter parts: **sentry + single + kinetic** (slot 1 pre-filled).
+Sell tower/wall = Salvager **50%/60%/75%** of **recorded** Battle paid for that instance.
 **No** Battle spending on tower levels. Call Early Coin is claimed once per wave (checkpointed — no Continue double-dip).
 
 ---
@@ -93,13 +92,12 @@ basic, heavy, fast, flying, shielded, splitter, boss (+ data). Leak by type. For
 
 ---
 
-## Vertical slice done when
+## Verification
 
-1. Endless: place wall+tower → Call Early → ground enemy shortest-paths  
-2. Wave checkpoint / Continue works  
-3. Campaign Prep → frozen level → Victory/GO → Prep  
-4. Currencies + starter triad behave per tables  
-5. Node smoke tests under `web/js/tests/` stay green  
-6. Procedural draw + baked UI/SFX clicks (music optional later)  
+Node smoke tests live under `web/js/tests/` — keep them green:
 
-Re-read `GDD.md` before inventing behavior.
+```bash
+for f in web/js/tests/*.test.mjs; do node "$f"; done
+```
+
+Re-read `docs/GDD.md` before inventing behavior.

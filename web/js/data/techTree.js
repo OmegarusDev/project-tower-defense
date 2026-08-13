@@ -9,7 +9,7 @@
  * Part mastery nodes set partId + key → meta.partUpgrades[partId][key].
  */
 
-import { PARTS, partLabel } from "./parts.js";
+import { PARTS, partLabel, MIN_ROSTER_SLOTS, MAX_ROSTER_SLOTS } from "./parts.js";
 
 const AE_CHAIN = (a, b, c) => [{ aether: a }, { aether: b }, { aether: c }];
 const FG_CHAIN = (a, b, c) => [{ forge: a }, { forge: b }, { forge: c }];
@@ -264,9 +264,6 @@ export const TECH_TREES = [
   },
 ];
 
-/** @deprecated alias */
-export const TECH_BRANCHES = TECH_TREES;
-
 const NODE_BY_ID = new Map();
 
 function isHub(node) {
@@ -470,13 +467,16 @@ export function migrateTechRanks(rawMeta) {
   return tech;
 }
 
+export const MIN_LEVEL_CAP = 1;
+export const MAX_LEVEL_CAP = 5;
+
 /** Recompute derived meta fields from tech ranks. */
 export function syncTechDerived(meta) {
   const tech = meta.tech || {};
   const rank = (id) => tech[id] | 0;
 
-  const levelCap = 1 + rank("level_cap"); // 1..5
-  const slotCount = 3 + rank("roster_slots"); // 3..12
+  const levelCap = MIN_LEVEL_CAP + rank("level_cap"); // 1..5
+  const slotCount = MIN_ROSTER_SLOTS + rank("roster_slots"); // 3..12
 
   const startLives = livesFromIronGuardRank(rank("lives"));
   const cashRanks = rank("cash");

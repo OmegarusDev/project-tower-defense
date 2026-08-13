@@ -5,8 +5,16 @@ import {
   normalizeRoster,
   applyWaveUnlocks,
   estimateForgeBuys,
+  MIN_ROSTER_SLOTS,
+  MAX_ROSTER_SLOTS,
 } from "./data/parts.js";
-import { migrateTechRanks, syncTechDerived } from "./data/techTree.js";
+import {
+  migrateTechRanks,
+  syncTechDerived,
+  IRON_GUARD_LIVES,
+  MIN_LEVEL_CAP,
+  MAX_LEVEL_CAP,
+} from "./data/techTree.js";
 
 const META_KEY = "ptd_meta_v1";
 const ENDLESS_KEY = "ptd_endless_v1";
@@ -52,9 +60,12 @@ export function normalizeMeta(m) {
   // Carry legacy fields into migrateTechRanks via `m`; sync writes derived.
   syncTechDerived(draft);
 
-  draft.slotCount = Math.max(3, Math.min(12, draft.slotCount | 0 || 3));
-  draft.levelCap = Math.max(1, Math.min(5, draft.levelCap | 0 || 1));
-  draft.startLives = Math.max(3, Math.min(25, draft.startLives | 0 || 3));
+  draft.slotCount = Math.max(MIN_ROSTER_SLOTS, Math.min(MAX_ROSTER_SLOTS, draft.slotCount | 0 || MIN_ROSTER_SLOTS));
+  draft.levelCap = Math.max(MIN_LEVEL_CAP, Math.min(MAX_LEVEL_CAP, draft.levelCap | 0 || MIN_LEVEL_CAP));
+  draft.startLives = Math.max(
+    IRON_GUARD_LIVES[0],
+    Math.min(IRON_GUARD_LIVES[IRON_GUARD_LIVES.length - 1], draft.startLives | 0 || IRON_GUARD_LIVES[0])
+  );
   draft.startCashBonus = Math.max(0, draft.startCashBonus | 0);
   let forgeBuys = Math.max(0, m.forgeBuys | 0);
   if (forgeBuys === 0) {

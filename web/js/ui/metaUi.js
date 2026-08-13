@@ -90,16 +90,6 @@ export function prepSlotButtonsHtml(meta, activeSlot = 0) {
   return `<div class="prep-slots row">${btns.join("")}</div>`;
 }
 
-export function packThreatLine(packId) {
-  const pack = WAVE_PACKS[packId];
-  if (!pack) return packId;
-  const uniq = [...new Set(pack)];
-  return uniq
-    .slice(0, 4)
-    .map((k) => THREAT_LABEL[k] || k)
-    .join(" · ");
-}
-
 export function endlessThemeBlurb() {
   return ENDLESS_THEMES.map((t) => t.id).slice(0, 5).join(" → ") + "…";
 }

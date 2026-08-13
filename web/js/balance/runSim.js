@@ -6,6 +6,7 @@
 import { SimWorld, TICK_DT } from "../sim/simWorld.js";
 import { makeSlot } from "../data/parts.js";
 import { BASE_START_CASH } from "../data/techTree.js";
+import { ENDLESS_GRID } from "../data/endlessGrid.js";
 
 /**
  * @param {object} opts
@@ -28,7 +29,8 @@ export function runSim(opts = {}) {
   const runLevelCap = Math.max(1, opts.runLevelCap | 0 || 1);
 
   const sim = new SimWorld();
-  sim.setup(11, 14, seed, true);
+  // Match the shipped endless map — the balance bot must measure the real game.
+  sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, seed, true);
   sim.runSeed = seed >>> 0 || 1;
   sim.runLevelCap = runLevelCap;
   sim.setStartLives(opts.startLives | 0 || 3, { resetCurrent: true });
