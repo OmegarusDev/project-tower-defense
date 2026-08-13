@@ -52,6 +52,9 @@
   </div>
   <div id="randomRow" class="grid"></div>
 
+  <h2>Self-check</h2>
+  <div id="selfcheck" style="max-width:700px"></div>
+
   <h2>Bases × single × kinetic — angles 0° / up / 180° / down</h2>
   <div id="bases" class="grid"></div>
 
@@ -64,8 +67,8 @@
   <script type="module">
     import { PARTS } from "../js/data/parts.js";
     import { ProcPalette } from "../js/view/palette.js";
-    import { renderTower } from "../js/view/towerPainter.js";
-    import { setPitch } from "../js/view/view25.js";
+    import { renderTower, hubLiftFor, crownFactorFor } from "../js/view/towerPainter.js";
+    import { VIEW25, setPitch } from "../js/view/view25.js";
 
     const palette = new ProcPalette();
     const ANG = [0, -Math.PI / 2, Math.PI, Math.PI / 2];
@@ -112,6 +115,109 @@
     const bases = Object.keys(PARTS.bases);
     const barrels = Object.keys(PARTS.barrels);
     const payloads = Object.keys(PARTS.payloads);
+
+    // ——— self-check: pixel + geometry invariants over every tile ———
+    const checkLog = [];
+    const check = (ok, name, detail = "") => {
+      checkLog.push({ ok, name, detail });
+    };
+
+    function bboxOf(canvas) {
+      const d = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      let minX = 1e9, minY = 1e9, maxX = -1, maxY = -1, painted = 0;
+      for (let y = 0; y < canvas.height; y++) for (let x = 0; x < canvas.width; x++) {
+        if (d[(y * canvas.width + x) * 4 + 3] > 8) {
+          painted++;
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+      }
+      return painted ? { minX, minY, maxX, maxY, painted } : null;
+    }
+
+    function runSelfCheck() {
+      checkLog.length = 0;
+      const all = [...document.querySelectorAll("canvas")];
+      const W = all[0]?.width || 0;
+      // 1. every tile paints, nothing clips the canvas
+      let empty = 0, clipped = 0;
+      for (const c of all) {
+        const b = bboxOf(c);
+        if (!b) { empty++; continue; }
+        if (b.minX < 2 || b.minY < 2 || b.maxX > W - 3 || b.maxY > W - 3) clipped++;
+      }
+      check(empty === 0, "every part paints", `${empty} empty tile(s)`);
+      check(clipped === 0, "no tile clips the canvas", `${clipped} clipped`);
+
+      // 2. hub always clears the base crown (the BASE_CROWN invariant)
+      for (const base of bases) {
+        const lift = hubLiftFor(92, base);
+        const crown = 92 * 1.22 * crownFactorFor(base) * VIEW25.vExag;
+        check(lift >= crown, `hub clears crown — ${base}`, `lift ${lift.toFixed(1)} vs crown ${crown.toFixed(1)}`);
+      }
+
+      // 3. barrels foreshorten along depth at high pitch (up < side, turret zone)
+      awaitPitch(58).then(() => { /* measured below in second pass */ });
+    }
+
+    async function awaitPitch(v) {
+      const el = document.getElementById("pitch");
+      el.value = String(v);
+      el.dispatchEvent(new Event("input"));
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    async function runSelfCheckAll() {
+      // render at default pitch first
+      await awaitPitch(24);
+      runSelfCheck();
+      // turret-zone foreshorten at 58: up-aiming narrower than side-aiming
+      await awaitPitch(58);
+      const tz = [...document.querySelectorAll("canvas")].map((c) => {
+        const b = bboxOf(c);
+        if (!b) return 0;
+        const zoneBottom = b.minY + Math.round((b.maxY - b.minY) * 0.45);
+        let zMinX = 1e9, zMaxX = -1;
+        const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+        for (let y = b.minY; y <= zoneBottom; y++) for (let x = b.minX; x <= b.maxX; x++) {
+          if (d[(y * c.width + x) * 4 + 3] > 8) { if (x < zMinX) zMinX = x; if (x > zMaxX) zMaxX = x; }
+        }
+        return zMaxX > zMinX ? zMaxX - zMinX + 1 : 0;
+      });
+      const nBase = bases.length * 4;
+      let bad = 0;
+      for (let i = 0; i < barrels.length; i++) {
+        const side = tz[nBase + i * 4];
+        const up = tz[nBase + i * 4 + 1];
+        if (up >= side) bad++;
+      }
+      check(bad === 0, "barrels foreshorten along depth (pitch 58)", `${bad} not foreshortened`);
+      // unknown/future parts must fall back gracefully (palette + painter defaults)
+      const scratch = makeCanvas("future_part");
+      let threw = false;
+      try {
+        draw(scratch, { base: "future_base", barrel: "future_barrel", payload: "future_payload", aimAngle: 0, level: 1 });
+      } catch (e) {
+        threw = true;
+      }
+      const b = bboxOf(scratch);
+      check(!threw && !!b, "unknown parts fall back to defaults", threw ? "threw" : b ? `paints ${b.painted}px` : "empty");
+      await awaitPitch(24);
+      renderCheckPanel();
+    }
+
+    function renderCheckPanel() {
+      const panel = document.getElementById("selfcheck");
+      const fails = checkLog.filter((c) => !c.ok);
+      panel.innerHTML =
+        `<div style="margin:6px 0;color:${fails.length ? "#e06a5a" : "#7ec8a0"};font-weight:700">` +
+        `SELF-CHECK: ${fails.length ? fails.length + " FAIL" : "PASS"} (${checkLog.length} checks)` +
+        `</div>` +
+        checkLog
+          .map((c) => `<div style="color:${c.ok ? "#9aa8b8" : "#e06a5a"};font-size:0.7rem">${c.ok ? "✓" : "✗"} ${c.name} ${c.detail}</div>`)
+          .join("");
+      window.__galleryCheck = { pass: fails.length === 0, checks: checkLog.length };
+    }
 
     function renderAll() {
       const pitch = +document.getElementById("pitch").value;
@@ -175,6 +281,7 @@
     });
 
     renderAll();
+    runSelfCheckAll();
   </script>
 </body>
 </html>

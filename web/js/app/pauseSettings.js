@@ -11,6 +11,7 @@ export function applyPitch(app, deg, { save = true } = {}) {
   if (live && +live.value !== Math.round(v)) live.value = String(Math.round(v));
   const label = app.ui?.querySelector("#pitchLiveVal");
   if (label) label.textContent = `${Math.round(v)}°`;
+  if (app.paintSlotPreviews) app._previewTick = 0;
   if (save) {
     clearTimeout(app._pitchSaveT);
     app._pitchSaveT = setTimeout(() => saveMeta(app.meta), 200);

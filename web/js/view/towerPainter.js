@@ -28,6 +28,28 @@ const BASE_CROWN = {
  * transform: pitch foreshortening (vz/deckRy/groundForeshorten), badge,
  * selection ring. Callers supply only the tower truth + a box + options.
  */
+/** Hub lift above the pad for a given sprite size + base (pixel units). */
+export function hubLiftFor(s, base) {
+  return Math.max(
+    s * VIEW25.rise,
+    s * BASE_SCALE * (BASE_CROWN[base] || 0.22) * VIEW25.vExag
+  );
+}
+
+export function crownFactorFor(base) {
+  return BASE_CROWN[base] || 0.22;
+}
+
+const _crownWarned = new Set();
+function crownOf(base) {
+  const c = BASE_CROWN[base];
+  if (!c && !_crownWarned.has(base)) {
+    _crownWarned.add(base);
+    console.warn(`towerPainter: base "${base}" has no BASE_CROWN entry — hub may not clear its crown`);
+  }
+  return c || 0.22;
+}
+
 export function renderTower(ctx, palette, t, px, py, s, opts = {}) {
   const selected = opts.selected === true;
   const cx = px + s / 2;
@@ -35,8 +57,7 @@ export function renderTower(ctx, palette, t, px, py, s, opts = {}) {
   // least VIEW25.rise, and always clear of the base's tallest crown.
   const groundY = py + s / 2;
   const baseS = s * BASE_SCALE;
-  const crownLift = baseS * (BASE_CROWN[t.base] || 0.22) * VIEW25.vExag;
-  const hubY = groundY - Math.max(s * VIEW25.rise, crownLift);
+  const hubY = groundY - hubLiftFor(s, t.base);
   const angle = aimToDrawAngle(t.aimAngle);
   const barrelS = s * BARREL_SCALE;
   const showBadge = opts.showBadge !== false;
@@ -129,7 +150,7 @@ function drawBase(ctx, palette, base, cx, groundY, s) {
 function drawTurretStem(ctx, palette, base, barrel, cx, groundY, hubY, baseS) {
   // Fill the air between the base crown and the hub (crown factor matches
   // the renderTower lift so the stem never pokes through a base).
-  const crownY = groundY - vz(baseS, BASE_CROWN[base] || 0.22);
+  const crownY = groundY - vz(baseS, crownOf(base));
   const topY = hubY + Math.max(1, baseS * 0.015);
   const rise = crownY - topY;
   if (rise < 3) return;

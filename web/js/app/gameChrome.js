@@ -107,6 +107,7 @@ export function waveBusy(app) {
 }
 
 export function renderGameChrome(app) {
+  app._previewTick = 0;
   if (!app.sim) return;
   const buildBtns = rosterSlotButtons(app, "game");
   const pitch = Math.round(app.meta.settings?.cameraPitch ?? VIEW25.pitchDeg);
@@ -237,6 +238,8 @@ export function applyLiveComposePart(app, kind, id) {
 /** Tiny rotating loadout previews inside arsenal slot tiles. */
 export function paintSlotPreviews(app) {
   if (app.screen !== "game" || !app.sim) return;
+  // The previews rotate on a slow flourish — repaint at ~10fps, not 60.
+  if ((app._previewTick = (app._previewTick | 0) + 1) % 6 !== 0) return;
   const aim = app.slotPreviewAim || -Math.PI / 2;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const css = 40;
