@@ -3,7 +3,6 @@ import {
   ownsPart,
   normalizeRoster,
   partLabel,
-  WAVE_UNLOCKS,
 } from "../data/parts.js";
 import {
   TECH_TREES,
@@ -38,11 +37,8 @@ export function showUpgrade(app, returnTo) {
   else if (app.upgradeReturn === "forge") backAct = "forge";
   const backLabel =
     backAct === "main" ? "Menu" : backAct === "forge" ? "Forge" : backAct.startsWith("prep:") ? "Prep" : "Back";
-  const nextGift = WAVE_UNLOCKS.find((w) => w.bestWave > (app.meta.bestWave | 0));
   const cash = BASE_START_CASH + (app.meta.startCashBonus | 0);
-  const giftLine = nextGift
-    ? `W${app.meta.bestWave || 0} · next gift W${nextGift.bestWave}: ${nextGift.label}`
-    : `W${app.meta.bestWave || 0} · all wave gifts earned`;
+  const giftLine = `Best wave ${app.meta.bestWave || 0} · earn Parts in runs, unlock parts at the Forge`;
   const tabs = TECH_TREES.map((tree) => {
     const active = app.techTreeTab === tree.id ? "active" : "";
     return `<button type="button" class="ttree-tab ${active}" data-act="tech-tab:${tree.id}">${tree.name}</button>`;

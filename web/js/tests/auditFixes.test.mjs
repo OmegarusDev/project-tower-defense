@@ -279,15 +279,14 @@ function placeOpen(sim, slot = 0) {
     barrels: ["single", "twin"],
     payloads: ["kinetic"],
   };
-  // bestWave 0: twin/bulwark not wave-gifted yet → count as forge buys
-  const est = estimateForgeBuys(owned, 0);
+  // Wave gifts removed (2026-08-13): owned paid parts all count as purchases,
+  // so legacy saves with gifted parts migrate as paid.
+  const est = estimateForgeBuys(owned);
   assert(est === 2, `estimate paid parts (got ${est})`);
-  // bestWave high enough for twin+bulwark gifts → 0 forge buys
-  const gifted = estimateForgeBuys(owned, 99);
-  assert(gifted === 0, "wave gifts excluded from forgeBuys");
 
   const n = normalizeMeta({ owned, bestWave: 0, forgeBuys: 0 });
   assert(n.forgeBuys === 2, "normalize backfills forgeBuys");
+  assert(n.owned.bases.includes("bulwark"), "owned parts preserved");
 }
 
 // ——— H9: respec removed (2026-08-13) — respecAllTech no longer exists

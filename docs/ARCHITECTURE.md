@@ -47,12 +47,20 @@ XP fill under `levelCap` auto-levels the tower (+uniform Dmg/ROF/Range) and bank
 
 ```bash
 cd web
-node js/balance/monteCarlo.mjs --runs 5 --preset fresh
-node js/balance/monteCarlo.mjs --runs 5 --preset midMeta --max-waves 8
+node js/balance/monteCarlo.mjs --runs 12 --preset fresh
+node js/balance/monteCarlo.mjs --runs 12 --preset earlyAA
+node js/balance/monteCarlo.mjs --runs 12 --preset parts2
+node js/balance/monteCarlo.mjs --runs 4 --preset midMeta --max-waves 45
 ```
 
-Presets: `fresh` (cap 1) vs `midMeta` (cap 4 + light tech) so multi-level scaling is measurable.
-Runs use the shipped endless map (`ENDLESS_GRID`, 9×8) — the bot measures the real game.
+Presets ladder the Forge progression (all bots are greedy — real players do better):
+`fresh` (starters only, cap 1) → `earlyAA` (+rail) → `parts2` (+rail/twin/bulwark, cap 2) → `midMeta` (cap 4 + tech).
+Measured on the shipped endless map (`ENDLESS_GRID`, 9×8).
+`node js/balance/diagRun.mjs --preset fresh --seed 1` gives per-wave leak/kill detail.
+
+Enemy HP: ×1.05/wave, accelerating ×1.02/wave extra past wave 15 so late endless
+outpaces meta investment. Wave-gift unlocks were removed (2026-08-13) — all
+parts are Forge purchases; legacy saves keep gifted parts (migrated as paid).
 
 > Note: the aura system (`providesAura`, `_rebuildAuras`) is currently dead code —
 > no base defines an aura. Keep the scaffolding until the combat refactor decides.

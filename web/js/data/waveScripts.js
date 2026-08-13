@@ -42,10 +42,10 @@ WAVE_PACKS.leech_pack = WAVE_PACKS.siphon_pack;
  */
 export const ENDLESS_THEMES = [
   { id: "mites", unlock: 1, w: 1.25, kinds: { mite: 0.72, courier: 0.28 } },
-  { id: "rush", unlock: 2, w: 1, kinds: { courier: 0.55, mite: 0.25, phantom: 0.2 } },
+  { id: "rush", unlock: 2, w: 1, kinds: { courier: 0.6, mite: 0.4 } },
   { id: "haulers", unlock: 3, w: 1, kinds: { hauler: 0.35, ward: 0.25, mite: 0.25, kiln: 0.15 } },
-  { id: "ducts", unlock: 4, w: 1, kinds: { duct: 0.4, phantom: 0.3, mite: 0.2, courier: 0.1 } },
-  { id: "breach", unlock: 5, w: 0.9, kinds: { cask: 0.3, courier: 0.25, mite: 0.25, siphon: 0.2 } },
+  { id: "breach", unlock: 4, w: 0.9, kinds: { cask: 0.3, courier: 0.25, mite: 0.25, siphon: 0.2 } },
+  { id: "ducts", unlock: 5, w: 1, kinds: { duct: 0.4, phantom: 0.3, mite: 0.2, courier: 0.1 } },
   { id: "foundry", unlock: 7, w: 0.85, kinds: { kiln: 0.35, hauler: 0.25, ward: 0.2, mite: 0.2 } },
   {
     id: "ceramite",
@@ -82,7 +82,7 @@ export const ENDLESS_THEMES = [
 export const ENDLESS_EVENTS = [
   {
     id: "sky_breach",
-    unlock: 5,
+    unlock: 6,
     chance: 0.14,
     kinds: { duct: 0.45, phantom: 0.35, courier: 0.1, mite: 0.1 },
   },

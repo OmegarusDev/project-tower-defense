@@ -98,7 +98,10 @@ export class WaveManager {
     const id = resolveEnemyKind(kind);
     const def = enemyDef(id);
     const w = Math.max(1, wave || 1);
-    const scale = Math.pow(1.05, w - 1) * (opts.scale || 1);
+    // HP curve: 5%/wave early, then +2%/wave extra after wave 15 so late-game
+    // endless outpaces meta investment instead of running forever.
+    const late = Math.pow(1.02, Math.max(0, w - 15));
+    const scale = Math.pow(1.05, w - 1) * late * (opts.scale || 1);
     // Endless: mild speed ramp; heavies take less of it. Campaign: authored speedMult.
     let speedMult = opts.speedMult != null ? opts.speedMult : this._waveSpeedMult || 1;
     if (this.world.modeEndless) {

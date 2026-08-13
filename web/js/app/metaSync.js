@@ -1,5 +1,5 @@
 /** Extracted from App — pure move, no gameplay changes. */
-import { normalizeRoster, applyWaveUnlocks } from "../data/parts.js";
+import { normalizeRoster } from "../data/parts.js";
 import { syncTechDerived, BASE_START_LIVES } from "../data/techTree.js";
 import { saveMeta } from "../saveStore.js";
 
@@ -80,13 +80,12 @@ export function syncMetaProgress(app) {
   };
   // Keep sim vault aligned with meta after merge (display + further clears).
   app.sim.economy.injectMeta(app.meta.forge, app.meta.aether);
-  // Endless progress only — campaign clears must not unlock endless wave gifts.
+  // Endless progress record only — no wave-gift unlocks anymore (Forge is the
+  // only source of new parts). Campaign clears never touch bestWave.
   if (app.sim.modeEndless) {
     app.meta.bestWave = Math.max(app.meta.bestWave | 0, app.sim.waveIndex);
   }
-  const { owned, gained } = applyWaveUnlocks(app.meta.owned, app.meta.bestWave);
-  app.meta.owned = owned;
   persistMeta(app);
-  return gained;
+  return [];
   
 }

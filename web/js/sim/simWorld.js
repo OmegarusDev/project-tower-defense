@@ -436,7 +436,7 @@ export class SimWorld {
       }
       this._advance(e);
       if (e.reachedExit) {
-        this.lives -= e.leakDamage || 1;
+        this.lives = Math.max(0, this.lives - (e.leakDamage || 1));
         this.emit("leak", { enemy: e, lives: this.lives });
         this.enemies.splice(i, 1);
         if (this.lives <= 0) {

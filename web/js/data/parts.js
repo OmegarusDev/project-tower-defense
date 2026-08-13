@@ -256,23 +256,6 @@ export const STARTER_OWNED = {
   payloads: ["kinetic"],
 };
 
-/** Free parts granted when bestWave reaches the threshold (meta progression). */
-export const WAVE_UNLOCKS = [
-  { bestWave: 2, barrels: ["twin"], label: "Twin barrel" },
-  { bestWave: 4, payloads: ["frost"], label: "Frost payload" },
-  { bestWave: 6, bases: ["bulwark"], label: "Bulwark base" },
-  { bestWave: 8, barrels: ["rail"], label: "Rail barrel" },
-  { bestWave: 10, bases: ["warden"], label: "Warden base" },
-  { bestWave: 12, payloads: ["pyro"], label: "Pyro payload" },
-  { bestWave: 14, bases: ["talon", "aerie"], label: "Talon & Aerie" },
-  { bestWave: 16, payloads: ["poison"], label: "Poison payload" },
-  { bestWave: 18, barrels: ["pulse"], label: "Pulse barrel" },
-  { bestWave: 20, payloads: ["acid"], label: "Acid payload" },
-  { bestWave: 22, barrels: ["flak"], label: "Flak barrel" },
-  { bestWave: 24, payloads: ["breach"], label: "Breach payload" },
-  { bestWave: 26, payloads: ["emp"], label: "EMP payload" },
-];
-
 /** Soft roster size — matches roster_slots tech (3→12). */
 export const MIN_ROSTER_SLOTS = 3;
 export const MAX_ROSTER_SLOTS = 12;
@@ -281,29 +264,24 @@ export const MAX_ROSTER_SLOTS = 12;
 export const XP_TO_POINT = 55;
 
 /**
- * Count owned paid Forge purchases (forgeCost>0), excluding starters and
- * wave-gift unlocks already granted by bestWave. Used to backfill forgeBuys.
+ * Count owned paid Forge purchases (forgeCost>0), excluding starters.
+ * Used to backfill forgeBuys on legacy saves — a part owned at load time
+ * counts as already purchased (old wave gifts migrate as paid, keeping the
+ * Forge escalation pricing consistent with what the player actually holds).
  */
-export function estimateForgeBuys(owned, bestWave = 0) {
+export function estimateForgeBuys(owned) {
   const o = normalizeOwned(owned);
-  const gifted = applyWaveUnlocks(defaultOwned(), bestWave | 0).owned;
-  const giftSet = new Set([
-    ...gifted.bases.map((id) => `base:${id}`),
-    ...gifted.barrels.map((id) => `barrel:${id}`),
-    ...gifted.payloads.map((id) => `payload:${id}`),
-  ]);
   let n = 0;
-  const tally = (kind, key, table) => {
+  const tally = (key, table) => {
     for (const id of o[key] || []) {
       const row = table[id];
       if (!row || (row.forgeCost | 0) <= 0) continue;
-      if (giftSet.has(`${kind}:${id}`)) continue;
       n += 1;
     }
   };
-  tally("base", "bases", PARTS.bases);
-  tally("barrel", "barrels", PARTS.barrels);
-  tally("payload", "payloads", PARTS.payloads);
+  tally("bases", PARTS.bases);
+  tally("barrels", PARTS.barrels);
+  tally("payloads", PARTS.payloads);
   return n;
 }
 
@@ -441,34 +419,6 @@ export function normalizeOwned(owned) {
     barrels: migrateList("barrel", "barrels"),
     payloads: migrateList("payload", "payloads"),
   };
-}
-
-/** Apply bestWave milestone unlocks. Returns newly granted part labels. */
-export function applyWaveUnlocks(owned, bestWave) {
-  const o = normalizeOwned(owned);
-  const gained = [];
-  for (const row of WAVE_UNLOCKS) {
-    if ((bestWave | 0) < row.bestWave) continue;
-    for (const id of row.bases || []) {
-      if (!o.bases.includes(id)) {
-        o.bases.push(id);
-        gained.push(partLabel(id));
-      }
-    }
-    for (const id of row.barrels || []) {
-      if (!o.barrels.includes(id)) {
-        o.barrels.push(id);
-        gained.push(partLabel(id));
-      }
-    }
-    for (const id of row.payloads || []) {
-      if (!o.payloads.includes(id)) {
-        o.payloads.push(id);
-        gained.push(partLabel(id));
-      }
-    }
-  }
-  return { owned: o, gained };
 }
 
 export function partLabel(id) {

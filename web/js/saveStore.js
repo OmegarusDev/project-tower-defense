@@ -3,7 +3,6 @@ import {
   defaultOwned,
   normalizeOwned,
   normalizeRoster,
-  applyWaveUnlocks,
   estimateForgeBuys,
   MIN_ROSTER_SLOTS,
   MAX_ROSTER_SLOTS,
@@ -32,8 +31,7 @@ export function loadMeta() {
 
 export function normalizeMeta(m) {
   const bestWave = m.bestWave | 0;
-  let owned = normalizeOwned(m.owned || defaultOwned());
-  owned = applyWaveUnlocks(owned, bestWave).owned;
+  const owned = normalizeOwned(m.owned || defaultOwned());
 
   const tech = migrateTechRanks(m);
   const draft = {
@@ -69,7 +67,7 @@ export function normalizeMeta(m) {
   draft.startCashBonus = Math.max(0, draft.startCashBonus | 0);
   let forgeBuys = Math.max(0, m.forgeBuys | 0);
   if (forgeBuys === 0) {
-    forgeBuys = estimateForgeBuys(owned, bestWave);
+    forgeBuys = estimateForgeBuys(owned);
   }
   draft.forgeBuys = forgeBuys;
   draft.forgeCostMult = 1;
