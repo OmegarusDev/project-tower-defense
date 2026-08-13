@@ -485,6 +485,7 @@ export class SimWorld {
             id: e.id,
             tick: this.tickIndex | 0,
             avoidTowers: !e.ignoreTowerAvoid,
+            entity: e,
           });
       if (next.x === cx && next.y === cy) {
         if (this.grid.isExit(cx, cy)) e.reachedExit = true;

@@ -44,6 +44,7 @@ export class BoardGrid {
     this.groundDist = new Int32Array(n).fill(INF);
     this.airDist = new Int32Array(n).fill(INF);
     this.towerProx = new Int16Array(n);
+    this.forkTicks = new Uint8Array(n);
     this.groundNext = new Array(n);
     this.airNext = new Array(n);
     for (let i = 0; i < n; i++) {
@@ -220,9 +221,13 @@ export class BoardGrid {
 
   /**
    * Collect downhill neighbors at the minimum groundDist, optionally prefer
-   * lower towerProx, then fair-split remaining ties.
+   * lower towerProx. Live enemy picks (pickNextGround) alternate branches with
+   * a per-cell round-robin counter — the next enemy through the cell takes the
+   * next branch, and a mid-glide re-pick always returns the same branch (no
+   * tick-dependent hash, which made enemies jitter forever at forks). The
+   * canonical viz path (_bfs) keeps DIR-order first via the static hash.
    */
-  _pickAmong(x, y, dist, flying, { avoidTowers = true, id = 0, tick = 0 } = {}) {
+  _pickAmong(x, y, dist, flying, { avoidTowers = true, id = 0, tick = 0, live = false, entity = null } = {}) {
     const cur = dist[this.idx(x, y)];
     let bestD = INF;
     const cands = [];
@@ -259,6 +264,28 @@ export class BoardGrid {
     }
 
     if (pool.length === 1) return pool[0];
+    if (live) {
+      // Stable per (enemy, cell): the first enemy through the fork takes the
+      // next branch (round-robin), and mid-glide re-picks return the stored
+      // branch — no tick-dependent re-roll, so enemies never jitter at forks.
+      const stored =
+        entity &&
+        entity._pick &&
+        entity._pick.cx === x &&
+        entity._pick.cy === y;
+      if (
+        stored &&
+        pool.some((c) => c.x === entity._pick.bx && c.y === entity._pick.by)
+      ) {
+        return { x: entity._pick.bx, y: entity._pick.by };
+      }
+      const k = this.idx(x, y);
+      const h = this.forkTicks[k] || 0;
+      this.forkTicks[k] = (h + 1) % pool.length;
+      const branch = pool[h];
+      if (entity) entity._pick = { cx: x, cy: y, bx: branch.x, by: branch.y };
+      return branch;
+    }
     const h = BoardGrid.pathTieHash(id, x, y, tick);
     return pool[h % pool.length];
   }
@@ -285,6 +312,8 @@ export class BoardGrid {
       avoidTowers: opts.avoidTowers !== false,
       id: opts.id | 0,
       tick: opts.tick | 0,
+      live: true,
+      entity: opts.entity || null,
     });
   }
 

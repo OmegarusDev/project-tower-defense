@@ -29,7 +29,7 @@ PLAY.html        # thin launcher → GitHub Pages
 
 | Engine | Role |
 |--------|------|
-| `BoardGrid` | Exit BFS distance fields (ground + air); per-enemy next-step with soft tower-avoid + fair tie-split (air unchanged) |
+| `BoardGrid` | Exit BFS distance fields (ground + air); per-enemy next-step with soft tower-avoid (air unchanged). Live fork ties alternate via a per-cell round-robin counter with the decision cached on the enemy (`_pick`), so mid-glide re-picks are stable — no tick-hash jitter, no fork freezing. Canonical viz path keeps DIR-order |
 | `AttackPlan` | `(base,barrel,payload,level,opts)` → pattern/damage; auto-level + branch ranks; base×barrel range/ROF mults stack with Arsenal ranks |
 | `combat` | Targeting, projectiles (pierce / ballistic / homing coast), pulses, status, XP→auto-level + pending branch picks |
 | `waves` | Wave compose (endless themes / campaign packs), spawn pacing, **roaming seam portal** (endless dwell schedule, spawn-time reachability guard), enemy HP/speed scaling |
@@ -79,6 +79,10 @@ purchase still pairs up at the tighter economy. 12-run medians after:
 fresh 4.9w/GO 1.0 (brutal, no-meta treadmill), earlyAA 12.7/.92, parts2 14.4/.92,
 midMeta 28.7/1.0 — meta buys ~6× depth. Fresh is intentionally very hard;
 War Chest / Iron Guard / Bargainer / level caps are the ball-rolling curve.
+After the fork-path fix (2026-08-13, tick-hash jitter removed): fresh 3.25/1.0
+(the 2-tower opening is kill-zone bound — a mite escapes the starter pair each
+wave; HP-insensitive), earlyAA 13.5/.92, parts2 16/.92, midMeta 28.67/1.0 —
+smooth alternating flow spreads traffic, easing the mid-game slightly.
 `node js/balance/diagRun.mjs --preset fresh --seed 1` gives per-wave leak/kill detail.
 
 Enemy HP (endless): ×1.05/wave steady growth, ×1.02/wave extra past wave 15 so late
