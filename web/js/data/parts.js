@@ -127,7 +127,7 @@ export const PARTS = {
       speed: 12,
       airCapable: true,
       homing: false,
-      cost: 18,
+      cost: 12,
       forgeCost: 6,
       blurb: "Long pierce; hits air — slow cadence",
     },

@@ -102,8 +102,9 @@ export const ENDLESS_EVENTS = [
 
 export function composeEndlessWave(wave, rand) {
   const w = Math.max(1, wave | 0);
-  // Slightly denser packs than before
-  let budget = 8.5 + w * 1.45 + Math.floor(w / 3) * 0.9 + rand() * (2.2 + w * 0.16);
+  // Tight opening: small packs early (fewer enemies, tighter margins), then a
+  // steady rise — the mid-game wall comes from the HP curve, not swarm size.
+  let budget = 6.5 + w * 1.45 + Math.floor(w / 3) * 0.9 + rand() * (2.2 + w * 0.16);
   const unlocked = ENDLESS_THEMES.filter((t) => w >= t.unlock);
   const theme = weightedPick(unlocked, rand);
   let event = "";

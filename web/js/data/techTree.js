@@ -573,4 +573,4 @@ export function spendTechCost(meta, cost) {
 }
 
 /** Default endless / campaign base Coin before War Chest bonus. */
-export const BASE_START_CASH = 75;
+export const BASE_START_CASH = 55;

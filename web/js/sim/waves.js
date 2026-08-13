@@ -176,10 +176,18 @@ export class WaveManager {
     const id = resolveEnemyKind(kind);
     const def = enemyDef(id);
     const w = Math.max(1, wave || 1);
-    // HP curve: 5%/wave early, then +2%/wave extra after wave 15 so late-game
-    // endless outpaces meta investment instead of running forever.
-    const late = Math.pow(1.02, Math.max(0, w - 15));
-    const scale = Math.pow(1.05, w - 1) * late * (opts.scale || 1);
+    // HP curve: 5%/wave steady growth + late 2%/wave extra past 15 so late
+    // endless outpaces meta investment. Endless only: a tighter opening
+    // (waves 2-3 punch above the base) and a mid-game wall (waves 8-16) that
+    // compensates the roaming-seam spread. Campaign keeps the classic curve.
+    let scale =
+      Math.pow(1.05, w - 1) *
+      Math.pow(1.02, Math.max(0, w - 15)) *
+      (opts.scale || 1);
+    if (this.world.modeEndless) {
+      scale *= Math.pow(1.08, Math.min(2, Math.max(0, w - 1)));
+      scale *= Math.pow(1.025, Math.min(9, Math.max(0, w - 7)));
+    }
     // Endless: mild speed ramp; heavies take less of it. Campaign: authored speedMult.
     let speedMult = opts.speedMult != null ? opts.speedMult : this._waveSpeedMult || 1;
     if (this.world.modeEndless) {

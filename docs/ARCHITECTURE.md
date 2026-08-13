@@ -71,17 +71,21 @@ node js/balance/monteCarlo.mjs --runs 4 --preset midMeta --max-waves 45
 Presets ladder the Forge progression (all bots are greedy — real players do better):
 `fresh` (starters only, cap 1) → `earlyAA` (+rail) → `parts2` (+rail/twin/bulwark, cap 2) → `midMeta` (cap 4 + tech).
 Measured on the shipped endless map (`ENDLESS_GRID`, 9×8).
-Post-refactor (2026-08-13) 12-run medians: fresh 7.25w/GO .83, earlyAA 8.9w/GO .75,
-parts2 12.1w/GO .75, midMeta 32.4w/GO 1.0 — baseline held after synergies + enemy identity.
-After the roaming seam portal (2026-08-13): fresh 7.4/.83, earlyAA 16.3/.25,
-parts2 19.7/.25, midMeta 32.3/.92 — spread spawns removed choke-bunching, easing the
-mid-game ~2× for the wall-less greedy bot; early (long dwell, short waves) and late
-(HP ramp dominates) unchanged. Re-tune compose pacing if mid-game difficulty targets move.
+Difficulty rebalance (2026-08-13): start Coin 75→55 (2 starter towers), early
+packs trimmed ~20% (fewer enemies, tighter margins), endless HP gets a tighter
+opening (×1.08^min(2,w−1)) and a mid-game wall (×1.025^min(9,w−7)) that
+compensates the roaming-seam spread; rail place cost 18→12 so the first Forge
+purchase still pairs up at the tighter economy. 12-run medians after:
+fresh 4.9w/GO 1.0 (brutal, no-meta treadmill), earlyAA 12.7/.92, parts2 14.4/.92,
+midMeta 28.7/1.0 — meta buys ~6× depth. Fresh is intentionally very hard;
+War Chest / Iron Guard / Bargainer / level caps are the ball-rolling curve.
 `node js/balance/diagRun.mjs --preset fresh --seed 1` gives per-wave leak/kill detail.
 
-Enemy HP: ×1.05/wave, accelerating ×1.02/wave extra past wave 15 so late endless
-outpaces meta investment. Wave-gift unlocks were removed (2026-08-13) — all
-parts are Forge purchases; legacy saves keep gifted parts (migrated as paid).
+Enemy HP (endless): ×1.05/wave steady growth, ×1.02/wave extra past wave 15 so late
+endless outpaces meta investment; plus the endless-only opening + mid-game terms
+above. Campaign keeps the classic curve (authored queues). Wave-gift unlocks were
+removed (2026-08-13) — all parts are Forge purchases; legacy saves keep gifted
+parts (migrated as paid).
 
 > Note (2026-08-13): the combat refactor landed. Cross-status synergies are live
 > in `CombatSystem`: burn×poison (+50% poison tick while burning), shred×fire
