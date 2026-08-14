@@ -1,20 +1,11 @@
 /** Extracted from App — pure move, no gameplay changes. */
+import { makeSlot, forgeBuyCost, ownsPart, normalizeRoster } from "../data/parts.js";
 import {
-  makeSlot,
-  PARTS,
-  forgeBuyCost,
-  ownsPart,
-  normalizeRoster,
-  partLabel,
-  doctrineLabel,
-} from "../data/parts.js";
-import {
-  syncTechDerived,
-  nextRosterSlotUnlock,
-  formatTechCost,
-  canAffordTech,
-  spendTechCost,
-} from "../data/techTree.js";
+  forgeApplyPart,
+  forgeClearSlot,
+  forgeUnlockSlot,
+  forgeBuyPart,
+} from "../app/forgeLogic.js";
 import { renderTowerNext } from "../view/next/renderTower.js";
 import { forgePlanSummary, forgePartGridHtml } from "./next/screens.js";
 import { rosterSlotButtons } from "../app/gameChrome.js";
@@ -165,83 +156,56 @@ export function applyForgePart(app, kind, id) {
     app.buyPart(kind, id, true);
     return;
   }
-  const s = app.meta.roster[app.forgeSlot] || makeSlot("", "", "", app.meta.levelCap);
-  s[kind] = id;
-  app.meta.roster[app.forgeSlot] = makeSlot(s.base, s.barrel, s.payload, app.meta.levelCap);
+  const r = forgeApplyPart(app.meta, app.forgeSlot, kind, id);
   app.persistMeta();
   if (app.sim) app._syncSimFromMeta(app.sim);
   app.synth.play("ui");
-  app.status = `Slot ${app.forgeSlot + 1}: set ${kind}`;
+  app.status = r.status;
   refreshForgeUi(app);
   
 }
 
 export function clearForgeSlot(app) {
-  app.meta.roster[app.forgeSlot] = makeSlot("", "", "", app.meta.levelCap);
+  const r = forgeClearSlot(app.meta, app.forgeSlot);
   app.persistMeta();
   if (app.sim) app._syncSimFromMeta(app.sim);
-  app.status = `Slot ${app.forgeSlot + 1} cleared`;
+  app.status = r.status;
   refreshForgeUi(app);
   
 }
 
 /** Unlock next roster slot with Aether (same tech path as Roster Slots). */
 export function unlockForgeSlot(app, wantIndex) {
-  const next = nextRosterSlotUnlock(app.meta);
-  if (!next) {
-    app.toast("All roster slots unlocked");
+  const r = forgeUnlockSlot(app.meta, wantIndex);
+  if (!r.ok) {
+    app.toast(r.need || "All roster slots unlocked");
     return;
   }
-  if (wantIndex != null && wantIndex !== next.nextSlotIndex) {
-    app.toast(`Unlock Slot ${next.nextSlotCount} first`);
-    return;
-  }
-  if (!canAffordTech(app.meta, next.cost)) {
-    return app.toast(`Need ${formatTechCost(next.cost)}`);
-  }
-  spendTechCost(app.meta, next.cost);
-  app.meta.tech = app.meta.tech || {};
-  app.meta.tech[next.node.id] = next.rank + 1;
-  syncTechDerived(app.meta);
-  app.meta.roster = normalizeRoster(
-    app.meta.roster,
-    app.meta.slotCount,
-    app.meta.levelCap
-  );
-  app.forgeSlot = next.nextSlotIndex;
+  app.forgeSlot = r.slotIndex;
   app.persistMeta();
   if (app.sim) app._syncSimFromMeta(app.sim);
   app.synth.play("confirm");
-  app.status = `Unlocked slot ${next.nextSlotCount}`;
+  app.status = r.status;
   refreshForgeUi(app, { rebuildParts: true });
   
 }
 
 /** Unlock with Forge parts; when from Forge UI, also equip onto the active slot. */
 export function buyPart(app, kind, id, equip = true) {
-  if (ownsPart(app.meta.owned, kind, id)) {
-    if (equip) app.applyForgePart(kind, id);
-    else app.toast("Already owned");
+  const r = forgeBuyPart(app.meta, app.forgeSlot, kind, id, equip);
+  if (!r.ok) {
+    if (r.reason === "owned") {
+      if (equip) app.applyForgePart(kind, id);
+      else app.toast("Already owned");
+    } else {
+      app.toast(`Need ${r.need} Forge parts`);
+    }
     return;
-  }
-  const cost = forgeCost(app, kind, id);
-  if (app.meta.forge < cost) {
-    app.toast(`Need ${cost} Forge parts`);
-    return;
-  }
-  app.meta.forge -= cost;
-  app.meta.forgeBuys = (app.meta.forgeBuys | 0) + 1;
-  const key = kind === "base" ? "bases" : kind === "barrel" ? "barrels" : "payloads";
-  if (!app.meta.owned[key].includes(id)) app.meta.owned[key].push(id);
-  if (equip) {
-    const s = app.meta.roster[app.forgeSlot] || makeSlot("", "", "", app.meta.levelCap);
-    s[kind] = id;
-    app.meta.roster[app.forgeSlot] = makeSlot(s.base, s.barrel, s.payload, app.meta.levelCap);
   }
   app.persistMeta();
   if (app.sim) app._syncSimFromMeta(app.sim);
   app.synth.play("confirm");
-  app.status = `Unlocked ${partLabel(id)}${equip ? " · equipped" : ""}`;
+  app.status = r.status;
   refreshForgeUi(app, { rebuildParts: true });
   
 }
