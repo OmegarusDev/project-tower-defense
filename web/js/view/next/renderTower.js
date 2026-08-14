@@ -30,6 +30,35 @@ export function renderTowerNext(ctx, palette, t, px, py, s, opts = {}) {
   drawBaseVisuals(ctx, cx, groundY, baseS, t.base, baseMats);
   drawTurretStem(ctx, cx, groundY, hubY, baseS, t.base, metal);
   drawTurret(ctx, t, cx, hubY, barrelS, b, metal, tip, barrelMats);
+
+  if (opts.showBadge !== false) {
+    const lvl = Math.max(1, t.level | 0);
+    const badgeR = Math.max(7, s * 0.14);
+    const bx = px + s - badgeR - 2;
+    const by = py + badgeR + 2;
+    ctx.fillStyle = "rgba(20,16,12,0.75)";
+    ctx.beginPath();
+    ctx.arc(bx, by, badgeR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = withAlpha(palette.accent, 0.85);
+    ctx.lineWidth = 1.25;
+    ctx.stroke();
+    ctx.fillStyle = palette.text || "#ebe6d8";
+    ctx.font = `700 ${Math.max(8, s * 0.2)}px "Chakra Petch", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${lvl}`, bx, by + 0.5);
+    ctx.lineWidth = 1;
+  }
+
+  if (opts.selected) {
+    ctx.strokeStyle = withAlpha(palette.accent, 0.85);
+    ctx.lineWidth = 1.5;
+    const inset = 3;
+    roundRect(ctx, px + inset, py + inset, s - inset * 2, s - inset * 2, 4);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+  }
 }
 
 function drawGroundShadow(ctx, cx, groundY, s) {

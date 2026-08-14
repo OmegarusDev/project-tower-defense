@@ -82,10 +82,15 @@ tolerance (render). The live game must remain the oracle throughout.
 - **Phase 2c (deferred to swap):** plan-resolver step table. Deliberately deferred — a
   `mods`-array would duplicate the existing declarative part fields (more bytes, not fewer).
   The resolver collapse happens when the old `attackPlan.js` dies for real.
-- **Phase 3 (in progress):** render port — `view/next/` with parts declaring visual
+- **Phase 3 (render port, done):** `view/next/` with parts declaring visual
   primitives (cyl/box/frustum/ring/tube/cap/gem), generic instantiator over the two-factor
-  basis (`groundBasis`/`capEllipse`/`prims25` reused). Golden-gated tile by tile. The
-  board scene (boardView 1,678 lines) splits into renderers afterward.
+  basis (`groundBasis`/`capEllipse`/`prims25` reused). Golden-gated tile by tile
+  (168 tower tiles) and enemy by enemy (24 tiles). Board scene ported as pure
+  renderers in `view/next/boardScene.js` (shadow/field/deck tiles/brackets/walls/
+  bastion/path/portal/stains/tower frames/enemy frames/projectiles/ghost/pending/
+  hover/atmosphere) — byte-identical vs the oracle BoardView methods on shared
+  cameras (`tools/corpus/boardParity.mjs`). Badge + selection ring added to
+  renderTower (untested by the tile goldens — showBadge:false there).
 - **Phase 4:** UI registry + component refresh (screens as pure render fns; `app.js` god-object dies).
 - **Phase 5:** CI (GitHub Action: verify + parity + render gates on every push) + sim fuzz.
 - **Phase 6:** swap the entry point, run the FULL corpus + ladder + browser walk, delete the

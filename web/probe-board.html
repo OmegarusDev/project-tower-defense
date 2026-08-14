@@ -1,0 +1,483 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  body { margin: 0; }
+  canvas { width: 960px; height: 540px; display: block; }
+</style></head>
+<body>
+<script type="module">
+  import { ProcPalette } from "/js/view/palette.js";
+  import { BoardView } from "/js/view/boardView.js";
+  import { SimWorld } from "/js/sim/simWorld.js";
+  import { ENDLESS_GRID } from "/js/data/endlessGrid.js";
+  import { buildAttackPlan, planOptsFromParts } from "/js/sim/attackPlan.js";
+  import * as S from "/js/view/next/boardScene.js";
+
+  const palette = new ProcPalette();
+  const W = 960, H = 540;
+  const SEED = 42;
+
+  function buildMotes() {
+    return Array.from({ length: 18 }, () => ({
+      u: Math.random(),
+      v: Math.random(),
+      r: 0.5 + Math.random() * 1.4,
+      sp: 0.012 + Math.random() * 0.03,
+      ph: Math.random() * Math.PI * 2,
+      warm: Math.random() > 0.4,
+    }));
+  }
+
+  function buildScene() {
+    if (window.__rngReset) window.__rngReset();
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    document.body.appendChild(canvas);
+    const sim = new SimWorld();
+    sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, SEED, true);
+    sim.partUpgrades = {};
+    sim.globalMods = {};
+    sim.portal = { x: 4, y: 0 };
+    sim.walls.push({ cell: { x: 2, y: 3 }, hp: 4, maxHp: 4 });
+    sim.walls.push({ cell: { x: 6, y: 5 }, hp: 4, maxHp: 4 });
+
+    sim.towers.push({
+      id: 11, cell: { x: 2, y: 4 }, base: "sentry", barrel: "single", payload: "kinetic",
+      level: 1, xp: 0, xpToPoint: 100, levelCap: 5, aimAngle: -Math.PI / 2,
+    });
+    sim.towers.push({
+      id: 12, cell: { x: 6, y: 4 }, base: "warden", barrel: "flak", payload: "fire",
+      level: 3, xp: 75, xpToPoint: 100, levelCap: 5, aimAngle: 0.4,
+    });
+    sim.towers.push({
+      id: 13, cell: { x: 4, y: 2 }, base: "spire", barrel: "twin", payload: "shock",
+      level: 2, xp: 40, xpToPoint: 100, levelCap: 5, aimAngle: 1.1,
+    });
+    sim.towers.push({
+      id: 14, cell: { x: 4, y: 6 }, base: "aerie", barrel: "pulse", payload: "kinetic",
+      level: 3, xp: 60, xpToPoint: 100, levelCap: 3, aimAngle: 0,
+    });
+
+    sim.enemies.push(
+      { id: 1, pos: { x: 4.0, y: 0.5 }, hp: 60, maxHp: 100, kind: "mite", silhouette: "mite" },
+      { id: 2, pos: { x: 4.2, y: 2.0 }, hp: 20, maxHp: 100, kind: "hauler", silhouette: "hauler", shieldHp: 50 },
+      { id: 3, pos: { x: 4.5, y: 3.4 }, hp: 80, maxHp: 100, kind: "ward", silhouette: "ward", burnT: 2 },
+      { id: 4, pos: { x: 3.9, y: 5.1 }, hp: 50, maxHp: 100, kind: "cask", silhouette: "cask", poisonT: 3, _hitFlash: 0.3 },
+      { id: 5, pos: { x: 4.3, y: 6.3 }, hp: 70, maxHp: 100, kind: "phantom", silhouette: "phantom", slowT: 1 },
+      { id: 6, pos: { x: 5.0, y: 7.1 }, hp: 90, maxHp: 100, kind: "kiln", silhouette: "kiln", regen: 1 },
+      { id: 7, pos: { x: 4.0, y: 1.5 }, hp: 40, maxHp: 100, kind: "claim", silhouette: "claim", shredT: 2 }
+    );
+
+    sim.projectiles.push(
+      { pos: { x: 4.0, y: 3.0 }, damageType: "kinetic", vx: 1, vy: 0.4 },
+      { pos: { x: 4.4, y: 3.6 }, damageType: "fire", vx: -0.6, vy: 0.8 },
+      { pos: { x: 4.8, y: 4.2 }, damageType: "frost", vx: 0.5, vy: -0.3 },
+      { pos: { x: 4.2, y: 5.0 }, damageType: "acid", vx: 0.3, vy: 0.9 },
+      { pos: { x: 4.6, y: 5.6 }, damageType: "shock", vx: -0.8, vy: 0.2 },
+      { pos: { x: 3.8, y: 4.4 }, damageType: "poison", vx: 0.7, vy: 0.5 }
+    );
+    for (const p of sim.projectiles) {
+      p._trail = [
+        { x: p.pos.x - p.vx * 0.6, y: p.pos.y - p.vy * 0.6 },
+        { x: p.pos.x - p.vx * 0.3, y: p.pos.y - p.vy * 0.3 },
+      ];
+    }
+
+    const board = new BoardView(canvas, palette);
+    board.setSim(sim);
+    board._fit(true);
+    board.hover = { x: 7, y: 6 };
+    board._ghostPlan = {
+      plan: buildAttackPlan("warden", "twin", "shock", 1, planOptsFromParts({}, {}, {})),
+      cell: { x: 2, y: 2 },
+    };
+    board.pendingPlace = { x: 6, y: 2, base: "bulwark", barrel: "scatter", payload: "fire" };
+    board.selectedTowerId = 13;
+    board.addStain(3.5, 4.5, "kinetic");
+    board.addStain(5.5, 6.5, "fire");
+    board.addStain(4.5, 2.5, "frost");
+    board.addStain(6.5, 3.5, "acid");
+    board._bastionFlinch = 0;
+    return { canvas, board, sim, motes: buildMotes() };
+  }
+
+  function clearFrame(ctx) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = palette.void;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  window.__drawBoardOracle = () => {
+    const { canvas, board, sim } = buildScene();
+    const ctx = board.ctx;
+    const g = sim.grid;
+    const cell = board.cell;
+    clearFrame(ctx);
+    board._drawBoardShadow();
+    board._drawField(g);
+    for (const w of sim.walls) board._drawWall(w.cell.x, w.cell.y);
+    board._drawStains();
+    board._drawBastion(g);
+    board._drawPath(g);
+    board._drawPortal(g);
+    const towers = [...sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
+    for (const t of towers) board._drawTower(t);
+    const enemies = [...sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
+    for (const e of enemies) board._drawEnemy(e);
+    for (const p of sim.projectiles) board._drawProjectile(p);
+    if (board._ghostPlan) board._drawPlanGhost(board._ghostPlan.plan, board._ghostPlan.cell);
+    if (board.pendingPlace) {
+      board._drawPendingPlace(board.pendingPlace);
+    } else if (board.hover && g.inBounds(board.hover.x, board.hover.y) && board.selectedTowerId < 0) {
+      board._drawHover(board.hover.x, board.hover.y, g.isBuildable(board.hover.x, board.hover.y));
+    }
+    board._drawAtmosphere(W, H);
+    return canvas.toDataURL("image/png");
+  };
+
+  window.__debugPairInfo = (label) => {
+    const mk = () => { const c = document.createElement("canvas"); c.width = W; c.height = H; return c; };
+    const t = 1;
+    const scene = () => {
+      const { board, sim, motes } = buildScene();
+      const cam = board.cam; const g = sim.grid; const cell = board.cell;
+      return { board, sim, cam, g, cell, motes };
+    };
+    const run = (sc, drawFn) => {
+      const c = mk();
+      const prev = sc.board.ctx;
+      sc.board.ctx = c.getContext("2d");
+      drawFn(sc, c.getContext("2d"));
+      sc.board.ctx = prev;
+      return c;
+    };
+    const en4 = (s2) => s2.sim.enemies.find((e) => e.id === 4);
+    const proj = (s2, type) => s2.sim.projectiles.find((p3) => p3.damageType === type);
+    const pairs = {
+      enemy4: [
+        (s2, c) => s2.board._drawEnemy(en4(s2)),
+        (s2, c) => S.drawEnemyFrame(c, s2.cam, palette, en4(s2), s2.cell, t),
+      ],
+      projkinetic: [
+        (s2, c) => s2.board._drawProjectile(proj(s2, "kinetic")),
+        (s2, c) => S.drawProjectile(c, s2.cam, palette, proj(s2, "kinetic"), s2.cell),
+      ],
+      projfire: [
+        (s2, c) => s2.board._drawProjectile(proj(s2, "fire")),
+        (s2, c) => S.drawProjectile(c, s2.cam, palette, proj(s2, "fire"), s2.cell),
+      ],
+      projacid: [
+        (s2, c) => s2.board._drawProjectile(proj(s2, "acid")),
+        (s2, c) => S.drawProjectile(c, s2.cam, palette, proj(s2, "acid"), s2.cell),
+      ],
+      projshock: [
+        (s2, c) => s2.board._drawProjectile(proj(s2, "shock")),
+        (s2, c) => S.drawProjectile(c, s2.cam, palette, proj(s2, "shock"), s2.cell),
+      ],
+      projpoison: [
+        (s2, c) => s2.board._drawProjectile(proj(s2, "poison")),
+        (s2, c) => S.drawProjectile(c, s2.cam, palette, proj(s2, "poison"), s2.cell),
+      ],
+      atmo: [
+        (s2, c) => s2.board._drawAtmosphere(W, H),
+        (s2, c) => S.drawAtmosphere(c, palette, W, H, t, s2.board._motes, { themePulse: 0, bossVignette: 0, plate: s2.cam.boardCorners() }),
+      ],
+    };
+    const [ofn, nfn] = pairs[label];
+    if (!ofn) return { err: "no pair " + label };
+    const a = run(scene(), ofn);
+    const b = run(scene(), nfn);
+    const ad = a.getContext("2d").getImageData(0, 0, W, H).data;
+    const bd = b.getContext("2d").getImageData(0, 0, W, H).data;
+    let minX = 1e9, minY = 1e9, maxX = -1, maxY = -1, n = 0;
+    const samples = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      const d = Math.abs(ad[i] - bd[i]) + Math.abs(ad[i + 1] - bd[i + 1]) + Math.abs(ad[i + 2] - bd[i + 2]) + Math.abs(ad[i + 3] - bd[i + 3]);
+      if (d > 12) {
+        n++;
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+        if (samples.length < 8) samples.push(`(${x},${y}) o=[${ad[i]},${ad[i + 1]},${ad[i + 2]},${ad[i + 3]}] n=[${bd[i]},${bd[i + 1]},${bd[i + 2]},${bd[i + 3]}]`);
+      }
+    }
+    return { n, minX, minY, maxX, maxY, samples };
+  };
+  window.__buildScene = buildScene;
+  window.__debugScene = (name) => {
+    try {
+      const { board, sim, motes } = buildScene();
+      const cam = board.cam;
+      const g = sim.grid;
+      const cell = board.cell;
+      const ctx = board.canvas.getContext("2d");
+      clearFrame(ctx);
+      const t = 1;
+      const r = {};
+      const draw = (fn, label) => {
+        try { fn(); r[label] = "ok"; }
+        catch (e) { r[label] = "ERR " + e.message; }
+      };
+      draw(() => S.drawBoardShadow(ctx, cam, palette, cell), "shadow");
+      draw(() => S.drawField(ctx, cam, palette, g, cell), "field");
+      for (const w of sim.walls) draw(() => S.drawWall(ctx, cam, palette, w.cell.x, w.cell.y, cell), "wall");
+      draw(() => S.drawStains(ctx, cam, palette, board._stains, cell), "stains");
+      draw(() => S.drawBastion(ctx, cam, palette, g, cell, t, 0), "bastion");
+      draw(() => S.drawPath(ctx, cam, g, sim.portal.x, cell, t, sim.enemies.length), "path");
+      draw(() => S.drawPortal(ctx, cam, palette, sim.portal, cell, t), "portal");
+      const towers = [...sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
+      for (const tw of towers) {
+        const p2 = cam.projectCell(tw.cell.x, tw.cell.y);
+        const s2 = cell * p2.s * S.UNIT_SCALE;
+        const selected = tw.id === board.selectedTowerId;
+        const plan = selected ? buildAttackPlan(tw.base, tw.barrel, tw.payload, tw.level, planOptsFromParts({}, {}, tw)) : null;
+        draw(() => S.drawTowerFrame(ctx, cam, palette, tw, p2.x - s2 / 2, p2.y - s2 / 2, s2, { selected, plan, cell }), "tower" + tw.id);
+      }
+      const enemies = [...sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
+      for (const e of enemies) draw(() => S.drawEnemyFrame(ctx, cam, palette, e, cell, t), "enemy" + e.id);
+      for (const p3 of sim.projectiles) draw(() => S.drawProjectile(ctx, cam, palette, p3, cell), "proj" + p3.damageType);
+      draw(() => S.drawPlanGhost(ctx, cam, palette, board._ghostPlan.plan, board._ghostPlan.cell, cell), "ghost");
+      draw(() => S.drawPendingPlace(ctx, cam, palette, board.pendingPlace, cell, t, cell), "pending");
+      draw(() => S.drawHover(ctx, cam, palette, 7, 6, g.isBuildable(7, 6), cell), "hover");
+      draw(() => S.drawAtmosphere(ctx, palette, W, H, t, board._motes, { themePulse: 0, bossVignette: 0, plate: cam.boardCorners() }), "atmo");
+      return r;
+    } catch (e) {
+      return { fatal: e.message };
+    }
+  };
+  window.__debugSceneDiff = () => {
+    const mk = () => { const c = document.createElement("canvas"); c.width = W; c.height = H; return c; };
+    const diff = (a, b) => {
+      const ac = a.getContext("2d").getImageData(0, 0, W, H).data;
+      const bc = b.getContext("2d").getImageData(0, 0, W, H).data;
+      let n = 0;
+      for (let i = 0; i < ac.length; i += 4) {
+        if (Math.abs(ac[i] - bc[i]) + Math.abs(ac[i + 1] - bc[i + 1]) + Math.abs(ac[i + 2] - bc[i + 2]) + Math.abs(ac[i + 3] - bc[i + 3]) > 12) n++;
+      }
+      return n;
+    };
+    const out = {};
+    const t = 1;
+    const scene = () => {
+      const { board, sim, motes } = buildScene();
+      const cam = board.cam;
+      const g = sim.grid;
+      const cell = board.cell;
+      const towers = [...sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
+      const enemies = [...sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
+      return { board, sim, cam, g, cell, towers, enemies, motes };
+    };
+    const pair = (label, oracleFn, nextFn) => {
+      const a = mk(); const b = mk();
+      const so = scene();
+      board2 = so.board;
+      const prevCtx = so.board.ctx;
+      so.board.ctx = a.getContext("2d");
+      oracleFn(so, a.getContext("2d"));
+      so.board.ctx = prevCtx;
+      const sn = scene();
+      nextFn(sn, b.getContext("2d"));
+      out[label] = diff(a, b);
+    };
+    let board2 = null;
+    void board2;
+    pair("shadow", (s2, c) => s2.board._drawBoardShadow(), (s2, c) => S.drawBoardShadow(c, s2.cam, palette, s2.cell));
+    pair("field", (s2, c) => s2.board._drawField(s2.g), (s2, c) => S.drawField(c, s2.cam, palette, s2.g, s2.cell));
+    for (const w of scene().sim.walls) {
+      pair("wall" + w.cell.x, (s2, c) => s2.board._drawWall(w.cell.x, w.cell.y), (s2, c) => S.drawWall(c, s2.cam, palette, w.cell.x, w.cell.y, s2.cell));
+    }
+    pair("stains", (s2, c) => s2.board._drawStains(), (s2, c) => S.drawStains(c, s2.cam, palette, s2.board._stains, s2.cell));
+    pair("bastion", (s2, c) => s2.board._drawBastion(s2.g), (s2, c) => S.drawBastion(c, s2.cam, palette, s2.g, s2.cell, t, 0));
+    pair("path", (s2, c) => s2.board._drawPath(s2.g), (s2, c) => S.drawPath(c, s2.cam, s2.g, s2.sim.portal.x, s2.cell, t, s2.sim.enemies.length));
+    pair("portal", (s2, c) => s2.board._drawPortal(s2.g), (s2, c) => S.drawPortal(c, s2.cam, palette, s2.sim.portal, s2.cell, t));
+    for (const tw of scene().towers) {
+      pair("tower" + tw.id, (s2, c) => s2.board._drawTower(tw), (s2, c) => {
+        const p2 = s2.cam.projectCell(tw.cell.x, tw.cell.y);
+        const s3 = s2.cell * p2.s * S.UNIT_SCALE;
+        const selected = tw.id === s2.board.selectedTowerId;
+        const plan = selected ? buildAttackPlan(tw.base, tw.barrel, tw.payload, tw.level, planOptsFromParts({}, {}, tw)) : null;
+        S.drawTowerFrame(c, s2.cam, palette, tw, p2.x - s3 / 2, p2.y - s3 / 2, s3, { selected, plan, cell: s2.cell });
+      });
+    }
+    for (const e of scene().enemies) {
+      pair("enemy" + e.id, (s2, c) => s2.board._drawEnemy(e), (s2, c) => S.drawEnemyFrame(c, s2.cam, palette, e, s2.cell, t));
+    }
+    for (const p3 of scene().sim.projectiles) {
+      pair("proj" + p3.damageType, (s2, c) => s2.board._drawProjectile(p3), (s2, c) => S.drawProjectile(c, s2.cam, palette, p3, s2.cell));
+    }
+    pair("ghost", (s2, c) => s2.board._drawPlanGhost(s2.board._ghostPlan.plan, s2.board._ghostPlan.cell), (s2, c) => S.drawPlanGhost(c, s2.cam, palette, s2.board._ghostPlan.plan, s2.board._ghostPlan.cell, s2.cell));
+    pair("pending", (s2, c) => s2.board._drawPendingPlace(s2.board.pendingPlace), (s2, c) => S.drawPendingPlace(c, s2.cam, palette, s2.board.pendingPlace, s2.cell, t, s2.cell));
+    pair("hover", (s2, c) => s2.board._drawHover(7, 6, s2.g.isBuildable(7, 6)), (s2, c) => S.drawHover(c, s2.cam, palette, 7, 6, s2.g.isBuildable(7, 6), s2.cell));
+    pair("atmo", (s2, c) => s2.board._drawAtmosphere(W, H), (s2, c) => S.drawAtmosphere(c, palette, W, H, t, s2.board._motes, { themePulse: 0, bossVignette: 0, plate: s2.cam.boardCorners() }));
+    return out;
+  };
+  window.__buildScene = buildScene;
+  window.__debugScene = (name) => {
+    try {
+      const { board, sim, motes } = buildScene();
+      const cam = board.cam;
+      const g = sim.grid;
+      const cell = board.cell;
+      const ctx = board.canvas.getContext("2d");
+      clearFrame(ctx);
+      const t = 1;
+      const r = {};
+      const draw = (fn, label) => {
+        try { fn(); r[label] = "ok"; }
+        catch (e) { r[label] = "ERR " + e.message; }
+      };
+      draw(() => S.drawBoardShadow(ctx, cam, palette, cell), "shadow");
+      draw(() => S.drawField(ctx, cam, palette, g, cell), "field");
+      for (const w of sim.walls) draw(() => S.drawWall(ctx, cam, palette, w.cell.x, w.cell.y, cell), "wall");
+      draw(() => S.drawStains(ctx, cam, palette, board._stains, cell), "stains");
+      draw(() => S.drawBastion(ctx, cam, palette, g, cell, t, 0), "bastion");
+      draw(() => S.drawPath(ctx, cam, g, sim.portal.x, cell, t, sim.enemies.length), "path");
+      draw(() => S.drawPortal(ctx, cam, palette, sim.portal, cell, t), "portal");
+      const towers = [...sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
+      for (const tw of towers) {
+        const p2 = cam.projectCell(tw.cell.x, tw.cell.y);
+        const s2 = cell * p2.s * S.UNIT_SCALE;
+        const selected = tw.id === board.selectedTowerId;
+        const plan = selected ? buildAttackPlan(tw.base, tw.barrel, tw.payload, tw.level, planOptsFromParts({}, {}, tw)) : null;
+        draw(() => S.drawTowerFrame(ctx, cam, palette, tw, p2.x - s2 / 2, p2.y - s2 / 2, s2, { selected, plan, cell }), "tower" + tw.id);
+      }
+      const enemies = [...sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
+      for (const e of enemies) draw(() => S.drawEnemyFrame(ctx, cam, palette, e, cell, t), "enemy" + e.id);
+      for (const p3 of sim.projectiles) draw(() => S.drawProjectile(ctx, cam, palette, p3, cell), "proj" + p3.damageType);
+      draw(() => S.drawPlanGhost(ctx, cam, palette, board._ghostPlan.plan, board._ghostPlan.cell, cell), "ghost");
+      draw(() => S.drawPendingPlace(ctx, cam, palette, board.pendingPlace, cell, t, cell), "pending");
+      draw(() => S.drawHover(ctx, cam, palette, 7, 6, g.isBuildable(7, 6), cell), "hover");
+      draw(() => S.drawAtmosphere(ctx, palette, W, H, t, board._motes, { themePulse: 0, bossVignette: 0, plate: cam.boardCorners() }), "atmo");
+      return r;
+    } catch (e) {
+      return { fatal: e.message };
+    }
+  };
+  window.__debugSceneDiff = () => {
+    const mk = () => { const c = document.createElement("canvas"); c.width = W; c.height = H; return c; };
+    const diff = (a, b) => {
+      const ac = a.getContext("2d").getImageData(0, 0, W, H).data;
+      const bc = b.getContext("2d").getImageData(0, 0, W, H).data;
+      let n = 0;
+      for (let i = 0; i < ac.length; i += 4) {
+        if (Math.abs(ac[i] - bc[i]) + Math.abs(ac[i + 1] - bc[i + 1]) + Math.abs(ac[i + 2] - bc[i + 2]) + Math.abs(ac[i + 3] - bc[i + 3]) > 12) n++;
+      }
+      return n;
+    };
+    const out = {};
+    const t = 1;
+    const scene = () => {
+      const { board, sim, motes } = buildScene();
+      const cam = board.cam;
+      const g = sim.grid;
+      const cell = board.cell;
+      const towers = [...sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
+      const enemies = [...sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
+      return { board, sim, cam, g, cell, towers, enemies, motes };
+    };
+    const pair = (label, oracleFn, nextFn) => {
+      const a = mk(); const b = mk();
+      const so = scene();
+      board2 = so.board;
+      const prevCtx = so.board.ctx;
+      so.board.ctx = a.getContext("2d");
+      oracleFn(so, a.getContext("2d"));
+      so.board.ctx = prevCtx;
+      const sn = scene();
+      nextFn(sn, b.getContext("2d"));
+      out[label] = diff(a, b);
+    };
+    let board2 = null;
+    void board2;
+    pair("shadow", (s2, c) => s2.board._drawBoardShadow(), (s2, c) => S.drawBoardShadow(c, s2.cam, palette, s2.cell));
+    pair("field", (s2, c) => s2.board._drawField(s2.g), (s2, c) => S.drawField(c, s2.cam, palette, s2.g, s2.cell));
+    for (const w of scene().sim.walls) {
+      pair("wall" + w.cell.x, (s2, c) => s2.board._drawWall(w.cell.x, w.cell.y), (s2, c) => S.drawWall(c, s2.cam, palette, w.cell.x, w.cell.y, s2.cell));
+    }
+    pair("stains", (s2, c) => s2.board._drawStains(), (s2, c) => S.drawStains(c, s2.cam, palette, s2.board._stains, s2.cell));
+    pair("bastion", (s2, c) => s2.board._drawBastion(s2.g), (s2, c) => S.drawBastion(c, s2.cam, palette, s2.g, s2.cell, t, 0));
+    pair("path", (s2, c) => s2.board._drawPath(s2.g), (s2, c) => S.drawPath(c, s2.cam, s2.g, s2.sim.portal.x, s2.cell, t, s2.sim.enemies.length));
+    pair("portal", (s2, c) => s2.board._drawPortal(s2.g), (s2, c) => S.drawPortal(c, s2.cam, palette, s2.sim.portal, s2.cell, t));
+    for (const tw of scene().towers) {
+      pair("tower" + tw.id, (s2, c) => s2.board._drawTower(tw), (s2, c) => {
+        const p2 = s2.cam.projectCell(tw.cell.x, tw.cell.y);
+        const s3 = s2.cell * p2.s * S.UNIT_SCALE;
+        const selected = tw.id === s2.board.selectedTowerId;
+        const plan = selected ? buildAttackPlan(tw.base, tw.barrel, tw.payload, tw.level, planOptsFromParts({}, {}, tw)) : null;
+        S.drawTowerFrame(c, s2.cam, palette, tw, p2.x - s3 / 2, p2.y - s3 / 2, s3, { selected, plan, cell: s2.cell });
+      });
+    }
+    for (const e of scene().enemies) {
+      pair("enemy" + e.id, (s2, c) => s2.board._drawEnemy(e), (s2, c) => S.drawEnemyFrame(c, s2.cam, palette, e, s2.cell, t));
+    }
+    for (const p3 of scene().sim.projectiles) {
+      pair("proj" + p3.damageType, (s2, c) => s2.board._drawProjectile(p3), (s2, c) => S.drawProjectile(c, s2.cam, palette, p3, s2.cell));
+    }
+    pair("ghost", (s2, c) => s2.board._drawPlanGhost(s2.board._ghostPlan.plan, s2.board._ghostPlan.cell), (s2, c) => S.drawPlanGhost(c, s2.cam, palette, s2.board._ghostPlan.plan, s2.board._ghostPlan.cell, s2.cell));
+    pair("pending", (s2, c) => s2.board._drawPendingPlace(s2.board.pendingPlace), (s2, c) => S.drawPendingPlace(c, s2.cam, palette, s2.board.pendingPlace, s2.cell, t, s2.cell));
+    pair("hover", (s2, c) => s2.board._drawHover(7, 6, s2.g.isBuildable(7, 6)), (s2, c) => S.drawHover(c, s2.cam, palette, 7, 6, s2.g.isBuildable(7, 6), s2.cell));
+    pair("atmo", (s2, c) => s2.board._drawAtmosphere(W, H), (s2, c) => S.drawAtmosphere(c, palette, W, H, t, s2.board._motes, { themePulse: 0, bossVignette: 0, plate: s2.cam.boardCorners() }));
+    return out;
+  };
+  window.__debugNext = () => {
+    try {
+      const { board, sim } = buildScene();
+      const ctx = board.canvas.getContext("2d");
+      return {
+        canvasNode: board.canvas.tagName,
+        beginPathType: typeof ctx.beginPath,
+        isBoardCtx: ctx === board.ctx,
+        cell: board.cell,
+        camType: typeof board.cam.configure,
+        grid: sim.grid.cols + "x" + sim.grid.rows,
+        ctxKeys: Object.keys(ctx).length,
+      };
+    } catch (e) {
+      return { err: e.message };
+    }
+  };
+  window.__drawBoardNext = () => {
+    const { board, sim, motes } = buildScene();
+    const cam = board.cam;
+    const g = sim.grid;
+    const cell = board.cell;
+    const ctx = board.canvas.getContext("2d");
+    clearFrame(ctx);
+    const t = 1;
+S.drawBoardShadow(ctx, cam, palette, cell);
+    S.drawField(ctx, cam, palette, g, cell);
+    for (const w of sim.walls) S.drawWall(ctx, cam, palette, w.cell.x, w.cell.y, cell);
+    S.drawStains(ctx, cam, palette, board._stains, cell);
+    S.drawBastion(ctx, cam, palette, g, cell, t, board._bastionFlinch);
+    S.drawPath(ctx, cam, g, sim.portal.x, cell, t, sim.enemies.length);
+    S.drawPortal(ctx, cam, palette, sim.portal, cell, t);
+    const towers = [...sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
+    for (const tw of towers) {
+      const p = cam.projectCell(tw.cell.x, tw.cell.y);
+      const s = cell * p.s * S.UNIT_SCALE;
+      const recoil = board.recoil.get(tw.id) || 0;
+      const kick = recoil > 0 ? Math.cos(tw.aimAngle || 0) * recoil * 10 * p.s : 0;
+      const kickY = recoil > 0 ? Math.sin(tw.aimAngle || 0) * recoil * 10 * p.s : 0;
+      const selected = tw.id === board.selectedTowerId;
+      const plan = selected
+        ? buildAttackPlan(tw.base, tw.barrel, tw.payload, tw.level, planOptsFromParts(sim.partUpgrades, sim.globalMods, tw))
+        : null;
+      S.drawTowerFrame(ctx, cam, palette, tw, p.x - s / 2 - kick, p.y - s / 2 - kickY, s, { selected, plan, cell });
+    }
+    const enemies = [...sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
+    for (const e of enemies) S.drawEnemyFrame(ctx, cam, palette, e, cell, t);
+    for (const p of sim.projectiles) S.drawProjectile(ctx, cam, palette, p, cell);
+    if (board._ghostPlan) S.drawPlanGhost(ctx, cam, palette, board._ghostPlan.plan, board._ghostPlan.cell, cell);
+    if (board.pendingPlace) {
+      S.drawPendingPlace(ctx, cam, palette, board.pendingPlace, cell, t, cell);
+    } else if (board.hover && g.inBounds(board.hover.x, board.hover.y) && board.selectedTowerId < 0) {
+      S.drawHover(ctx, cam, palette, board.hover.x, board.hover.y, g.isBuildable(board.hover.x, board.hover.y), cell);
+    }
+    S.drawAtmosphere(ctx, palette, W, H, t, board._motes, {
+      themePulse: board._themePulse,
+      bossVignette: board._bossVignette,
+      plate: cam.boardCorners(),
+    });
+    return board.canvas.toDataURL("image/png");
+  };
+</script></body></html>
