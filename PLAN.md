@@ -1,5 +1,9 @@
 # PLAN — Enemy pathing tiers, endless pacing, boot polish + the backlog
 
+Status: BETA prep is its own plan — see BETA_PLAN.md (the self-contained
+execution plan for the first public beta; identity + aspect-ratio work is
+explicitly deferred). Below is the architectural roadmap.
+
 Status: the Oracle is FROZEN as a design document — it is no longer the gold
 standard. The corpus (committed traces/baselines/goldens) is a re-baseline
 tool, not a standard: every deliberate change re-baselines after review. The
