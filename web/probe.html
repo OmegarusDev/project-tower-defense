@@ -1,0 +1,17 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0}</style></head>
+<body><div id="host"></div>
+<script type="module">
+  import { ProcPalette } from "/js/view/palette.js";
+  import { renderTowerNext } from "/js/view/next/renderTower.js";
+  import { setPitch } from "/js/view/view25.js";
+  const palette = new ProcPalette();
+  const SIZE = 200, CSS = 92;
+  window.__render = (base, barrel, payload, angle, pitchDeg) => {
+    setPitch(pitchDeg);
+    const c = document.createElement("canvas");
+    c.width = SIZE; c.height = SIZE;
+    const ctx = c.getContext("2d");
+    renderTowerNext(ctx, palette, { base, barrel, payload, aimAngle: angle, level: 1 }, (SIZE - CSS) / 2, (SIZE - CSS) / 2 + 6, CSS, { showBadge: false });
+    return c.toDataURL("image/png");
+  };
+</script></body></html>

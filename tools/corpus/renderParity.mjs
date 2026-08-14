@@ -1,0 +1,98 @@
+#!/usr/bin/env node
+/**
+ * Render parity — the NEW data-driven renderer vs the oracle goldens.
+ * Renders the sentry x single x kinetic tiles at pitches 24 and 58 (the
+ * proof subset) and requires byte-identical pixels with the committed
+ * goldens. Same canvas geometry as the gallery capture (200px tiles,
+ * CSS 92, +6px inset), frozen time + seeded randomness stubs.
+ *
+ *   node tools/corpus/renderParity.mjs [--pitch 24,58]
+ */
+import { chromium } from "playwright";
+import { readFileSync, readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const OUT = join(HERE, "out", "goldens");
+
+const pitch = (process.argv[2] || "24,58").split(",").map(Number);
+const STUBS = `
+  (() => {
+    performance.now = () => 1000;
+    let s = 1234567;
+    Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  })();
+`;
+
+const HTML = `
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0}</style></head>
+<body><div id="host"></div>
+<script type="module">
+  import { ProcPalette } from "/js/view/palette.js";
+  import { renderTowerNext } from "/js/view/next/renderTower.js";
+  import { setPitch } from "/js/view/view25.js";
+  const palette = new ProcPalette();
+  const SIZE = 200, CSS = 92;
+  window.__render = (base, barrel, payload, angle, pitchDeg) => {
+    setPitch(pitchDeg);
+    const c = document.createElement("canvas");
+    c.width = SIZE; c.height = SIZE;
+    const ctx = c.getContext("2d");
+    renderTowerNext(ctx, palette, { base, barrel, payload, aimAngle: angle, level: 1 }, (SIZE - CSS) / 2, (SIZE - CSS) / 2 + 6, CSS, { showBadge: false });
+    return c.toDataURL("image/png");
+  };
+</script></body></html>
+`;
+
+const browser = await chromium.launch();
+const page = await browser.newPage();
+await page.addInitScript(STUBS);
+await page.setContent(HTML);
+await page.goto("http://127.0.0.1:8123/probe.html", { waitUntil: "networkidle" }).catch(() => {});
+
+const ANG = [0, -Math.PI / 2, Math.PI, Math.PI / 2];
+const names = ["sentry", "single", "kinetic"];
+let failures = 0;
+let checked = 0;
+
+for (const p of pitch) {
+  for (let a = 0; a < 4; a++) {
+    // gallery ordering: base tiles first (sentry at idx 0-3), so the golden
+    // for sentry/single/kinetic at angle a is tile_p{p}_0{a}_sentry.png
+    const goldenFile = join(OUT, `tile_p${p}_0${a}_sentry.png`);
+    const golden = readFileSync(goldenFile);
+    const dataUrl = await page.evaluate(
+      ([b, r, pl, ang, pd]) => window.__render(b, r, pl, ang, pd),
+      ["sentry", "single", "kinetic", ANG[a], p]
+    );
+    const rendered = Buffer.from(dataUrl.split(",")[1], "base64");
+    checked++;
+    if (golden.equals(rendered)) {
+      console.log(`PASS tile ${names.join("/")} pitch ${p} angle ${a} (byte-identical)`);
+    } else {
+      // pixel-level diff report
+      const { PNG } = await import("pngjs");
+      const ga = PNG.sync.read(golden);
+      const rb = PNG.sync.read(rendered);
+      let diff = 0;
+      let total = 0;
+      for (let i = 0; i < ga.data.length; i += 4) {
+        total++;
+        const d =
+          Math.abs(ga.data[i] - rb.data[i]) +
+          Math.abs(ga.data[i + 1] - rb.data[i + 1]) +
+          Math.abs(ga.data[i + 2] - rb.data[i + 2]) +
+          Math.abs(ga.data[i + 3] - rb.data[i + 3]);
+        if (d > 12) diff++;
+      }
+      failures++;
+      console.log(
+        `FAIL tile ${names.join("/")} pitch ${p} angle ${a}: ${diff}/${total} px differ (${((diff / total) * 100).toFixed(2)}%)`
+      );
+    }
+  }
+}
+console.log(failures === 0 ? `RENDER PARITY OK (${checked} tiles)` : `${failures} tile(s) diverge`);
+await browser.close();
+process.exit(failures === 0 ? 0 : 1);

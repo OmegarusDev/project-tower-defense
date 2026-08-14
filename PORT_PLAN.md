@@ -1,0 +1,103 @@
+# Behavioral-Parity Port — Master Plan & Takeover Document
+
+**Mission:** replace the game with a 1:1 cleaner clone — identical look, feel, and behavior
+("seriously exact"), built on the ideal architecture (pure sim core, registries,
+data-driven visuals, screen registry), smaller and more robust. Never true 3D — the
+faux-3D illusion IS the product (two-factor camera).
+
+**Status:** Phase 0 ✓ · Phase 1 ✓ (sim core) · Phase 2a/2b ✓ (status + synergy registries) ·
+2c deferred to swap (see below) · Phase 3 in progress (render) · 4–6 pending.
+
+---
+
+## The contract (acceptance criteria — non-negotiable)
+
+1. **Behavioral identity** — ladder reproduces exactly (fresh 3.25 / earlyAA 13.5 /
+   parts2 16 / midMeta 28.67 on identical seeds); sim traces byte-identical across
+   seeds × presets × levels; ghost replay stays deterministic.
+2. **Visual identity** — golden pixel buffers within tolerance (every part × angle ×
+   pitch, board scenes, slot previews, all screens).
+3. **Interaction identity** — DOM corpus + every flow unchanged; saves normalize identically.
+4. **Zero value changes** — no balance numbers, part stats, palette colors, content.
+   Architecture only.
+5. **Smaller** — beat the baseline: **470,777 bytes** (web/js, measured at Phase 0).
+6. **More robust** — fuzz (random seeds never crash/stall), all tests, parse gate, parity suite.
+7. **Discipline** — mechanical ports, draw-order preservation, NO opportunistic fixes
+   (log them; apply deliberately post-parity).
+
+## Oracle protection
+
+- Tag `replica-oracle` + branch `oracle` (force-push blocked, deletions blocked, PR review
+  required, admins enforced) — the frozen reference.
+- The live GitHub Pages game deploys `web/` only; the port lives in `web/js/sim/next/` and
+  `web/js/view/next/` (additive, unreachable from the app) until Phase 6 flips the entry point.
+- `git diff replica-oracle main -- web/` must show ONLY additions under `sim/next`, `view/next`
+  and tooling until the swap.
+
+## The new sim architecture (`web/js/sim/next/`)
+
+- `state.js` — plain state factory (`createState`), RNG streams, transient fields, event bus
+  (`on`/`emit`), `logAction`, `allocId`. All systems are functions over this state.
+- `systems/waves.js` — compose/spawn/portal dwell (oracle's exact draw order).
+- `systems/movement.js` — enemy loop, gliding, splits, kiln spawns, leaks, game-over.
+- `systems/combat.js` — targeting, projectiles, chains, XP, plan cache.
+- `systems/towers.js` — placement, walls, sell, branch, stall guard, preWalls.
+- `systems/economy.js` — the Economy as functions.
+- `combat/status.js` — status registry (data instances of dot/timed shapes).
+- `combat/synergy.js` — synergy registry (burnPoison, shredFire, frostShock).
+- `sim.js` — the facade mirroring SimWorld's public surface (parity harness + future app).
+
+**Determinism discipline:** identical formulas, identical iteration order, identical RNG
+draw sequences. Do not "improve the math while in there." `running` is owned by handlers —
+`Sim.tick()` must never re-sync it.
+
+## Verification gates (run before any commit)
+
+```bash
+node verify.mjs                              # parse gate + all 12 test files
+node tools/corpus/simParity.mjs              # oracle vs new sim, greedy bot, full games
+node tools/corpus/ladderParity.mjs           # runSim ladder + 12 campaign levels + checkpoints
+node tools/corpus/capture.mjs                # (re)capture goldens/DOM — frozen time + seeded Math.random
+node tools/corpus/renderParity.mjs           # Phase 3: new renderer vs goldens
+cd web && python3 -m http.server 8123        # serve for playwright tools (CORPUS_URL)
+```
+Green = byte-identical events/state/logs (sim), metrics identical (ladder), pixels within
+tolerance (render). The live game must remain the oracle throughout.
+
+## Known traps (found the hard way — do not reintroduce)
+
+1. Object-literal getters bind `this` to the literal — `this.waves = { get waveActive() { return this._s… } }`
+   read false forever. Use arrow/`self` capture or class getters.
+2. `Sim.tick()` re-syncing `running` from state clobbers handler `running=false` (wave-cleared).
+3. Parity harness loops must include the `wave_cleared → running=false` hand-off, or both sims
+   stall identically past wave 1 and "PARITY OK" is a lie.
+4. JSON key ORDER is compared — logAction payload order matters (`{ wave, earlyBonus }`).
+5. `checkpointPhase` is undefined until set (oracle default) — checkpoint() maps missing → "inWave".
+6. `setStartLives` uses `BASE_START_LIVES`, never a hardcoded 3.
+7. Facade surfaces (towers/enemies/portal/campaignWaves…) must be live getters/setters — a
+   stale ref after `loadCheckpoint` silently reads the wrong array.
+
+## Remaining phases
+
+- **Phase 2c (deferred to swap):** plan-resolver step table. Deliberately deferred — a
+  `mods`-array would duplicate the existing declarative part fields (more bytes, not fewer).
+  The resolver collapse happens when the old `attackPlan.js` dies for real.
+- **Phase 3 (in progress):** render port — `view/next/` with parts declaring visual
+  primitives (cyl/box/frustum/ring/tube/cap/gem), generic instantiator over the two-factor
+  basis (`groundBasis`/`capEllipse`/`prims25` reused). Golden-gated tile by tile. The
+  board scene (boardView 1,678 lines) splits into renderers afterward.
+- **Phase 4:** UI registry + component refresh (screens as pure render fns; `app.js` god-object dies).
+- **Phase 5:** CI (GitHub Action: verify + parity + render gates on every push) + sim fuzz.
+- **Phase 6:** swap the entry point, run the FULL corpus + ladder + browser walk, delete the
+  oracle implementation (keep the corpus), verify size < 470,777 bytes.
+
+## Post-parity list (deliberate improvements, applied after the swap certifies)
+
+- Twin-barrel proportions polish.
+- Any aesthetic tweaks found during eyeballing (user's eyes are the final arbiter).
+
+## Dev tooling
+
+- `package.json` (dev-only): playwright. Game itself stays zero-dep. `node_modules` is gitignored.
+- Gallery: `web/tools/gallery.html` (live) — part tour + 13-check self-check + goldens source.
+- Corpus fixtures live in `tools/corpus/out/` (committed — they are the gate).
