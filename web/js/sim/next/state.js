@@ -92,8 +92,13 @@ export function on(state, type, fn) {
 }
 
 export function emit(state, type, data = {}) {
+  // Mirrors SimWorld.emit exactly: kind listeners AND "*" listeners, both
+  // receiving { kind, tick, ...payload }.
+  const e = { kind: type, tick: state.tickIndex, ...data };
   const list = state._listeners.get(type);
-  if (list) for (const fn of list) fn(data);
+  if (list) for (const fn of list) fn(e);
+  const all = state._listeners.get("*");
+  if (all) for (const fn of all) fn(e);
 }
 
 export function allocId(state) {

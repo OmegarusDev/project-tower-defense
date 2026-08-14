@@ -75,6 +75,8 @@ export function chromeState(app) {
     paused: !!app.paused,
     liveCompose: !!app.liveCompose,
     playtestFromEditor: !!app.playtestFromEditor,
+    selectedTowerId: app.selectedTowerId ?? -1,
+    selectedWallId: app.selectedWallId ?? -1,
     waveBusy: () => waveBusy(app),
     pitchDeg: VIEW25.pitchDeg,
     board: app.board
