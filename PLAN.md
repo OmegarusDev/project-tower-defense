@@ -202,9 +202,12 @@ same `"none"` mode for the preview).
 - **Phase D — gameplay backlog**: music tempo → portal spawn rule → twin
   barrels → ghost-replay UX → fresh-ladder kill zone → growSouth pacing →
   editor polish → a11y → HUD micro-perf.
-- **Phase E — UI style pass** (LAST, per the user): a design review of the
-  general UI — typography, spacing, motion, plate language — deliberately
-  deferred until the architecture is settled.
+- **Phase E — Identity + UI pass** (LAST, per the user): FULL plan in
+  DESIGN.md — faction rename (the Cinder), copy cleanup, game-UI dialogs
+  replacing native confirms, the Forge slot-cycling UX (stat bars + unlock
+  panel), meta-screen toasts + Esc, and the brutal-industrial identity
+  pass (textures, sensory buttons, the SLAM motion replacing fade/slide).
+  Every step is gated; re-captures are deliberate.
 
 ## Verification for everything
 
