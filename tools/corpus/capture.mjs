@@ -100,9 +100,13 @@ if (want("gallery")) {
       return cvs.map((c, i) => ({ i, name: `${names[i] || i}`, data: c.toDataURL("image/png") }));
     });
     for (const t of tiles) {
+      // Re-encode through pngjs so captures are BYTE-stable (the browser's
+      // PNG encoder output varies between runs even for identical pixels).
+      const { PNG } = await import("pngjs");
+      const raw = PNG.sync.read(Buffer.from(t.data.split(",")[1], "base64"));
       writeFileSync(
         join(OUT, "goldens", `tile_p${pitch}_${String(t.i).padStart(2, "0")}_${t.name}.png`),
-        Buffer.from(t.data.split(",")[1], "base64")
+        PNG.sync.write(raw)
       );
     }
     console.log(`gallery @${pitch}: ${tiles.length} tiles`);
