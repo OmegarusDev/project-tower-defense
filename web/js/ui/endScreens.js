@@ -1,6 +1,6 @@
 /** Extracted from App — pure move, no gameplay changes. */
-import { hasEndless, loadEndless } from "../saveStore.js";
 import { endsState } from "./next/stateOf.js";
+import { endBestBonus } from "../app/endsLogic.js";
 import { renderHub, renderVictory, renderGameOver } from "./next/screens.js";
 
 export function showEndlessHub(app) {
@@ -25,17 +25,5 @@ export function showGameOver(app) {
 }
 
 export function applyEndlessBestBonus(app, prevBest) {
-  if (!app.sim?.modeEndless) return null;
-  const wave = app.sim.waveIndex | 0;
-  if (wave <= (prevBest | 0)) return null;
-  const g = app.sim.economy.runWaveGains;
-  const bonusParts = g.parts | 0;
-  const bonusAether = g.aether | 0;
-  if (!bonusParts && !bonusAether) return { parts: 0, aether: 0, wave };
-  app.sim.economy.forge += bonusParts;
-  app.sim.economy.aether += bonusAether;
-  g.parts = bonusParts * 2;
-  g.aether = bonusAether * 2;
-  return { parts: bonusParts, aether: bonusAether, wave };
-  
+  return endBestBonus(app.sim, prevBest);
 }

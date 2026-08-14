@@ -1,4 +1,5 @@
 /** Extracted from App — pure move, no gameplay changes. */
+import { undoStep, pushUndoEntry } from "./undoLogic.js";
 
 export function clearUndoStack(app) {
   app.undoStack = [];
@@ -6,94 +7,22 @@ export function clearUndoStack(app) {
 }
 
 export function pushUndo(app, entry) {
-  app.undoStack.push(entry);
-  if (app.undoStack.length > 24) app.undoStack.shift();
+  pushUndoEntry(app.undoStack, entry);
   
 }
 
 export function undoLast(app) {
   if (!app.sim || app.paused) return;
-  const entry = app.undoStack.pop();
-  if (!entry) {
-    app.toast("Nothing to undo");
+  const r = undoStep(app.sim, app.undoStack);
+  if (!r.ok) {
+    app.toast(r.msg || "Nothing to undo");
     return;
   }
-  if (entry.type === "place_tower") {
-    const t = app.sim.towers.find((x) => x.id === entry.id);
-    if (!t) {
-      app.toast("Undo expired");
-      return;
-    }
-    // Full refund of paid Coin (undo ≠ sell).
-    app.sim.economy.addBattle(t.paid | 0);
-    app.sim.grid.setBlocked(t.cell.x, t.cell.y, false);
-    app.sim.grid.setTower(t.cell.x, t.cell.y, false);
-    app.sim.towers = app.sim.towers.filter((x) => x.id !== t.id);
-    app.sim.grid.recompute();
-    app.selectedTowerId = -1;
-    app.board?.invalidateStatic?.();
-    app.toast("Undid tower place");
-    app.refreshHud();
-    return;
-  }
-  if (entry.type === "place_wall") {
-    const w = app.sim.walls.find((x) => x.id === entry.id);
-    if (!w || w.preplaced) {
-      app.toast("Undo expired");
-      return;
-    }
-    app.sim.economy.addBattle(w.paid | 0);
-    app.sim.grid.setBlocked(w.cell.x, w.cell.y, false);
-    app.sim.walls = app.sim.walls.filter((x) => x.id !== w.id);
-    app.sim.grid.recompute();
-    app.selectedWallId = -1;
-    app.board?.invalidateStatic?.();
-    app.toast("Undid wall place");
-    app.refreshHud();
-    return;
-  }
-  if (entry.type === "sell_tower" && entry.tower) {
-    const t = structuredClone(entry.tower);
-    if (!app.sim.grid.isBuildable(t.cell.x, t.cell.y)) {
-      app.toast("Can't undo — cell blocked");
-      app.undoStack.push(entry);
-      return;
-    }
-    if ((app.sim.economy.battle | 0) < (entry.refund | 0)) {
-      app.toast("Need Coin to undo sell");
-      app.undoStack.push(entry);
-      return;
-    }
-    app.sim.economy.spendBattle(entry.refund | 0);
-    app.sim.grid.setBlocked(t.cell.x, t.cell.y, true);
-    app.sim.grid.setTower(t.cell.x, t.cell.y, true);
-    app.sim.towers.push(t);
-    app.sim.grid.recompute();
-    app.board?.invalidateStatic?.();
-    app.toast("Undid tower sell");
-    app.refreshHud();
-    return;
-  }
-  if (entry.type === "sell_wall" && entry.wall) {
-    const w = structuredClone(entry.wall);
-    if (!app.sim.grid.isBuildable(w.cell.x, w.cell.y)) {
-      app.toast("Can't undo — cell blocked");
-      app.undoStack.push(entry);
-      return;
-    }
-    if ((app.sim.economy.battle | 0) < (entry.refund | 0)) {
-      app.toast("Need Coin to undo sell");
-      app.undoStack.push(entry);
-      return;
-    }
-    app.sim.economy.spendBattle(entry.refund | 0);
-    app.sim.grid.setBlocked(w.cell.x, w.cell.y, true);
-    app.sim.walls.push(w);
-    app.sim.grid.recompute();
-    app.board?.invalidateStatic?.();
-    app.toast("Undid wall sell");
-    app.refreshHud();
-  }
+  app.selectedTowerId = -1;
+  app.selectedWallId = -1;
+  app.board?.invalidateStatic?.();
+  app.toast(r.msg);
+  app.refreshHud();
   
 }
 
