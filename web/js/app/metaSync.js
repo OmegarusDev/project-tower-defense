@@ -86,4 +86,7 @@ export function syncMetaProgress(app) {
     app.meta.bestWave = Math.max(app.meta.bestWave | 0, app.sim.waveIndex);
   }
   persistMeta(app);
+  // Wave-gift unlocks were removed — always return the (empty) list so the
+  // wave_cleared toast path can consume it without special-casing.
+  return [];
 }

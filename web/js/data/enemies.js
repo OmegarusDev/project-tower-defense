@@ -4,11 +4,16 @@
  *
  * armorKind: none | plate | insulated | energy
  * ballast: low | mid | high — frost vs pressure coupling
+ * pathing: shortest (pure exit pursuit — basic tiers, tanks, boss)
+ *        | evade (tower-aware: walks the far flank — the skulk, volt ward)
+ *        The only consumer is movement.js's PATHING table — see boardGrid
+ *        groundOptions for the cost modes.
  */
 
 export const ENEMY_KINDS = {
   mite: {
     label: "Rivet Mite",
+    pathing: "shortest",
     hp: 26,
     speed: 0.62,
     leakDamage: 1,
@@ -19,6 +24,7 @@ export const ENEMY_KINDS = {
   },
   courier: {
     label: "Lash Courier",
+    pathing: "shortest",
     hp: 12,
     speed: 1.95,
     leakDamage: 1,
@@ -29,6 +35,7 @@ export const ENEMY_KINDS = {
   },
   hauler: {
     label: "Slab Hauler",
+    pathing: "shortest",
     hp: 88,
     speed: 0.32,
     leakDamage: 2,
@@ -38,10 +45,10 @@ export const ENEMY_KINDS = {
     ballast: "high",
     resist: { fire: 0.55 },
     silhouette: "hauler",
-    ignoreTowerAvoid: true,
   },
   hauler_ceramite: {
     label: "Ceramite Hauler",
+    pathing: "shortest",
     hp: 92,
     speed: 0.3,
     leakDamage: 2,
@@ -51,10 +58,10 @@ export const ENEMY_KINDS = {
     ballast: "high",
     resist: { fire: 0.55, shock: 0.65 },
     silhouette: "hauler",
-    ignoreTowerAvoid: true,
   },
   duct: {
     label: "Duct Hover",
+    pathing: "shortest",
     hp: 20,
     speed: 1.15,
     flying: true,
@@ -66,6 +73,7 @@ export const ENEMY_KINDS = {
   },
   ward: {
     label: "Ward Shell",
+    pathing: "shortest",
     hp: 38,
     speed: 0.52,
     shieldHp: 28,
@@ -80,6 +88,7 @@ export const ENEMY_KINDS = {
   },
   ward_volt: {
     label: "Volt Ward",
+    pathing: "evade",
     hp: 42,
     speed: 0.5,
     shieldHp: 36,
@@ -94,6 +103,7 @@ export const ENEMY_KINDS = {
   },
   cask: {
     label: "Nest Cask",
+    pathing: "shortest",
     hp: 48,
     speed: 0.58,
     splitsInto: 2,
@@ -106,6 +116,7 @@ export const ENEMY_KINDS = {
   },
   phantom: {
     label: "Ash Phantom",
+    pathing: "shortest",
     hp: 11,
     speed: 1.42,
     flying: true,
@@ -118,6 +129,7 @@ export const ENEMY_KINDS = {
   },
   kiln: {
     label: "Kiln Walker",
+    pathing: "shortest",
     hp: 70,
     speed: 0.38,
     resist: { fire: 0.7 },
@@ -130,10 +142,10 @@ export const ENEMY_KINDS = {
     leakDamage: 2,
     battleDrop: 4,
     silhouette: "kiln",
-    ignoreTowerAvoid: true,
   },
   siphon: {
     label: "Siphon Tick",
+    pathing: "shortest",
     hp: 72,
     speed: 0.55,
     regen: 2.8,
@@ -145,6 +157,7 @@ export const ENEMY_KINDS = {
   },
   claim: {
     label: "Claim Engine",
+    pathing: "shortest",
     hp: 300,
     speed: 0.28,
     armorFlat: 6,
@@ -155,7 +168,17 @@ export const ENEMY_KINDS = {
     battleDrop: 16,
     boss: true,
     silhouette: "claim",
-    ignoreTowerAvoid: true,
+  },
+  skulk: {
+    label: "Vein Skulk",
+    pathing: "evade",
+    hp: 55,
+    speed: 0.6,
+    leakDamage: 1,
+    battleDrop: 3,
+    armorKind: "none",
+    ballast: "mid",
+    silhouette: "skulk",
   },
 };
 
@@ -203,6 +226,7 @@ export const ENEMY_COST = {
   phantom: 1.45,
   kiln: 2.9,
   siphon: 2.15,
+  skulk: 3.2,
   claim: 8.5,
 };
 

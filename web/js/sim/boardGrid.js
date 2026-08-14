@@ -202,7 +202,7 @@ export class BoardGrid {
         }
         // Canonical viz path: DIR-order first among min-dist neighbors (no avoid / no hash).
         nextArr[i] = this._pickAmong(x, y, dist, flying, {
-          avoidTowers: false,
+          avoid: "none",
           id: 0,
           tick: 0,
         });
@@ -217,8 +217,17 @@ export class BoardGrid {
    * avoidance, distance) changes both at once — the preview and the real
    * pathing are structurally linked and can never disagree on the option
    * set. Optional `dist` for the BFS-time canonical arrays.
+   *
+   * Avoid modes (pathing tiers — see enemies.js `pathing`):
+   *  - "none": no tower thinking at all (pure shortest route).
+   *  - "soft": among equal options prefer the one farthest from towers.
+   *  - "hard": among equal options prefer the one farthest from towers,
+   *    tie-breaking toward the far edge of the board (the flanks).
+   * All modes only ever choose among STRICTLY equal-length options — path
+   * length is never traded for safety, so every tier keeps the same
+   * never-stall invariant (dist strictly −1 per step ⇒ ≤ rows+cols steps).
    */
-  groundOptions(x, y, { avoidTowers = true, flying = false, dist = null } = {}) {
+  groundOptions(x, y, { avoid = "soft", flying = false, dist = null } = {}) {
     const d = dist || (flying ? this.airDist : this.groundDist);
     const cur = d[this.idx(x, y)];
     let bestD = INF;
@@ -239,19 +248,36 @@ export class BoardGrid {
     }
     if (!cands.length || bestD >= cur) return [];
     let pool = cands;
-    if (avoidTowers && this.towerProx) {
+    if (avoid !== "none" && this.towerProx) {
       let bestProx = INF;
-      const filtered = [];
+      const far = [];
       for (const c of cands) {
         const p = this.towerProx[this.idx(c.x, c.y)] | 0;
         if (p > bestProx) continue;
         if (p < bestProx) {
           bestProx = p;
-          filtered.length = 0;
+          far.length = 0;
         }
-        filtered.push(c);
+        far.push(c);
       }
-      if (filtered.length) pool = filtered;
+      if (far.length) pool = far;
+    }
+    if (avoid === "hard" && pool.length > 1) {
+      // The flanks: prefer the most edge-ward cell (max |x − mid|) — the
+      // "walk the far edge and down the side" behaviour falls out of the
+      // per-step preference, and every option is still strictly downhill.
+      const midX = (this.cols - 1) / 2;
+      let bestEdge = -1;
+      const edge = [];
+      for (const c of pool) {
+        const e = Math.abs(c.x - midX);
+        if (e > bestEdge) {
+          bestEdge = e;
+          edge.length = 0;
+        }
+        edge.push(c);
+      }
+      if (edge.length) pool = edge;
     }
     return pool;
   }
@@ -261,10 +287,10 @@ export class BoardGrid {
    * trunk choice (id 0, tick 0). Same pool, same hash the canonical
    * viz path always used; never touches the live fork round-robin.
    */
-  canonicalGround(x, y, { avoidTowers = true } = {}) {
+  canonicalGround(x, y, { avoid = "none" } = {}) {
     if (!this.inBounds(x, y)) return { x, y };
     if (this.isExit(x, y)) return { x, y };
-    const pool = this.groundOptions(x, y, { avoidTowers, flying: false });
+    const pool = this.groundOptions(x, y, { avoid, flying: false });
     if (!pool.length) return { x, y };
     if (pool.length === 1) return pool[0];
     const h = BoardGrid.pathTieHash(0, x, y, 0);
@@ -289,8 +315,8 @@ export class BoardGrid {
    * tick-dependent hash, which made enemies jitter forever at forks). The
    * canonical viz path (_bfs) keeps DIR-order first via the static hash.
    */
-  _pickAmong(x, y, dist, flying, { avoidTowers = true, id = 0, tick = 0, live = false, entity = null } = {}) {
-    const pool = this.groundOptions(x, y, { avoidTowers, flying, dist });
+  _pickAmong(x, y, dist, flying, { avoid = "soft", id = 0, tick = 0, live = false, entity = null } = {}) {
+    const pool = this.groundOptions(x, y, { avoid, flying, dist });
     if (!pool.length) return { x, y };
 
     if (pool.length === 1) return pool[0];
@@ -339,7 +365,7 @@ export class BoardGrid {
     if (!this.inBounds(x, y)) return { x, y };
     if (this.isExit(x, y)) return { x, y };
     return this._pickAmong(x, y, this.groundDist, false, {
-      avoidTowers: opts.avoidTowers !== false,
+      avoid: opts.avoid || "soft",
       id: opts.id | 0,
       tick: opts.tick | 0,
       live: true,

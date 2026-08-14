@@ -20,6 +20,7 @@ const THREAT_LABEL = {
   phantom: "Air",
   kiln: "Heat",
   siphon: "Regen",
+  skulk: "Skulk",
   claim: "Claim",
   // legacy
   grub: "Mite",

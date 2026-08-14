@@ -37,9 +37,9 @@ export const ENDLESS_THEMES = [
   { id: "mites", unlock: 1, w: 1.25, kinds: { mite: 0.72, courier: 0.28 } },
   { id: "rush", unlock: 2, w: 1, kinds: { courier: 0.6, mite: 0.4 } },
   { id: "haulers", unlock: 3, w: 1, kinds: { hauler: 0.35, ward: 0.25, mite: 0.25, kiln: 0.15 } },
-  { id: "breach", unlock: 4, w: 0.9, kinds: { cask: 0.3, courier: 0.25, mite: 0.25, siphon: 0.2 } },
+  { id: "breach", unlock: 4, w: 0.9, kinds: { cask: 0.3, courier: 0.25, mite: 0.25, siphon: 0.2, skulk: 0.12 } },
   { id: "ducts", unlock: 5, w: 1, kinds: { duct: 0.4, phantom: 0.3, mite: 0.2, courier: 0.1 } },
-  { id: "foundry", unlock: 7, w: 0.85, kinds: { kiln: 0.35, hauler: 0.25, ward: 0.2, mite: 0.2 } },
+  { id: "foundry", unlock: 7, w: 0.85, kinds: { kiln: 0.35, hauler: 0.25, ward: 0.2, mite: 0.2, skulk: 0.14 } },
   {
     id: "ceramite",
     unlock: 10,
@@ -50,7 +50,7 @@ export const ENDLESS_THEMES = [
     id: "volt",
     unlock: 12,
     w: 0.85,
-    kinds: { ward_volt: 0.35, duct: 0.2, hauler: 0.2, mite: 0.15, phantom: 0.1 },
+    kinds: { ward_volt: 0.35, duct: 0.2, hauler: 0.2, mite: 0.15, phantom: 0.1, skulk: 0.16 },
   },
   {
     id: "chaos",
@@ -150,6 +150,8 @@ function pickKind(table, wave, rand) {
     let w = weight;
     if (wave >= 12 && kind === "mite") w *= 0.65;
     if (wave >= 8 && kind === "claim") w *= 0;
+    if (wave < 4 && kind === "skulk") w *= 0;
+    if (wave < 8 && kind === "skulk") w *= 0.35;
     if (wave < 6 && (kind === "kiln" || kind === "siphon")) w *= 0.35;
     if (wave < 10 && (kind === "hauler_ceramite" || kind === "ward_volt")) w *= 0.2;
     return [kind, w];

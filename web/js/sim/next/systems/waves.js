@@ -169,7 +169,7 @@ export function makeEnemy(state, kind, wave, opts = {}) {
     aura: def.aura ? { ...def.aura } : null,
     boss: !!def.boss,
     silhouette: def.silhouette || id,
-    ignoreTowerAvoid: !!def.ignoreTowerAvoid,
+    pathing: def.pathing || "shortest",
     reachedExit: false,
     _hitFlash: 0,
     _regenAcc: 0,

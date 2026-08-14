@@ -72,6 +72,12 @@ export function tickEnemies(state) {
   }
 }
 
+/** Pathing tiers — the ONLY place enemy `pathing` maps to a cost mode. */
+const PATHING = {
+  shortest: { avoid: "none" },
+  evade: { avoid: "hard" },
+};
+
 /** Ported verbatim from SimWorld._advance (float sequence is the contract). */
 function advance(state, e) {
   const slowRaw = Math.min(1, e.slowAmount || 0);
@@ -91,7 +97,7 @@ function advance(state, e) {
       : g.pickNextGround(cx, cy, {
           id: e.id,
           tick: state.tickIndex | 0,
-          avoidTowers: !e.ignoreTowerAvoid,
+          avoid: (PATHING[e.pathing] || PATHING.shortest).avoid,
           entity: e,
         });
     if (next.x === cx && next.y === cy) {

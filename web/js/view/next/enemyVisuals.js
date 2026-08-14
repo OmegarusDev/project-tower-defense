@@ -92,6 +92,17 @@ export const ENEMY_VISUALS = {
       ["ellipseStroke", { x: 0, yTop: -0.1, rx: 0.18, ry: 0.11, color: "pulse", alpha: (t) => 0.45 + 0.3 * (0.5 + 0.5 * Math.sin(t * 5)), lw: 1.6 }],
     ],
   },
+  skulk: {
+    anim: "none",
+    parts: [
+      ["frustum", { x: 0, yTop: 0.14, rxBot: 0.24, rxTop: 0.3, rise: 0.1, top: "top", side: "side", dark: "sideDark" }],
+      ["ellipseFill", { x: 0, yTop: 0.34, rx: 0.09, ry: 0.06, color: "eye", alpha: 0.9 }],
+      ["ellipseStroke", { x: 0, yTop: 0.34, rx: 0.13, ry: 0.09, color: "eyeRing", alpha: 0.55, lw: 1 }],
+      ["quadratic", { pts: [[-0.13, -0.02], [-0.22, -0.12], [-0.05, -0.16]], color: "side", alpha: 0.6, lw: 1.2 }],
+      ["quadratic", { pts: [[0.13, -0.02], [0.22, -0.12], [0.05, -0.16]], color: "side", alpha: 0.6, lw: 1.2 }],
+      ["plate", { x: 0, yTop: 0.3, w: 0.1, h: 0.04 }],
+    ],
+  },
   claim: {
     anim: "claim",
     parts: [

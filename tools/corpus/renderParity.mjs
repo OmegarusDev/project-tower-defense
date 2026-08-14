@@ -100,7 +100,7 @@ const diffTile = async (goldenFile, label, spec, ang, p) => {
 const nBase = BASES.length * 4;
 const nBarrel = BARRELS.length * 4;
 const nPayload = PAYLOADS.length * 4;
-const ENEMY_KINDS = ["mite", "courier", "hauler", "hauler_ceramite", "duct", "ward", "ward_volt", "cask", "phantom", "kiln", "siphon", "claim"];
+const ENEMY_KINDS = ["mite", "courier", "hauler", "hauler_ceramite", "duct", "ward", "ward_volt", "cask", "phantom", "kiln", "siphon", "claim", "skulk"];
 
 for (const p of pitch) {
   // bases section (idx 0..23): base i at i*4+a

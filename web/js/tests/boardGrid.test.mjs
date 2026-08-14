@@ -65,30 +65,39 @@ assert(g2.airDist[g2.idx(g2.spawn.x, g2.spawn.y)] < INF, "air ok");
   g3.recompute();
   assert(g3.hasGroundPath(), "corridor open");
 
-  // Tower-avoid: the tower at (1,2) makes the right lane (3,0) strictly cheaper,
-  // so every pick must go there (pool of one).
+  // TIERED PATHING: the tower at (1,2) sits beside the LEFT lane. A shortest
+  // enemy ignores it entirely (pool of two, hash pick); an evade enemy takes
+  // the right (far) lane every time.
   const eA = {};
   const eB = {};
-  const away1 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: eA, avoidTowers: true });
-  const away2 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: eB, avoidTowers: true });
-  assert(away1.x === 3 && away2.x === 3, `avoiders prefer the lane away from the tower (got ${away1.x},${away2.x})`);
+  const mite1 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: eA, avoid: "none" });
+  const mite2 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: eB, avoid: "none" });
+  assert(
+    (mite1.x === 1 || mite1.x === 3) && (mite2.x === 1 || mite2.x === 3),
+    "shortest ignores towers (equal options stay open)"
+  );
+  const eC = {};
+  const skulk1 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: eC, avoid: "hard" });
+  const eD = {};
+  const skulk2 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: eD, avoid: "hard" });
+  assert(skulk1.x === 3 && skulk2.x === 3, `evade always takes the far lane (got ${skulk1.x},${skulk2.x})`);
 
   // Without the tower bias, live picks alternate strictly: enemy 1 -> lane A,
   // enemy 2 -> lane B, enemy 3 -> A.
   g3.setTower(1, 2, false);
   g3.recompute();
   const e1 = {};
-  const n1 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: e1, avoidTowers: true });
+  const n1 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: e1, avoid: "soft" });
   const e2 = {};
-  const n2 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: e2, avoidTowers: true });
+  const n2 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: e2, avoid: "soft" });
   const e3 = {};
-  const n3 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: e3, avoidTowers: true });
+  const n3 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: e3, avoid: "soft" });
   assert(n1.x !== n2.x || n1.y !== n2.y, "consecutive enemies alternate lanes");
   assert(n3.x === n1.x && n3.y === n1.y, "third enemy cycles back to lane A");
 
   // Stability: the same enemy re-picking the same cell (mid-glide) keeps its branch.
-  const again = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: e1, avoidTowers: true });
-  const again2 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: e1, avoidTowers: true });
+  const again = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: e1, avoid: "soft" });
+  const again2 = g3.pickNextGround(g3.spawn.x, g3.spawn.y, { entity: e1, avoid: "soft" });
   assert(again.x === n1.x && again.y === n1.y, "re-pick is stable for the same enemy");
   assert(again2.x === n1.x && again2.y === n1.y, "re-pick stays stable across ticks");
 }
@@ -104,7 +113,7 @@ assert(g2.airDist[g2.idx(g2.spawn.x, g2.spawn.y)] < INF, "air ok");
   for (let i = 0; i < 200; i++) {
     const n = g4.pickNextGround(g4.spawn.x, g4.spawn.y, {
       entity: {},
-      avoidTowers: false,
+      avoid: "none",
     });
     const key = `${n.x},${n.y}`;
     counts.set(key, (counts.get(key) || 0) + 1);
@@ -171,7 +180,7 @@ console.log("ALL boardGrid tests passed");
   const canon = g5.canonicalGround(g5.spawn.x, g5.spawn.y);
   assert(opts.some((o) => o.x === canon.x && o.y === canon.y), "canonical pick is in the pool");
   for (let i = 0; i < 40; i++) {
-    const p = g5.pickNextGround(g5.spawn.x, g5.spawn.y, { entity: {}, avoidTowers: true });
+    const p = g5.pickNextGround(g5.spawn.x, g5.spawn.y, { entity: {}, avoid: "soft" });
     assert(opts.some((o) => o.x === p.x && o.y === p.y), `live pick in pool (got ${p.x},${p.y})`);
   }
 
@@ -185,4 +194,61 @@ console.log("ALL boardGrid tests passed");
   assert(branches.length >= 1, `alternative branch drawn (got ${branches.length})`);
   const exitReached = allPts.some((p) => p.y === g5.rows - 1);
   assert(exitReached, "preview paths reach the exit row");
+}
+
+{
+  // HARD AVOID: monotonic + exits — the evade walk never stalls and always
+  // reaches the exit row, even with towers lining the mid-board.
+  const g6 = new BoardGrid();
+  g6.setup(9, 9);
+  // wall a wiggly corridor so the shortest route is flanky anyway
+  for (let y = 1; y < 8; y++) g6.setBlocked(4, y, true);
+  g6.setBlocked(5, 3, true);
+  g6.setBlocked(3, 6, true);
+  // towers beside the corridor — evade must hug the far edge, never stall
+  g6.setTower(1, 4, true);
+  g6.setTower(1, 5, true);
+  g6.setTower(7, 4, true);
+  g6.setTower(7, 5, true);
+  g6.recompute();
+  assert(g6.hasGroundPath(), "corridor open");
+  let cell = { ...g6.spawn };
+  let steps = 0;
+  let minDist = g6.groundDist[g6.idx(cell.x, cell.y)];
+  while (!g6.isExit(cell.x, cell.y) && steps++ < 120) {
+    const n = g6.pickNextGround(cell.x, cell.y, { entity: {}, avoid: "hard" });
+    assert(!(n.x === cell.x && n.y === cell.y), "hard avoid never stalls");
+    const nd = g6.groundDist[g6.idx(n.x, n.y)];
+    assert(nd < minDist, "hard avoid strictly descends (never lengthens)");
+    minDist = nd;
+    cell = n;
+  }
+  assert(g6.isExit(cell.x, cell.y), "hard avoid reaches the exit row");
+}
+
+{
+  // SKULK: def + endless unlock windows + composition gating.
+  const { enemyDef, ENEMY_COST } = await import("../data/enemies.js");
+  const { composeEndlessWave } = await import("../data/waveScripts.js");
+  const def = enemyDef("skulk");
+  assert(def.pathing === "evade", "skulk is an evader");
+  assert(ENEMY_COST.skulk === 3.2, "skulk costs 3.2");
+  // wave 3: never present; wave 4+: possible but ramp-gated; wave 10: common
+  let s0 = 12345;
+  const rng = () => {
+    s0 = (s0 * 1664525 + 1013904223) >>> 0;
+    return s0 / 4294967296;
+  };
+  let seen = { w3: 0, w4: 0, w10: 0 };
+  for (let i = 0; i < 200; i++) {
+    const q3 = composeEndlessWave(3, rng);
+    const q4 = composeEndlessWave(4, rng);
+    const q10 = composeEndlessWave(10, rng);
+    if (q3.queue.includes("skulk")) seen.w3++;
+    if (q4.queue.includes("skulk")) seen.w4++;
+    if (q10.queue.includes("skulk")) seen.w10++;
+  }
+  assert(seen.w3 === 0, `skulk never before wave 4 (got ${seen.w3}/200)`);
+  assert(seen.w4 > 0 && seen.w4 < 200, `skulk intermittent at wave 4 (got ${seen.w4}/200)`);
+  assert(seen.w10 > seen.w4, `skulk ramps up by wave 10 (${seen.w10} vs ${seen.w4})`);
 }
