@@ -7,6 +7,7 @@
 import { BoardGrid } from "../boardGrid.js";
 import { mulberry32 } from "../rng.js";
 import { BASE_START_CASH, BASE_START_LIVES } from "../../data/techTree.js";
+import { makeEconomy } from "./systems/economy.js";
 
 export function createState(opts = {}) {
   const grid = new BoardGrid();
@@ -45,19 +46,13 @@ export function createState(opts = {}) {
     startLives: BASE_START_LIVES,
     leakCount: 0,
     killCount: 0,
+    sellRefundMult: 0.5,
 
-    // economy
-    economy: {
-      battle: BASE_START_CASH,
-      forge: 0,
-      aether: 0,
-      runGains: { coin: 0, parts: 0, aether: 0 },
-      towerCostMult: 1,
-      wallCostMult: 1,
-      waveCoinBonus: 0,
-      wavePartsBonus: 0,
-      sellRefundMult: 0.5,
-    },
+    // economy (plain data — the facade exposes the method view)
+    economy: makeEconomy(BASE_START_CASH),
+
+    // action log (event-sourced runs — the oracle's logAction)
+    actionLog: [],
 
     // wave manager state (RNG streams live here — draw order is the contract)
     waves: {
@@ -100,4 +95,8 @@ export function emit(state, type, data = {}) {
 
 export function allocId(state) {
   return state._nextId++;
+}
+
+export function logAction(state, type, data = {}) {
+  state.actionLog.push({ t: state.tickIndex, type, ...data });
 }

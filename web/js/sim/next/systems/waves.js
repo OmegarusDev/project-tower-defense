@@ -10,6 +10,7 @@ import { enemyDef, resolveEnemyKind } from "../../../data/enemies.js";
 import { mulberry32 } from "../../rng.js";
 import { INF } from "../../boardGrid.js";
 import { allocId, emit } from "../state.js";
+import { applyWaveClear } from "./economy.js";
 
 export function startNextWave(state) {
   state.waves.index = (state.waves.index | 0) + 1;
@@ -63,7 +64,7 @@ export function tickWaves(state) {
   } else if (state.enemies.length === 0) {
     wv.active = false;
     const wave = state.waves.index;
-    const rewards = applyWaveClear(state, wave);
+    const rewards = applyWaveClear(state.economy, wave);
     emit(state, "wave_cleared", { wave, ...rewards });
     if (
       !state.modeEndless &&
@@ -83,22 +84,6 @@ export function tickWaves(state) {
       growSouth(state, ENDLESS_GRID.growBy);
     }
   }
-}
-
-/** Ported verbatim from Economy.applyWaveClear + waveClearRewards. */
-function applyWaveClear(state, wave) {
-  const w = Math.max(1, wave | 0);
-  const coin = 10 + (w - 1) + (state.economy.waveCoinBonus | 0);
-  const partsBase = w % 3 === 0 ? 3 + Math.floor(w / 3) : 0;
-  const parts = partsBase > 0 ? partsBase + (state.economy.wavePartsBonus | 0) : 0;
-  const aether = w % 5 === 0 ? 2 + Math.floor(w / 5) : 0;
-  state.economy.battle += coin;
-  state.economy.forge = (state.economy.forge | 0) + parts;
-  state.economy.aether = (state.economy.aether | 0) + aether;
-  state.economy.runGains.coin = (state.economy.runGains.coin | 0) + coin;
-  state.economy.runGains.parts = (state.economy.runGains.parts | 0) + parts;
-  state.economy.runGains.aether = (state.economy.runGains.aether | 0) + aether;
-  return { coin, parts, aether };
 }
 
 function growSouth(state, extra) {
