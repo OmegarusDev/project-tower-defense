@@ -170,10 +170,12 @@ export class Sim {
       applied = earlyBonus;
     }
     startNextWave(s);
+    s.checkpointPhase = "inWave";
+    this.checkpointPhase = "inWave";
     logAction(s, "call", { wave: nextWave, earlyBonus: applied });
-    emit(s, "wave_call", { wave: nextWave, earlyBonus: applied });
+    emit(s, "wave_started", { wave: nextWave, earlyBonus: applied });
     this.waveIndex = s.waves.index;
-    return { ok: true, wave: nextWave };
+    return { wave: this.waveIndex, earlyBonus: applied };
   }
 
   tick() {
@@ -184,9 +186,10 @@ export class Sim {
     tickWaves(s);
     tickCombat(s);
     tickEnemies(s);
-    // NOTE: `running` is NOT re-synced here — handlers (wave_cleared,
-    // game_over, victory) own it, exactly like the oracle. Re-syncing would
-    // clobber their false.
+    // `running` propagates only one way: internal stops (game_over /
+    // victory) must reflect on the facade; a manual `this.running = false`
+    // (wave_cleared hand-off, endless) is never clobbered back to true.
+    if (!s.running) this.running = false;
     this.lives = s.lives;
     this.leakCount = s.leakCount;
     this.killCount = s.killCount;
