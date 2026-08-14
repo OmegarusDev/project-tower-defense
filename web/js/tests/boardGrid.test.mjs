@@ -1,6 +1,6 @@
 /** Run: node js/tests/boardGrid.test.mjs */
 import { BoardGrid, INF } from "../sim/boardGrid.js";
-import { SimWorld } from "../sim/simWorld.js";
+import { Sim } from "../sim/next/sim.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -10,13 +10,13 @@ function assert(cond, msg) {
   // Regression: a symmetric fork must not freeze enemies. The spawn cell
   // (4,0) has three equal-cost exits once (4,2)+(4,3) are walled; enemies
   // used to re-roll the tie every tick (tick-mixed hash) and jitter forever.
-  const sim = new SimWorld();
+  const sim = new Sim();
   sim.setup(9, 8, 1, true);
   sim.grid.setBlocked(4, 2, true);
   sim.grid.setBlocked(4, 3, true);
   sim.grid.recompute();
   sim.lives = 5000;
-  sim.waves._queue = Array(12).fill("mite");
+  sim.waves.queue = Array(12).fill("mite");
   sim.waves.toSpawn = 12;
   sim.waves.spawnTimer = 0;
   sim.startWave({ earlyBonus: 0 });
@@ -119,16 +119,16 @@ assert(g2.airDist[g2.idx(g2.spawn.x, g2.spawn.y)] < INF, "air ok");
   // Softlock regression: walling the last exit of a pocket around a live
   // enemy must be rejected — a sealed enemy stalls forever and the wave
   // never ends. Walls that leave a downhill route stay legal.
-  const sim = new SimWorld();
+  const sim = new Sim();
   sim.setup(9, 8, 5, true);
   sim.lives = 5000;
   sim.economy.battle = 5000;
-  sim.waves._queue = Array(1).fill("mite");
+  sim.waves.queue = Array(1).fill("mite");
   sim.waves.toSpawn = 1;
   sim.waves.spawnTimer = 0;
   sim.startWave({ earlyBonus: 0 });
   // startWave re-composes the queue — pin it to a single mite.
-  sim.waves._queue = ["mite"];
+  sim.waves.queue = ["mite"];
   sim.waves.toSpawn = 1;
   for (let t = 0; t < 240; t++) sim.tick(); // mite walks to mid-board
   const e = sim.enemies[0];

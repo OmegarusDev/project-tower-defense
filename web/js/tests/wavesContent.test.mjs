@@ -1,4 +1,5 @@
-import { SimWorld } from "../sim/simWorld.js";
+import { Sim } from "../sim/next/sim.js";
+import { makeEnemy } from "../sim/next/systems/waves.js";
 import { WAVE_PACKS, composeEndlessWave, resolveCampaignWave } from "../data/waveScripts.js";
 import { ENEMY_KINDS, resolveEnemyKind } from "../data/enemies.js";
 import { CAMPAIGN_LEVELS, campaignCoinGrant } from "../data/campaign.js";
@@ -68,25 +69,25 @@ assert(resolveEnemyKind("boss") === "claim", "alias boss→claim");
 assert(resolveEnemyKind("grub") === "mite", "alias grub→mite");
 assert(resolveEnemyKind("fast") === "courier", "alias fast→courier");
 
-const world = new SimWorld();
+const world = new Sim();
 world.setup(9, 8, 42, true);
 world.runSeed = 42;
-const boss = world.waves.makeEnemy("claim", 10);
+const boss = makeEnemy(world._s, "claim", 10);
 assert(boss.hp > 100, "claim is tanky");
 assert(boss.boss === true, "claim flagged boss");
 assert(boss.armorKind === "plate", "claim has plate armor");
 assert(boss.ballast === "high", "claim high ballast");
-const sh = world.waves.makeEnemy("ward", 5);
+const sh = makeEnemy(world._s, "ward", 5);
 assert(sh.shieldHp > 0, "ward has shield");
-const sp = world.waves.makeEnemy("cask", 5);
+const sp = makeEnemy(world._s, "cask", 5);
 assert(sp.splitsInto === 2, "cask splits");
 assert(sp.splitKind === "mite", "cask splits into mites");
-const leech = world.waves.makeEnemy("siphon", 3);
+const leech = makeEnemy(world._s, "siphon", 3);
 assert(leech.regen > 0, "siphon regenerates");
 assert(leech.armorKind === "none", "siphon is soft meat");
-const ceram = world.waves.makeEnemy("hauler_ceramite", 12);
+const ceram = makeEnemy(world._s, "hauler_ceramite", 12);
 assert(ceram.armorKind === "insulated", "ceramite insulated");
-const volt = world.waves.makeEnemy("ward_volt", 14);
+const volt = makeEnemy(world._s, "ward_volt", 14);
 assert(volt.energyBlock === true, "volt ward energy block");
 
 const empPlan = buildAttackPlan("sentry", "single", "emp", 1, {});
@@ -98,7 +99,7 @@ assert(world.waves.toSpawn > 0, "wave queues spawns");
 assert(world.economy.battle === before + 5, "early bonus applied");
 assert(world.actionLog.some((a) => a.type === "call"), "call logged");
 
-const camp = new SimWorld();
+const camp = new Sim();
 camp.setup(8, 8, 1001, false);
 camp.campaignWaves = CAMPAIGN_LEVELS[0].waves;
 camp.wavesToWin = CAMPAIGN_LEVELS[0].wavesToWin;
@@ -108,6 +109,6 @@ assert(
   camp.waves.toSpawn === resolveCampaignWave(CAMPAIGN_LEVELS[0].waves[0], 1).queue.length,
   "campaign wave 1 size"
 );
-assert(Math.abs(camp.waves._waveSpeedMult - 0.85) < 0.001, "campaign wave 1 speedMult");
+assert(Math.abs(camp.waves.speedMult - 0.85) < 0.001, "campaign wave 1 speedMult");
 
 console.log("ALL wavesContent tests passed");

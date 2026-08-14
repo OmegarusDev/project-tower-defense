@@ -71,8 +71,8 @@
     import { PARTS } from "../js/data/parts.js";
     import { ENEMY_KINDS } from "../js/data/enemies.js";
     import { ProcPalette } from "../js/view/palette.js";
-    import { renderTower, hubLiftFor, crownFactorFor } from "../js/view/towerPainter.js";
-    import { drawEnemyBody } from "../js/view/enemyPainter.js";
+    import { renderTowerNext, hubLiftForNext, crownFactorForNext } from "../js/view/next/renderTower.js";
+    import { renderEnemyNext } from "../js/view/next/renderEnemy.js";
     import { VIEW25, setPitch } from "../js/view/view25.js";
 
     const palette = new ProcPalette();
@@ -92,7 +92,7 @@
     function draw(canvas, t) {
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, SIZE, SIZE);
-      renderTower(ctx, palette, t, (SIZE - CSS) / 2, (SIZE - CSS) / 2 + 6, CSS, {
+      renderTowerNext(ctx, palette, t, (SIZE - CSS) / 2, (SIZE - CSS) / 2 + 6, CSS, {
         showBadge: false,
       });
     }
@@ -157,8 +157,8 @@
 
       // 2. hub always clears the base crown (the BASE_CROWN invariant)
       for (const base of bases) {
-        const lift = hubLiftFor(92, base);
-        const crown = 92 * 1.22 * crownFactorFor(base) * VIEW25.vExag;
+        const lift = hubLiftForNext(92, base);
+        const crown = 92 * 1.22 * crownFactorForNext(base) * VIEW25.vExag;
         check(lift >= crown, `hub clears crown — ${base}`, `lift ${lift.toFixed(1)} vs crown ${crown.toFixed(1)}`);
       }
 
@@ -329,7 +329,7 @@
         draw: (cv) => {
           const ctx = cv.getContext("2d");
           ctx.clearRect(0, 0, SIZE, SIZE);
-          drawEnemyBody(ctx, palette, kind, SIZE / 2, (SIZE - CSS) / 2 + 6 + CSS / 2, CSS, {
+          renderEnemyNext(ctx, palette, kind, SIZE / 2, (SIZE - CSS) / 2 + 6 + CSS / 2, CSS, {
             t: 1,
             phase: 0,
           });

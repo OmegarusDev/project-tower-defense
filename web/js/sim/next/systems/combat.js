@@ -22,7 +22,7 @@ export function tickCombat(state) {
   tickStatus(state);
 }
 
-function refreshEnemyAuras(state) {
+export function refreshEnemyAuras(state) {
   const es = state.enemies;
   let ward = null;
   for (const e of es) {
@@ -318,7 +318,7 @@ function detonateAt(state, p, pos) {
  * Apply projectile impact. Returns true when the projectile should despawn.
  * Pierce: decrement and keep flying (skip already-hit ids).
  */
-function onHit(state, p, target) {
+export function onHit(state, p, target) {
   if (target.hp <= 0) return false;
   if (target.flying && !p.airCapable) return false;
   if (!p.hitIds) p.hitIds = new Set();
@@ -366,7 +366,7 @@ function onHit(state, p, target) {
   return true;
 }
 
-function doChain(state, fromEnemy, damage, plan, tower, hit, jumps) {
+export function doChain(state, fromEnemy, damage, plan, tower, hit, jumps) {
   let dmg = damage;
   let from = { ...fromEnemy.pos };
   let left = jumps;
@@ -406,7 +406,7 @@ function doChain(state, fromEnemy, damage, plan, tower, hit, jumps) {
   }
 }
 
-function applyHit(state, e, damage, plan, tower, opts = {}) {
+export function applyHit(state, e, damage, plan, tower, opts = {}) {
   if ((e.immune || []).includes(plan.damageType)) {
     emit(state, "hit_immune", { enemyId: e.id });
     return;
@@ -496,11 +496,11 @@ function applyHit(state, e, damage, plan, tower, opts = {}) {
 function applyStatus(state, e, status) {
   return applyStatusRegistry(state, e, status);
 }
-function tickStatus(state) {
+export function tickStatus(state) {
   tickStatusRegistry(state);
 }
 
-function grantXp(state, tower, amount) {
+export function grantXp(state, tower, amount) {
   const cap = Math.max(1, tower.levelCap || 1, state.runLevelCap | 0);
   tower.levelCap = cap;
   // At cap: freeze bar — no endless banked points.

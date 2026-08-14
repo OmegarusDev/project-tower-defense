@@ -5,7 +5,7 @@
  */
 import { runSim } from "./runSim.js";
 import { scenarioByName } from "./scenarios.js";
-import { SimWorld } from "../sim/simWorld.js";
+import { Sim } from "../sim/next/sim.js";
 
 function parseArgs(argv) {
   const out = { preset: "fresh", seed: 1 };
@@ -27,7 +27,7 @@ const origRun = runSim;
 import { makeSlot } from "../data/parts.js";
 import { ENDLESS_GRID } from "../data/endlessGrid.js";
 
-const sim = new SimWorld();
+const sim = new Sim();
 sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, seed, true);
 sim.runSeed = seed;
 sim.runLevelCap = base.runLevelCap;

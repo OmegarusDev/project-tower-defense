@@ -8,7 +8,7 @@
  *
  *   node tools/corpus/simTrace.mjs [--presets fresh,earlyAA] [--seeds 1,2,42]
  */
-import { SimWorld } from "../../web/js/sim/simWorld.js";
+import { Sim } from "../../web/js/sim/next/sim.js";
 import { scenarioByName } from "../../web/js/balance/scenarios.js";
 import { makeSlot } from "../../web/js/data/parts.js";
 import { ENDLESS_GRID } from "../../web/js/data/endlessGrid.js";
@@ -30,7 +30,7 @@ function parseArgs(argv) {
 
 function runTrace(preset, seed) {
   const base = scenarioByName(preset);
-  const sim = new SimWorld();
+  const sim = new Sim();
   sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, seed, true);
   sim.runSeed = seed;
   sim.runLevelCap = base.runLevelCap;

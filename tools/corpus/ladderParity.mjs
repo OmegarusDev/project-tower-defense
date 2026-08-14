@@ -1,22 +1,29 @@
 #!/usr/bin/env node
 /**
- * Ladder + campaign + checkpoint parity — the aggregate gates.
+ * Ladder + campaign + checkpoint regression — the aggregate gates against
+ * committed goldens (captured from the oracle-verified next sim; refresh
+ * with --capture when the game deliberately changes).
  *
- *  LADDER:    runSim (the real balance harness) on both sims across presets
- *             x seeds; full metrics objects must be byte-identical.
- *  CAMPAIGN:  all 12 levels driven by the greedy bot to victory/game over;
- *             event streams + state hashes identical.
- *  CHECKPOINT: mid-run checkpoint() -> loadCheckpoint() -> continue, both
- *             sims; streams + hashes identical.
+ *  LADDER:    runSim (the real balance harness) across presets x seeds;
+ *             full metrics objects must equal the golden.
+ *  CAMPAIGN:  all 12 levels driven by the greedy bot; streams + state
+ *             equal the golden.
+ *  CHECKPOINT: mid-run checkpoint() -> loadCheckpoint() -> continue.
  *
- *   node tools/corpus/ladderParity.mjs [--presets fresh,earlyAA] [--seeds 1,42]
+ *   node tools/corpus/ladderParity.mjs [--presets fresh,earlyAA] [--seeds 1,42] [--capture]
  */
 import { runSim } from "../../web/js/balance/runSim.js";
 import { scenarioByName } from "../../web/js/balance/scenarios.js";
-import { SimWorld } from "../../web/js/sim/simWorld.js";
 import { Sim } from "../../web/js/sim/next/sim.js";
 import { CAMPAIGN_LEVELS, levelPortalCell } from "../../web/js/data/campaign.js";
 import { makeSlot } from "../../web/js/data/parts.js";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const OUT = join(HERE, "out", "ladder.json");
+const CAPTURE = process.argv.includes("--capture");
 
 function parseArgs(argv) {
   const a = { presets: ["fresh", "earlyAA", "parts2", "midMeta"], seeds: [1, 2, 42, 123, 555, 99] };
@@ -36,25 +43,19 @@ const fail = (msg) => {
 };
 const pass = (msg) => console.log("PASS — " + msg);
 
+const results = {};
+
 // ————— LADDER —————
+results.ladder = {};
 for (const preset of presets) {
   const base = scenarioByName(preset);
   for (const seed of seeds) {
-    const run = (factory) =>
-      runSim({
-        ...base,
-        seed,
-        simFactory: factory,
-      });
-    const a = run(() => new SimWorld());
-    const b = run(() => new Sim());
-    const ja = JSON.stringify(a);
-    const jb = JSON.stringify(b);
-    if (ja !== jb) {
-      fail(`ladder ${preset}@${seed}\n alt: ${ja}\n new: ${jb}`);
-    } else {
-      pass(`ladder ${preset}@${seed}: ${a.wavesCleared}w GO=${a.gameOver} towers=${a.towers}`);
-    }
+    const a = runSim({
+      ...base,
+      seed,
+      simFactory: () => new Sim(),
+    });
+    results.ladder[`${preset}@${seed}`] = a;
   }
 }
 
@@ -121,16 +122,10 @@ function runCampaign(Factory, lv) {
 
 import { greedyAct } from "../../web/js/balance/greedyBot.js";
 
+results.campaign = {};
 for (const lv of CAMPAIGN_LEVELS) {
-  const a = runCampaign(SimWorld, lv);
-  const b = runCampaign(Sim, lv);
-  const ja = JSON.stringify(a);
-  const jb = JSON.stringify(b);
-  if (ja !== jb) {
-    fail(`campaign L${lv.id} ${lv.name}\n alt: ${ja.slice(0, 300)}\n new: ${jb.slice(0, 300)}`);
-  } else {
-    pass(`campaign L${lv.id} ${lv.name}: ${a.ticks}t ${a.events.length} events`);
-  }
+  const a = runCampaign(Sim, lv);
+  results.campaign[`L${lv.id}`] = { events: a.events, ticks: a.ticks, state: a.state };
 }
 
 // ————— CHECKPOINT round trip —————
@@ -194,17 +189,32 @@ function checkpointRun(Factory, preset, seed) {
   });
 }
 
+results.checkpoint = {};
 for (const preset of ["fresh", "earlyAA"]) {
   for (const seed of [1, 42]) {
-    const a = checkpointRun(SimWorld, preset, seed);
-    const b = checkpointRun(Sim, preset, seed);
-    if (a !== b) {
-      fail(`checkpoint ${preset}@${seed}\n alt: ${a.slice(0, 260)}\n new: ${b.slice(0, 260)}`);
-    } else {
-      pass(`checkpoint ${preset}@${seed}`);
-    }
+    results.checkpoint[`${preset}@${seed}`] = checkpointRun(Sim, preset, seed);
   }
 }
 
-console.log(failures === 0 ? "ALL PARITY OK" : `${failures} divergence(s)`);
-process.exit(failures === 0 ? 0 : 1);
+if (CAPTURE) {
+  mkdirSync(dirname(OUT), { recursive: true });
+  writeFileSync(OUT, JSON.stringify(results));
+  console.log(`captured ladder goldens (${Object.keys(results.ladder).length} ladder, ${Object.keys(results.campaign).length} campaign, ${Object.keys(results.checkpoint).length} checkpoint)`);
+} else if (!existsSync(OUT)) {
+  console.log("FAIL — no golden (re-run with --capture)");
+  process.exit(1);
+} else {
+  const golden = JSON.parse(readFileSync(OUT, "utf8"));
+  const cmp = (key, name) => {
+    if (JSON.stringify(results[key]) !== JSON.stringify(golden[key])) {
+      fail(name);
+    } else {
+      pass(name);
+    }
+  };
+  cmp("ladder", "ladder (all presets x seeds)");
+  cmp("campaign", "campaign (12 levels)");
+  cmp("checkpoint", "checkpoint round-trips");
+  console.log(failures === 0 ? "ALL PARITY OK" : `${failures} divergence(s)`);
+  process.exit(failures === 0 ? 0 : 1);
+}

@@ -111,17 +111,19 @@ tolerance (render). The live game must remain the oracle throughout.
   it caught two real facade bugs (startWave return/event identity, `running`
   mirror after game over) — both fixed.
 - **Phase 6 (done):** swap completed — main now launches the NEW implementation
-  (next Sim facade, next BoardView, screen/chrome/action registries). The oracle
-  is NOT deleted — preserved at branch `oracle` (original snapshot),
-  `oracle-current` (pre-swap main) and tag `replica-oracle`. The oracle-vs-next
-  gates still pass (the oracle modules remain in-tree); ui/chrome/actions gates
-  converted to golden regression (tools/corpus/out/{ui,chrome,actions}) since
-  their oracle sides were the rewired modules. Verified: full browser flow walk
-  (title → hub → run → place → wave → pause → quit → campaign → prep → start →
-  forge → tech → settings → editor) with zero console errors. Size goal: the
-  oracle stays in-tree by design, so size is now a next-vs-replaced metric
-  (see the assessment); the swap can delete the oracle files any time with the
-  corpus + gates standing in as oracle.
+  (next Sim facade, next BoardView, screen/chrome/action registries).
+- **Oracle-free (done):** nothing imports the oracle anymore — the live game,
+  the 12 unit tests, the balance tooling and every gate run on the next
+  implementation. The oracle files moved to the top-level `oracle/` directory
+  (outside web/, never served) as a pure design reference — `rm -rf oracle/`
+  is safe any time. Gates are now corpus/golden-based: simParity (committed
+  traces), ladderParity (committed baselines), simFuzz (robustness +
+  determinism), boardParity (committed goldens), ui/chrome/actions (committed
+  goldens), renderParity (committed goldens), smokeWalk (live app). The sim
+  facade gained write-through mirrors (lives/waveIndex/running/runLevelCap/
+  checkpointPhase/earlyBonusWave/seed + waves.toSpawn/waveActive/queue/
+  lastTheme/lastEvent/speedMult) so app/test writes behave exactly like the
+  oracle's single-field world.
 
 ## Post-parity list (deliberate improvements, applied after the swap certifies)
 

@@ -3,7 +3,7 @@
  * Chains waves until game over, victory, maxWaves, or maxTicks.
  */
 
-import { SimWorld, TICK_DT } from "../sim/simWorld.js";
+import { Sim, TICK_DT } from "../sim/next/sim.js";
 import { makeSlot } from "../data/parts.js";
 import { BASE_START_CASH } from "../data/techTree.js";
 import { ENDLESS_GRID } from "../data/endlessGrid.js";
@@ -28,7 +28,7 @@ export function runSim(opts = {}) {
   const maxTicks = Math.max(60, opts.maxTicks | 0 || 60 * 60 * 8); // ~8 min @ 60Hz
   const runLevelCap = Math.max(1, opts.runLevelCap | 0 || 1);
 
-  const sim = opts.simFactory ? opts.simFactory() : new SimWorld();
+  const sim = opts.simFactory ? opts.simFactory() : new Sim();
   // Match the shipped endless map — the balance bot must measure the real game.
   sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, seed, true);
   sim.runSeed = seed >>> 0 || 1;

@@ -104,7 +104,7 @@ function spawnOne(state) {
 }
 
 /** Spawn point — live portal cell with reachability fallback (oracle parity). */
-function spawnPos(state, kind) {
+export function spawnPos(state, kind) {
   const g = state.grid;
   const p = state.portal || { x: g.spawn.x, y: 0 };
   const dist = enemyDef(kind).flying ? g.airDist : g.groundDist;
@@ -216,6 +216,6 @@ function relocatePortal(state) {
   emit(state, "portal_moved", { x, y: 0 });
 }
 
-function dwellFor(state, w) {
+export function dwellFor(state, w) {
   return Math.max(2.5, Math.min(8, 8 - 0.15 * (w - 1)));
 }

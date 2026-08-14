@@ -5,9 +5,8 @@
 <body>
 <script type="module">
   import { ProcPalette } from "/js/view/palette.js";
-  import { BoardView as OracleBoardView } from "/js/view/boardView.js";
   import { BoardView as NextBoardView } from "/js/view/next/boardView.js";
-  import { SimWorld } from "/js/sim/simWorld.js";
+  import { Sim } from "/js/sim/next/sim.js";
   import { ENDLESS_GRID } from "/js/data/endlessGrid.js";
   import { buildAttackPlan, planOptsFromParts } from "/js/sim/attackPlan.js";
   import * as S from "/js/view/next/boardScene.js";
@@ -16,24 +15,13 @@
   const W = 960, H = 540;
   const SEED = 42;
 
-  function buildMotes() {
-    return Array.from({ length: 18 }, () => ({
-      u: Math.random(),
-      v: Math.random(),
-      r: 0.5 + Math.random() * 1.4,
-      sp: 0.012 + Math.random() * 0.03,
-      ph: Math.random() * Math.PI * 2,
-      warm: Math.random() > 0.4,
-    }));
-  }
-
   function buildScene() {
     if (window.__rngReset) window.__rngReset();
     const canvas = document.createElement("canvas");
     canvas.width = W;
     canvas.height = H;
     document.body.appendChild(canvas);
-    const sim = new SimWorld();
+    const sim = new Sim();
     sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, SEED, true);
     sim.partUpgrades = {};
     sim.globalMods = {};
@@ -83,7 +71,7 @@
       ];
     }
 
-    const board = new OracleBoardView(canvas, palette);
+    const board = new NextBoardView(canvas, palette);
     board.setSim(sim);
     board._fit(true);
     board.hover = { x: 7, y: 6 };
@@ -98,7 +86,7 @@
     board.addStain(4.5, 2.5, "frost");
     board.addStain(6.5, 3.5, "acid");
     board._bastionFlinch = 0;
-    return { canvas, board, sim, motes: buildMotes() };
+    return { canvas, board, sim };
   }
 
   function clearFrame(ctx) {
@@ -108,299 +96,18 @@
     ctx.fillRect(0, 0, W, H);
   }
 
-  window.__drawBoardOracle = () => {
-    const { canvas, board, sim } = buildScene();
-    const ctx = board.ctx;
-    const g = sim.grid;
-    const cell = board.cell;
-    clearFrame(ctx);
-    board._drawBoardShadow();
-    board._drawField(g);
-    for (const w of sim.walls) board._drawWall(w.cell.x, w.cell.y);
-    board._drawStains();
-    board._drawBastion(g);
-    board._drawPath(g);
-    board._drawPortal(g);
-    const towers = [...sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
-    for (const t of towers) board._drawTower(t);
-    const enemies = [...sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
-    for (const e of enemies) board._drawEnemy(e);
-    for (const p of sim.projectiles) board._drawProjectile(p);
-    if (board._ghostPlan) board._drawPlanGhost(board._ghostPlan.plan, board._ghostPlan.cell);
-    if (board.pendingPlace) {
-      board._drawPendingPlace(board.pendingPlace);
-    } else if (board.hover && g.inBounds(board.hover.x, board.hover.y) && board.selectedTowerId < 0) {
-      board._drawHover(board.hover.x, board.hover.y, g.isBuildable(board.hover.x, board.hover.y));
-    }
-    board._drawAtmosphere(W, H);
-    return canvas.toDataURL("image/png");
-  };
-  window.__debugScene = (name) => {
-    try {
-      const { board, sim, motes } = buildScene();
-      const cam = board.cam;
-      const g = sim.grid;
-      const cell = board.cell;
-      const ctx = board.canvas.getContext("2d");
-      clearFrame(ctx);
-      const t = 1;
-      const r = {};
-      const draw = (fn, label) => {
-        try { fn(); r[label] = "ok"; }
-        catch (e) { r[label] = "ERR " + e.message; }
-      };
-      draw(() => S.drawBoardShadow(ctx, cam, palette, cell), "shadow");
-      draw(() => S.drawField(ctx, cam, palette, g, cell), "field");
-      for (const w of sim.walls) draw(() => S.drawWall(ctx, cam, palette, w.cell.x, w.cell.y, cell), "wall");
-      draw(() => S.drawStains(ctx, cam, palette, board._stains, cell), "stains");
-      draw(() => S.drawBastion(ctx, cam, palette, g, cell, t, 0), "bastion");
-      draw(() => S.drawPath(ctx, cam, g, sim.portal.x, cell, t, sim.enemies.length), "path");
-      draw(() => S.drawPortal(ctx, cam, palette, sim.portal, cell, t), "portal");
-      const towers = [...sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
-      for (const tw of towers) {
-        const p2 = cam.projectCell(tw.cell.x, tw.cell.y);
-        const s2 = cell * p2.s * S.UNIT_SCALE;
-        const selected = tw.id === board.selectedTowerId;
-        const plan = selected ? buildAttackPlan(tw.base, tw.barrel, tw.payload, tw.level, planOptsFromParts({}, {}, tw)) : null;
-        draw(() => S.drawTowerFrame(ctx, cam, palette, tw, p2.x - s2 / 2, p2.y - s2 / 2, s2, { selected, plan, cell }), "tower" + tw.id);
-      }
-      const enemies = [...sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
-      for (const e of enemies) draw(() => S.drawEnemyFrame(ctx, cam, palette, e, cell, t), "enemy" + e.id);
-      for (const p3 of sim.projectiles) draw(() => S.drawProjectile(ctx, cam, palette, p3, cell), "proj" + p3.damageType);
-      draw(() => S.drawPlanGhost(ctx, cam, palette, board._ghostPlan.plan, board._ghostPlan.cell, cell), "ghost");
-      draw(() => S.drawPendingPlace(ctx, cam, palette, board.pendingPlace, cell, t, cell), "pending");
-      draw(() => S.drawHover(ctx, cam, palette, 7, 6, g.isBuildable(7, 6), cell), "hover");
-      draw(() => S.drawAtmosphere(ctx, palette, W, H, t, board._motes, { themePulse: 0, bossVignette: 0, plate: cam.boardCorners() }), "atmo");
-      return r;
-    } catch (e) {
-      return { fatal: e.message };
-    }
-  };
-  window.__debugSceneDiff = () => {
-    const mk = () => { const c = document.createElement("canvas"); c.width = W; c.height = H; return c; };
-    const diff = (a, b) => {
-      const ac = a.getContext("2d").getImageData(0, 0, W, H).data;
-      const bc = b.getContext("2d").getImageData(0, 0, W, H).data;
-      let n = 0;
-      for (let i = 0; i < ac.length; i += 4) {
-        if (Math.abs(ac[i] - bc[i]) + Math.abs(ac[i + 1] - bc[i + 1]) + Math.abs(ac[i + 2] - bc[i + 2]) + Math.abs(ac[i + 3] - bc[i + 3]) > 12) n++;
-      }
-      return n;
-    };
-    const out = {};
-    const t = 1;
-    const scene = () => {
-      const { board, sim, motes } = buildScene();
-      const cam = board.cam;
-      const g = sim.grid;
-      const cell = board.cell;
-      const towers = [...sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
-      const enemies = [...sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
-      return { board, sim, cam, g, cell, towers, enemies, motes };
-    };
-    const pair = (label, oracleFn, nextFn) => {
-      const a = mk(); const b = mk();
-      const so = scene();
-      board2 = so.board;
-      const prevCtx = so.board.ctx;
-      so.board.ctx = a.getContext("2d");
-      oracleFn(so, a.getContext("2d"));
-      so.board.ctx = prevCtx;
-      const sn = scene();
-      nextFn(sn, b.getContext("2d"));
-      out[label] = diff(a, b);
-    };
-    let board2 = null;
-    void board2;
-    pair("shadow", (s2, c) => s2.board._drawBoardShadow(), (s2, c) => S.drawBoardShadow(c, s2.cam, palette, s2.cell));
-    pair("field", (s2, c) => s2.board._drawField(s2.g), (s2, c) => S.drawField(c, s2.cam, palette, s2.g, s2.cell));
-    for (const w of scene().sim.walls) {
-      pair("wall" + w.cell.x, (s2, c) => s2.board._drawWall(w.cell.x, w.cell.y), (s2, c) => S.drawWall(c, s2.cam, palette, w.cell.x, w.cell.y, s2.cell));
-    }
-    pair("stains", (s2, c) => s2.board._drawStains(), (s2, c) => S.drawStains(c, s2.cam, palette, s2.board._stains, s2.cell));
-    pair("bastion", (s2, c) => s2.board._drawBastion(s2.g), (s2, c) => S.drawBastion(c, s2.cam, palette, s2.g, s2.cell, t, 0));
-    pair("path", (s2, c) => s2.board._drawPath(s2.g), (s2, c) => S.drawPath(c, s2.cam, s2.g, s2.sim.portal.x, s2.cell, t, s2.sim.enemies.length));
-    pair("portal", (s2, c) => s2.board._drawPortal(s2.g), (s2, c) => S.drawPortal(c, s2.cam, palette, s2.sim.portal, s2.cell, t));
-    for (const tw of scene().towers) {
-      pair("tower" + tw.id, (s2, c) => s2.board._drawTower(tw), (s2, c) => {
-        const p2 = s2.cam.projectCell(tw.cell.x, tw.cell.y);
-        const s3 = s2.cell * p2.s * S.UNIT_SCALE;
-        const selected = tw.id === s2.board.selectedTowerId;
-        const plan = selected ? buildAttackPlan(tw.base, tw.barrel, tw.payload, tw.level, planOptsFromParts({}, {}, tw)) : null;
-        S.drawTowerFrame(c, s2.cam, palette, tw, p2.x - s3 / 2, p2.y - s3 / 2, s3, { selected, plan, cell: s2.cell });
-      });
-    }
-    for (const e of scene().enemies) {
-      pair("enemy" + e.id, (s2, c) => s2.board._drawEnemy(e), (s2, c) => S.drawEnemyFrame(c, s2.cam, palette, e, s2.cell, t));
-    }
-    for (const p3 of scene().sim.projectiles) {
-      pair("proj" + p3.damageType, (s2, c) => s2.board._drawProjectile(p3), (s2, c) => S.drawProjectile(c, s2.cam, palette, p3, s2.cell));
-    }
-    pair("ghost", (s2, c) => s2.board._drawPlanGhost(s2.board._ghostPlan.plan, s2.board._ghostPlan.cell), (s2, c) => S.drawPlanGhost(c, s2.cam, palette, s2.board._ghostPlan.plan, s2.board._ghostPlan.cell, s2.cell));
-    pair("pending", (s2, c) => s2.board._drawPendingPlace(s2.board.pendingPlace), (s2, c) => S.drawPendingPlace(c, s2.cam, palette, s2.board.pendingPlace, s2.cell, t, s2.cell));
-    pair("hover", (s2, c) => s2.board._drawHover(7, 6, s2.g.isBuildable(7, 6)), (s2, c) => S.drawHover(c, s2.cam, palette, 7, 6, s2.g.isBuildable(7, 6), s2.cell));
-    pair("atmo", (s2, c) => s2.board._drawAtmosphere(W, H), (s2, c) => S.drawAtmosphere(c, palette, W, H, t, s2.board._motes, { themePulse: 0, bossVignette: 0, plate: s2.cam.boardCorners() }));
-    return out;
-  };
-  window.__buildScene = buildScene;
   const fxStub = { drawProjected() {}, portalMote() {} };
 
-  window.__drawBoardViewOracle = () => {
-    const { canvas, board, sim } = buildScene();
-    board.fx = fxStub;
-    board.draw(0.016);
-    return canvas.toDataURL("image/png");
-  };
-
-  window.__drawBoardViewNext = () => {
-    const { board } = buildScene();
-    board.fx = fxStub;
-    board.draw(0.016);
-    return board.canvas.toDataURL("image/png");
-  };
-
-  window.__buildNextBoard = () => {
-    const c = document.createElement("canvas");
-    c.width = 960;
-    c.height = 540;
-    document.body.appendChild(c);
-    const b = new NextBoardView(c, new ProcPalette());
-    return { canvas: c, board: b };
-  };
-
-  window.__debugScene = (name) => {
-    try {
-      const { board, sim, motes } = buildScene();
-      const cam = board.cam;
-      const g = sim.grid;
-      const cell = board.cell;
-      const ctx = board.canvas.getContext("2d");
-      clearFrame(ctx);
-      const t = 1;
-      const r = {};
-      const draw = (fn, label) => {
-        try { fn(); r[label] = "ok"; }
-        catch (e) { r[label] = "ERR " + e.message; }
-      };
-      draw(() => S.drawBoardShadow(ctx, cam, palette, cell), "shadow");
-      draw(() => S.drawField(ctx, cam, palette, g, cell), "field");
-      for (const w of sim.walls) draw(() => S.drawWall(ctx, cam, palette, w.cell.x, w.cell.y, cell), "wall");
-      draw(() => S.drawStains(ctx, cam, palette, board._stains, cell), "stains");
-      draw(() => S.drawBastion(ctx, cam, palette, g, cell, t, 0), "bastion");
-      draw(() => S.drawPath(ctx, cam, g, sim.portal.x, cell, t, sim.enemies.length), "path");
-      draw(() => S.drawPortal(ctx, cam, palette, sim.portal, cell, t), "portal");
-      const towers = [...sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
-      for (const tw of towers) {
-        const p2 = cam.projectCell(tw.cell.x, tw.cell.y);
-        const s2 = cell * p2.s * S.UNIT_SCALE;
-        const selected = tw.id === board.selectedTowerId;
-        const plan = selected ? buildAttackPlan(tw.base, tw.barrel, tw.payload, tw.level, planOptsFromParts({}, {}, tw)) : null;
-        draw(() => S.drawTowerFrame(ctx, cam, palette, tw, p2.x - s2 / 2, p2.y - s2 / 2, s2, { selected, plan, cell }), "tower" + tw.id);
-      }
-      const enemies = [...sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
-      for (const e of enemies) draw(() => S.drawEnemyFrame(ctx, cam, palette, e, cell, t), "enemy" + e.id);
-      for (const p3 of sim.projectiles) draw(() => S.drawProjectile(ctx, cam, palette, p3, cell), "proj" + p3.damageType);
-      draw(() => S.drawPlanGhost(ctx, cam, palette, board._ghostPlan.plan, board._ghostPlan.cell, cell), "ghost");
-      draw(() => S.drawPendingPlace(ctx, cam, palette, board.pendingPlace, cell, t, cell), "pending");
-      draw(() => S.drawHover(ctx, cam, palette, 7, 6, g.isBuildable(7, 6), cell), "hover");
-      draw(() => S.drawAtmosphere(ctx, palette, W, H, t, board._motes, { themePulse: 0, bossVignette: 0, plate: cam.boardCorners() }), "atmo");
-      return r;
-    } catch (e) {
-      return { fatal: e.message };
-    }
-  };
-  window.__debugSceneDiff = () => {
-    const mk = () => { const c = document.createElement("canvas"); c.width = W; c.height = H; return c; };
-    const diff = (a, b) => {
-      const ac = a.getContext("2d").getImageData(0, 0, W, H).data;
-      const bc = b.getContext("2d").getImageData(0, 0, W, H).data;
-      let n = 0;
-      for (let i = 0; i < ac.length; i += 4) {
-        if (Math.abs(ac[i] - bc[i]) + Math.abs(ac[i + 1] - bc[i + 1]) + Math.abs(ac[i + 2] - bc[i + 2]) + Math.abs(ac[i + 3] - bc[i + 3]) > 12) n++;
-      }
-      return n;
-    };
-    const out = {};
-    const t = 1;
-    const scene = () => {
-      const { board, sim, motes } = buildScene();
-      const cam = board.cam;
-      const g = sim.grid;
-      const cell = board.cell;
-      const towers = [...sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
-      const enemies = [...sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
-      return { board, sim, cam, g, cell, towers, enemies, motes };
-    };
-    const pair = (label, oracleFn, nextFn) => {
-      const a = mk(); const b = mk();
-      const so = scene();
-      board2 = so.board;
-      const prevCtx = so.board.ctx;
-      so.board.ctx = a.getContext("2d");
-      oracleFn(so, a.getContext("2d"));
-      so.board.ctx = prevCtx;
-      const sn = scene();
-      nextFn(sn, b.getContext("2d"));
-      out[label] = diff(a, b);
-    };
-    let board2 = null;
-    void board2;
-    pair("shadow", (s2, c) => s2.board._drawBoardShadow(), (s2, c) => S.drawBoardShadow(c, s2.cam, palette, s2.cell));
-    pair("field", (s2, c) => s2.board._drawField(s2.g), (s2, c) => S.drawField(c, s2.cam, palette, s2.g, s2.cell));
-    for (const w of scene().sim.walls) {
-      pair("wall" + w.cell.x, (s2, c) => s2.board._drawWall(w.cell.x, w.cell.y), (s2, c) => S.drawWall(c, s2.cam, palette, w.cell.x, w.cell.y, s2.cell));
-    }
-    pair("stains", (s2, c) => s2.board._drawStains(), (s2, c) => S.drawStains(c, s2.cam, palette, s2.board._stains, s2.cell));
-    pair("bastion", (s2, c) => s2.board._drawBastion(s2.g), (s2, c) => S.drawBastion(c, s2.cam, palette, s2.g, s2.cell, t, 0));
-    pair("path", (s2, c) => s2.board._drawPath(s2.g), (s2, c) => S.drawPath(c, s2.cam, s2.g, s2.sim.portal.x, s2.cell, t, s2.sim.enemies.length));
-    pair("portal", (s2, c) => s2.board._drawPortal(s2.g), (s2, c) => S.drawPortal(c, s2.cam, palette, s2.sim.portal, s2.cell, t));
-    for (const tw of scene().towers) {
-      pair("tower" + tw.id, (s2, c) => s2.board._drawTower(tw), (s2, c) => {
-        const p2 = s2.cam.projectCell(tw.cell.x, tw.cell.y);
-        const s3 = s2.cell * p2.s * S.UNIT_SCALE;
-        const selected = tw.id === s2.board.selectedTowerId;
-        const plan = selected ? buildAttackPlan(tw.base, tw.barrel, tw.payload, tw.level, planOptsFromParts({}, {}, tw)) : null;
-        S.drawTowerFrame(c, s2.cam, palette, tw, p2.x - s3 / 2, p2.y - s3 / 2, s3, { selected, plan, cell: s2.cell });
-      });
-    }
-    for (const e of scene().enemies) {
-      pair("enemy" + e.id, (s2, c) => s2.board._drawEnemy(e), (s2, c) => S.drawEnemyFrame(c, s2.cam, palette, e, s2.cell, t));
-    }
-    for (const p3 of scene().sim.projectiles) {
-      pair("proj" + p3.damageType, (s2, c) => s2.board._drawProjectile(p3), (s2, c) => S.drawProjectile(c, s2.cam, palette, p3, s2.cell));
-    }
-    pair("ghost", (s2, c) => s2.board._drawPlanGhost(s2.board._ghostPlan.plan, s2.board._ghostPlan.cell), (s2, c) => S.drawPlanGhost(c, s2.cam, palette, s2.board._ghostPlan.plan, s2.board._ghostPlan.cell, s2.cell));
-    pair("pending", (s2, c) => s2.board._drawPendingPlace(s2.board.pendingPlace), (s2, c) => S.drawPendingPlace(c, s2.cam, palette, s2.board.pendingPlace, s2.cell, t, s2.cell));
-    pair("hover", (s2, c) => s2.board._drawHover(7, 6, s2.g.isBuildable(7, 6)), (s2, c) => S.drawHover(c, s2.cam, palette, 7, 6, s2.g.isBuildable(7, 6), s2.cell));
-    pair("atmo", (s2, c) => s2.board._drawAtmosphere(W, H), (s2, c) => S.drawAtmosphere(c, palette, W, H, t, s2.board._motes, { themePulse: 0, bossVignette: 0, plate: s2.cam.boardCorners() }));
-    return out;
-  };
-  window.__debugNext = () => {
-    try {
-      const { board, sim } = buildScene();
-      const ctx = board.canvas.getContext("2d");
-      return {
-        canvasNode: board.canvas.tagName,
-        beginPathType: typeof ctx.beginPath,
-        isBoardCtx: ctx === board.ctx,
-        cell: board.cell,
-        camType: typeof board.cam.configure,
-        grid: sim.grid.cols + "x" + sim.grid.rows,
-        ctxKeys: Object.keys(ctx).length,
-      };
-    } catch (e) {
-      return { err: e.message };
-    }
-  };
+  /** Scene composite via the pure boardScene functions. */
   window.__drawBoardNext = () => {
-    const { board, sim, motes } = buildScene();
+    const { board, sim } = buildScene();
     const cam = board.cam;
     const g = sim.grid;
     const cell = board.cell;
     const ctx = board.canvas.getContext("2d");
     clearFrame(ctx);
     const t = 1;
-S.drawBoardShadow(ctx, cam, palette, cell);
+    S.drawBoardShadow(ctx, cam, palette, cell);
     S.drawField(ctx, cam, palette, g, cell);
     for (const w of sim.walls) S.drawWall(ctx, cam, palette, w.cell.x, w.cell.y, cell);
     S.drawStains(ctx, cam, palette, board._stains, cell);
@@ -434,6 +141,14 @@ S.drawBoardShadow(ctx, cam, palette, cell);
       bossVignette: board._bossVignette,
       plate: cam.boardCorners(),
     });
+    return board.canvas.toDataURL("image/png");
+  };
+
+  /** The full next BoardView draw() (camera, static layer, atmosphere). */
+  window.__drawBoardViewNext = () => {
+    const { board } = buildScene();
+    board.fx = fxStub;
+    board.draw(0.016);
     return board.canvas.toDataURL("image/png");
   };
 </script></body></html>

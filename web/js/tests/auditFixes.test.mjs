@@ -3,7 +3,8 @@
  * pierce, level points, level cap, Iron Guard + forgeBuys migration.
  * Run: node js/tests/auditFixes.test.mjs
  */
-import { SimWorld } from "../sim/simWorld.js";
+import { Sim } from "../sim/next/sim.js";
+import { onHit, grantXp } from "../sim/next/systems/combat.js";
 import { buildAttackPlan } from "../sim/attackPlan.js";
 import { PARTS, estimateForgeBuys, MAX_ROSTER_SLOTS } from "../data/parts.js";
 import {
@@ -51,7 +52,7 @@ function placeOpen(sim, slot = 0) {
 }
 
 {
-  const sim = new SimWorld();
+  const sim = new Sim();
   sim.setup(11, 14, 42, true);
   sim.setRoster([
     { base: "sentry", barrel: "single", payload: "kinetic", complete: true, placeCost: 20, levelCap: 1 },
@@ -64,7 +65,7 @@ function placeOpen(sim, slot = 0) {
   assert(blob.phase === "betweenWaves", "checkpoint stores betweenWaves");
   assert(blob.towers.length === 1, "between-wave board includes towers");
 
-  const sim2 = new SimWorld();
+  const sim2 = new Sim();
   sim2.loadCheckpoint(blob);
   assert(sim2.waveIndex === 3, "load keeps cleared wave");
   assert(sim2.towers.length === 1 && sim2.towers[0].base === t.base, "towers restored");
@@ -72,7 +73,7 @@ function placeOpen(sim, slot = 0) {
 }
 
 {
-  const sim = new SimWorld();
+  const sim = new Sim();
   sim.setup(11, 14, 7, true);
   sim.startWave({ earlyBonus: 0 });
   assert(sim.checkpointPhase === "inWave", "wave start → inWave");
@@ -84,7 +85,7 @@ function placeOpen(sim, slot = 0) {
 
 // ——— C3: Call Early double-dip ———
 {
-  const sim = new SimWorld();
+  const sim = new Sim();
   sim.setup(11, 14, 9, true);
   sim.economy.battle = 100;
   const r1 = sim.startWave({ earlyBonus: 5 });
@@ -93,7 +94,7 @@ function placeOpen(sim, slot = 0) {
   assert(sim.earlyBonusWave === 1, "tracks claimed wave");
   const blob = sim.checkpoint();
 
-  const sim2 = new SimWorld();
+  const sim2 = new Sim();
   sim2.loadCheckpoint(blob);
   // Continue mid-wave rolls back index in app; simulate that:
   sim2.waveIndex = (blob.wave | 0) - 1;
@@ -145,7 +146,7 @@ function placeOpen(sim, slot = 0) {
   assert(plan.homing === false, "rail plan non-homing");
   assert(plan.pierce >= 1, "rail plan pierce");
 
-  const sim = new SimWorld();
+  const sim = new Sim();
   sim.setup(11, 14, 11, true);
   const e1 = {
     id: 101,
@@ -183,19 +184,19 @@ function placeOpen(sim, slot = 0) {
     armorPierce: 0,
     emp: false,
   };
-  const done1 = sim.combat._onHit(p, e1);
+  const done1 = onHit(sim._s, p, e1);
   assert(done1 === false, "first pierce hit keeps projectile");
   assert(p.pierce === 0, "pierce decremented");
   assert(e1.hp < 100, "first enemy damaged");
-  const done2 = sim.combat._onHit(p, e2);
+  const done2 = onHit(sim._s, p, e2);
   assert(done2 === true, "pierce exhausted → despawn");
   assert(e2.hp < 100, "second enemy damaged");
-  assert(sim.combat._onHit(p, e1) === false, "skip already-hit id");
+  assert(onHit(sim._s, p, e1) === false, "skip already-hit id");
 }
 
 // ——— H1: XP auto-levels; branch picks via tryChooseLevelBranch ———
 {
-  const sim = new SimWorld();
+  const sim = new Sim();
   sim.setup(11, 14, 3, true);
   sim.runLevelCap = 3;
   sim.setRoster([
@@ -204,7 +205,7 @@ function placeOpen(sim, slot = 0) {
   const t = placeOpen(sim);
   assert(t.level === 1 && (t.pendingPicks | 0) === 0, "starts L1");
   t.xpToPoint = 5;
-  for (let i = 0; i < 12; i++) sim.combat._grantXp(t, 1);
+  for (let i = 0; i < 12; i++) grantXp(sim._s, t, 1);
   assert(t.level === 3, `auto-levels to cap (got L${t.level})`);
   assert((t.pendingPicks | 0) >= 2, `pending picks (got ${t.pendingPicks})`);
   const r = sim.tryChooseLevelBranch(t.id, "damage");
@@ -215,7 +216,7 @@ function placeOpen(sim, slot = 0) {
   assert(!none.ok && none.reason === "no_picks", "no picks when empty");
   // At cap: further XP does not bank endless points
   const xpBefore = t.xp | 0;
-  sim.combat._grantXp(t, 50);
+  grantXp(sim._s, t, 50);
   assert(t.level === 3, "stays at cap");
   assert((t.pendingPicks | 0) === 0, "no new picks at cap");
   assert((t.xp | 0) <= (t.xpToPoint || 55) - 1, "XP bar frozen under full");

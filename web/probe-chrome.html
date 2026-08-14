@@ -12,8 +12,8 @@
 <div id="hostO"></div><div id="hostN"></div>
 <script type="module">
   import { ProcPalette } from "/js/view/palette.js";
-  import { BoardView } from "/js/view/boardView.js";
-  import { SimWorld } from "/js/sim/simWorld.js";
+  import { BoardView } from "/js/view/next/boardView.js";
+  import { Sim } from "/js/sim/next/sim.js";
   import { ENDLESS_GRID } from "/js/data/endlessGrid.js";
   import { loadMeta } from "/js/saveStore.js";
   import * as N from "/js/ui/next/chrome.js";
@@ -22,7 +22,7 @@
   const SEED = 42;
 
   function buildSim() {
-    const sim = new SimWorld();
+    const sim = new Sim();
     sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, SEED, true);
     sim.runSeed = SEED;
     sim.modeEndless = true;

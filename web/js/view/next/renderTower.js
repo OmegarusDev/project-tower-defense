@@ -7,17 +7,37 @@
 import { VIEW25, deckRy, groundBasis, capEllipse } from "../view25.js";
 import { vz, cyl25, box25, frustum25, diamondPrism25, ring25, rivetRing } from "../prims25.js";
 import { shade, withAlpha, matsFrom, roundRect } from "../drawUtil.js";
-import { hubLiftFor, crownFactorFor } from "../towerPainter.js";
 import { BASE_VISUALS, BARREL_VISUALS, PAYLOAD_VISUALS } from "./partVisuals.js";
 
 const BASE_SCALE = 1.22;
 const BARREL_SCALE = 0.8;
 
+/** Hub lift above the pad for a given sprite size + base (pixel units). */
+const BASE_CROWN = {
+  sentry: 0.26,
+  bulwark: 0.26,
+  spire: 0.34,
+  aerie: 0.2,
+  warden: 0.3,
+  talon: 0.28,
+};
+
+export function hubLiftForNext(s, base) {
+  return Math.max(
+    s * VIEW25.rise,
+    s * BASE_SCALE * (BASE_CROWN[base] || 0.22) * VIEW25.vExag
+  );
+}
+
+export function crownFactorForNext(base) {
+  return BASE_CROWN[base] || 0.22;
+}
+
 export function renderTowerNext(ctx, palette, t, px, py, s, opts = {}) {
   const cx = px + s / 2;
   const groundY = py + s / 2;
   const baseS = s * BASE_SCALE;
-  const hubY = groundY - hubLiftFor(s, t.base);
+  const hubY = groundY - hubLiftForNext(s, t.base);
   const angle = Number.isFinite(t.aimAngle) ? t.aimAngle : -Math.PI / 2;
   const b = groundBasis(angle);
   const barrelS = s * BARREL_SCALE;
@@ -222,7 +242,7 @@ function drawBaseVisuals(ctx, cx, groundY, s, base, m) {
 
 /** Ported from drawTurretStem — bridge between base crown and hub. */
 function drawTurretStem(ctx, cx, groundY, hubY, baseS, base, metal) {
-  const crownY = groundY - vz(baseS, crownFactorFor(base));
+  const crownY = groundY - vz(baseS, crownFactorForNext(base));
   const topY = hubY + Math.max(1, baseS * 0.015);
   const rise = crownY - topY;
   if (rise < 3) return;

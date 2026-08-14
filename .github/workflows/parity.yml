@@ -53,8 +53,5 @@ jobs:
       - name: Actions dispatch parity
         run: node tools/corpus/actionsParity.mjs
 
-      - name: Enemy goldens vs oracle
-        run: node tools/corpus/oracleEnemyCheck.mjs all
-
       - name: Live smoke walk (app integration)
         run: node tools/corpus/smokeWalk.mjs

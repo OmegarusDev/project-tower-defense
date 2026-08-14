@@ -31,6 +31,7 @@ import {
 } from "./systems/towers.js";
 
 export const TICK_HZ = 60;
+export const TICK_DT = 1 / TICK_HZ;
 
 export class Sim {
   constructor() {
@@ -48,7 +49,14 @@ export class Sim {
     // the literal itself, not the Sim (a real bug: waveActive read false).
     this.waves = {
       get waveActive() { return self._s ? self._s.waves.active : false; },
+      set waveActive(v) { if (self._s) self._s.waves.active = v; },
       get toSpawn() { return self._s ? self._s.waves.toSpawn : 0; },
+      set toSpawn(v) { if (self._s) self._s.waves.toSpawn = v; },
+      get queue() { return self._s ? self._s.waves.queue : []; },
+      set queue(v) { if (self._s) self._s.waves.queue = v; },
+      get lastTheme() { return self._s ? self._s.waves.theme : ""; },
+      get speedMult() { return self._s ? self._s.waves.speedMult : 1; },
+      get lastEvent() { return self._s ? self._s.waves.event : ""; },
     };
     this.waveIndex = 0;
     this.running = false;
@@ -64,6 +72,34 @@ export class Sim {
     this.wavesToWin = 0;
     this.campaignLevelId = 0;
     this.actionLog = [];
+    // Write-through mirrors (exactly like the oracle's single-field world):
+    // the facade's lives/waveIndex/... ARE the internal state's fields.
+    const init = {
+      lives: this.lives,
+      startLives: this.startLives,
+      leakCount: this.leakCount,
+      killCount: this.killCount,
+      tickIndex: this.tickIndex,
+      waveIndex: this.waveIndex,
+      running: this.running,
+      runLevelCap: this.runLevelCap,
+      checkpointPhase: this.checkpointPhase,
+      earlyBonusWave: this.earlyBonusWave,
+      seed: this.seed,
+    };
+    Object.defineProperties(this, {
+      lives: { get: () => (this._s ? this._s.lives : init.lives), set: (v) => { if (this._s) this._s.lives = v; init.lives = v; } },
+      startLives: { get: () => (this._s ? this._s.startLives : init.startLives), set: (v) => { if (this._s) this._s.startLives = v; init.startLives = v; } },
+      leakCount: { get: () => (this._s ? this._s.leakCount : init.leakCount), set: (v) => { if (this._s) this._s.leakCount = v; init.leakCount = v; } },
+      killCount: { get: () => (this._s ? this._s.killCount : init.killCount), set: (v) => { if (this._s) this._s.killCount = v; init.killCount = v; } },
+      tickIndex: { get: () => (this._s ? this._s.tickIndex : init.tickIndex), set: (v) => { if (this._s) this._s.tickIndex = v; init.tickIndex = v; } },
+      waveIndex: { get: () => (this._s ? this._s.waves.index : init.waveIndex), set: (v) => { if (this._s) this._s.waves.index = v; init.waveIndex = v; } },
+      running: { get: () => (this._s ? this._s.running : init.running), set: (v) => { if (this._s) this._s.running = v; init.running = v; } },
+      runLevelCap: { get: () => (this._s ? this._s.runLevelCap : init.runLevelCap), set: (v) => { if (this._s) this._s.runLevelCap = v; init.runLevelCap = v; } },
+      checkpointPhase: { get: () => (this._s ? this._s.checkpointPhase : init.checkpointPhase), set: (v) => { if (this._s) this._s.checkpointPhase = v; init.checkpointPhase = v; } },
+      earlyBonusWave: { get: () => (this._s ? this._s.earlyBonusWave : init.earlyBonusWave), set: (v) => { if (this._s) this._s.earlyBonusWave = v; init.earlyBonusWave = v; } },
+      seed: { get: () => (this._s ? this._s.seed : init.seed), set: (v) => { if (this._s) this._s.seed = v; init.seed = v; } },
+    });
   }
 
   setup(cols = 11, rows = 14, seed = 1, endless = true) {

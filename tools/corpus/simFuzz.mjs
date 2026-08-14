@@ -8,7 +8,6 @@
  *
  *   node tools/corpus/simFuzz.mjs [--seeds 1,2,3] [--runs 4] [--maxTicks 8000]
  */
-import { SimWorld } from "../../web/js/sim/simWorld.js";
 import { Sim } from "../../web/js/sim/next/sim.js";
 import { scenarioByName } from "../../web/js/balance/scenarios.js";
 import { makeSlot } from "../../web/js/data/parts.js";
@@ -62,8 +61,8 @@ function stateHash(sim) {
   });
 }
 
-function makeRun(ctor, base, seed, rec) {
-  const sim = new ctor();
+function makeRun(base, seed, rec) {
+  const sim = new Sim();
   sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, seed, true);
   sim.runSeed = seed;
   sim.runLevelCap = base.runLevelCap;
@@ -104,110 +103,78 @@ const base = scenarioByName("fresh");
 let failures = 0;
 let runsDone = 0;
 
-for (const seed of seeds) {
-  for (let run = 0; run < runs; run++) {
-    const rand = lcg(seed * 1000 + run * 131 + 7);
-    const evO = [];
-    const evN = [];
-    const o = makeRun(SimWorld, base, seed, (t, type, v) => evO.push([t, type, v]));
-    const n = makeRun(Sim, base, seed, (t, type, v) => evN.push([t, type, v]));
-
-    const rows = ENDLESS_GRID.rows;
-    const cols = ENDLESS_GRID.cols;
-    let bad = null;
-    let ticks = 0;
-    let gameOver = false;
-    let evPtr = 0;
-
-    const checkpoint = (at) => {
-      if (bad) return;
-      const hO = stateHash(o);
-      const hN = stateHash(n);
-      if (hO !== hN) {
-        bad = `state hash diverged at ${at}\n  oracle: ${hO}\n  next:   ${hN}`;
-        return;
-      }
-      const m = Math.min(evO.length, evN.length);
-      for (let i = evPtr; i < m; i++) {
-        const a = JSON.stringify(evO[i]);
-        const b = JSON.stringify(evN[i]);
-        if (a !== b) {
-          bad = `event ${i} at ${at}: oracle ${a} vs next ${b}`;
-          return;
-        }
-      }
-      if (evO.length !== evN.length) {
-        bad = `event count at ${at}: oracle ${evO.length} vs next ${evN.length}`;
-        return;
-      }
-      evPtr = evO.length;
-    };
-
-    const tryAct = (fa, fb) => {
-      let ro = null;
-      let rn = null;
-      try {
-        ro = fa(o);
-      } catch (e) {
-        ro = { threw: e.message };
-      }
-      try {
-        rn = fb(n);
-      } catch (e) {
-        rn = { threw: e.message };
-      }
-      if (JSON.stringify(ro) !== JSON.stringify(rn)) {
-        bad = `action result diverge: oracle ${JSON.stringify(ro)} vs next ${JSON.stringify(rn)}`;
-      }
-    };
-
+function drive(rand, sim, maxTicks) {
+  const rows = ENDLESS_GRID.rows;
+  const cols = ENDLESS_GRID.cols;
+  let ticks = 0;
+  let gameOver = false;
+  let bad = null;
+  const tryAct = (act) => {
     try {
-      while (ticks < maxTicks && !gameOver && !bad) {
-        const idle = !o.running && o.enemies.length === 0;
-        if (idle && ticks > 0) {
-          tryAct(() => o.startWave({ earlyBonus: 0 }), () => n.startWave({ earlyBonus: 0 }));
-        }
-        const roll = rand();
-        if (roll < 0.22 && o.running) {
-          const x = Math.floor(rand() * cols);
-          const y = 1 + Math.floor(rand() * (rows - 2));
-          const slot = Math.floor(rand() * 3);
-          tryAct(() => o.tryPlaceTower(x, y, slot), () => n.tryPlaceTower(x, y, slot));
-        } else if (roll < 0.3 && o.running) {
-          const x = Math.floor(rand() * cols);
-          const y = 1 + Math.floor(rand() * (rows - 2));
-          tryAct(() => o.tryPlaceWall(x, y), () => n.tryPlaceWall(x, y));
-        } else if (roll < 0.36 && o.towers.length) {
-          const t = o.towers[Math.floor(rand() * o.towers.length)];
-          tryAct(() => o.trySellTower(t.id), () => n.trySellTower(t.id));
-        } else if (roll < 0.4 && o.walls.length) {
-          const w = o.walls[Math.floor(rand() * o.walls.length)];
-          tryAct(() => o.trySellWall(w.id), () => n.trySellWall(w.id));
-        } else if (roll < 0.44 && o.towers.length) {
-          const t = o.towers.find((tw) => (tw.pendingPicks | 0) > 0);
-          if (t) {
-            const branch = ["damage", "rof", "range"][Math.floor(rand() * 3)];
-            tryAct(() => o.tryChooseLevelBranch(t.id, branch), () => n.tryChooseLevelBranch(t.id, branch));
-          }
-        }
-        const burst = 1 + Math.floor(rand() * 24);
-        for (let i = 0; i < burst && ticks < maxTicks; i++) {
-          if (o.running) o.tick();
-          if (n.running) n.tick();
-          ticks++;
-        }
-        if (o.lives <= 0) gameOver = true;
-        checkpoint(`t${ticks}`);
-      }
+      return act(sim);
     } catch (e) {
       bad = `throw: ${e.message}`;
+      return null;
     }
+  };
+  while (ticks < maxTicks && !gameOver && !bad) {
+    if (!sim.running && sim.enemies.length === 0 && ticks > 0) {
+      tryAct(() => sim.startWave({ earlyBonus: 0 }));
+    }
+    const roll = rand();
+    if (roll < 0.22 && sim.running) {
+      const x = Math.floor(rand() * cols);
+      const y = 1 + Math.floor(rand() * (rows - 2));
+      const slot = Math.floor(rand() * 3);
+      tryAct(() => sim.tryPlaceTower(x, y, slot));
+    } else if (roll < 0.3 && sim.running) {
+      const x = Math.floor(rand() * cols);
+      const y = 1 + Math.floor(rand() * (rows - 2));
+      tryAct(() => sim.tryPlaceWall(x, y));
+    } else if (roll < 0.36 && sim.towers.length) {
+      const t = sim.towers[Math.floor(rand() * sim.towers.length)];
+      tryAct(() => sim.trySellTower(t.id));
+    } else if (roll < 0.4 && sim.walls.length) {
+      const w = sim.walls[Math.floor(rand() * sim.walls.length)];
+      tryAct(() => sim.trySellWall(w.id));
+    } else if (roll < 0.44 && sim.towers.length) {
+      const t = sim.towers.find((tw) => (tw.pendingPicks | 0) > 0);
+      if (t) {
+        const branch = ["damage", "rof", "range"][Math.floor(rand() * 3)];
+        tryAct(() => sim.tryChooseLevelBranch(t.id, branch));
+      }
+    }
+    const burst = 1 + Math.floor(rand() * 24);
+    for (let i = 0; i < burst && ticks < maxTicks; i++) {
+      if (sim.running) sim.tick();
+      ticks++;
+    }
+    if (sim.lives <= 0) gameOver = true;
+    if (ticks % 997 === 0) {
+      const h = stateHash(sim);
+      if (/NaN|Infinity|null/.test(h)) {
+        bad = `NaN/Infinity in state at t${ticks}`;
+      }
+    }
+  }
+  return { ticks, gameOver, bad, hash: stateHash(sim) };
+}
 
-    if (!bad && (o.lives <= 0) !== (n.lives <= 0)) {
-      bad = `outcome diverge: oracle lives ${o.lives} vs next ${n.lives}`;
+for (const seed of seeds) {
+  for (let run = 0; run < runs; run++) {
+    const ev = [];
+    const sim = makeRun(base, seed, (t, type, v) => ev.push([t, type, v]));
+    const sim2 = makeRun(base, seed, () => {});
+
+    const r1 = drive(lcg(seed * 1000 + run * 131 + 7), sim, maxTicks);
+    const r2 = drive(lcg(seed * 1000 + run * 131 + 7), sim2, maxTicks);
+
+    let bad = r1.bad || r2.bad;
+    if (!bad && r1.hash !== r2.hash) {
+      bad = "determinism: two identical runs diverged";
     }
-    if (!bad && (o.lives <= 0) && !gameOver) {
-      bad = "oracle ended, loop continued";
+    if (!bad && r1.ticks !== r2.ticks) {
+      bad = `determinism: tick counts differ (${r1.ticks} vs ${r2.ticks})`;
     }
     if (bad) {
       failures++;
@@ -215,7 +182,7 @@ for (const seed of seeds) {
     } else {
       runsDone++;
       console.log(
-        `seed ${seed} run ${run}: PASS — ${ticks}t, ${evO.length} events, ${o.lives <= 0 ? "game over" : "maxed"}`
+        `seed ${seed} run ${run}: PASS — ${r1.ticks}t, ${ev.length} events, ${r1.gameOver ? "game over" : "maxed"}`
       );
     }
   }

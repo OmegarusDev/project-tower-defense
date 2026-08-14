@@ -2,7 +2,7 @@
  * Regression guards for continue/resume + life-budget sync.
  * Run: node js/tests/runSync.test.mjs
  */
-import { SimWorld } from "../sim/simWorld.js";
+import { Sim } from "../sim/next/sim.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -29,7 +29,7 @@ function assert(cond, msg) {
 
 // setStartLives can update budget without healing.
 {
-  const sim = new SimWorld();
+  const sim = new Sim();
   sim.setup(11, 14, 1, true);
   sim.setStartLives(3, { resetCurrent: true });
   sim.lives = 1;
@@ -42,7 +42,7 @@ function assert(cond, msg) {
 
 // Placed towers take runLevelCap when higher than loadout cap.
 {
-  const sim = new SimWorld();
+  const sim = new Sim();
   sim.setup(11, 14, 1, true);
   sim.runLevelCap = 4;
   sim.setRoster([
