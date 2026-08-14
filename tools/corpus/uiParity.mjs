@@ -37,6 +37,10 @@ const cases = [
   ["forge", {}],
   ["tech", {}],
   ["settings", {}],
+  ["victory", { firstClear: true }],
+  ["victory", {}],
+  ["gameover", { endless: true, endBestBonus: { parts: 9, aether: 4 } }],
+  ["gameover", {}],
 ];
 let failures = 0;
 for (const [name, opts] of cases) {

@@ -7,8 +7,7 @@
  * rosterPeekHtml, prepSlotButtonsHtml, partIcons, xClose) are reused as-is
  * — they never touch app.
  */
-import { CAMPAIGN_LEVELS, isLevelUnlocked, getCampaignLevel } from "../../data/campaign.js";
-import { WAVE_PACKS } from "../../data/waveScripts.js";
+import { CAMPAIGN_LEVELS, isLevelUnlocked, getCampaignLevel } from "../../data/campaign.js";import { WAVE_PACKS } from "../../data/waveScripts.js";
 import { VIEW25 } from "../../view/view25.js";
 import { buildAttackPlan } from "../../sim/attackPlan.js";
 import {
@@ -728,5 +727,140 @@ export function renderEditor(state) {
             `<button class="btn secondary" data-act="ed-load:${i}" style="margin-top:4px">${lv.name}</button>`
         )
         .join("")}
+    </div>`;
+}
+
+/** Vault chips — match in-run telemetry (gear / Æ); Gains keep full words. */
+function vaultChipsHtml(meta, bestWave = null) {
+  const gear = `<svg class="tel-ico chip-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.4.9h3.2l.25 1.45c.45.12.87.32 1.25.58l1.3-.7 1.6 1.6-.7 1.3c.26.38.46.8.58 1.25L15.1 6.4v3.2l-1.45.25a4.6 4.6 0 0 1-.58 1.25l.7 1.3-1.6 1.6-1.3-.7a4.6 4.6 0 0 1-1.25.58L9.6 15.1H6.4l-.25-1.45a4.6 4.6 0 0 1-1.25-.58l-1.3.7-1.6-1.6.7-1.3a4.6 4.6 0 0 1-.58-1.25L.9 9.6V6.4l1.45-.25c.12-.45.32-.87.58-1.25l-.7-1.3 1.6-1.6 1.3.7c.38-.26.8-.46 1.25-.58L6.4.9zm1.6 4.3a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z"/></svg>`;
+  const best =
+    bestWave == null
+      ? ""
+      : `<span class="chip wave" title="Best wave"><span class="k">Best</span><span class="chip-v">W${bestWave}</span></span>`;
+  return `
+    <span class="chip parts" title="Parts"><i class="chip-ico-wrap tel-gear">${gear}</i><span class="chip-v">${meta.forge}</span></span>
+    <span class="chip aether" title="Aether"><i class="k">Æ</i><span class="chip-v">${meta.aether}</span></span>
+    ${best}`;
+}
+
+export function renderVictory(state) {
+  const meta = state.meta;
+  const sim = state.sim;
+  const id = sim?.campaignLevelId | 0;
+  const lv = getCampaignLevel(id);
+  const gains = sim?.economy?.runWaveGains || { coin: 0, parts: 0, aether: 0 };
+  const firstBonus = state.firstClear ? 8 : 0;
+  const next = CAMPAIGN_LEVELS.find((l) => l.id === id + 1);
+  const nextOpen = next && isLevelUnlocked(next.id, meta.campaign?.cleared || []);
+  const actions = `
+    <div class="end-actions">
+      ${
+        nextOpen
+          ? `<button class="btn title-cta" data-act="prep:${next.id}">Next · ${next.name}</button>`
+          : ""
+      }
+      ${id > 0 ? `<button class="btn" data-act="start-level:${id}">Retry</button>` : ""}
+      <button class="btn" data-act="forge-from-campaign">Forge</button>
+      <button class="btn secondary" data-act="campaign">Campaign Menu</button>
+      <button class="btn secondary" data-act="main">Main Menu</button>
+    </div>`;
+  return `
+    <div class="screen end-screen meta-enter">
+      <header class="end-hero">
+        <h1 class="end-title">Clear</h1>
+        <p class="end-sub">${lv ? lv.name : "Level"}</p>
+        ${state.firstClear ? `<span class="end-best-tag">First clear</span>` : ""}
+      </header>
+      <div class="end-card">
+        <h3>Gains</h3>
+        <div class="end-gains">
+          <span class="gain-pill parts">+${gains.parts} Parts</span>
+          <span class="gain-pill aether">+${gains.aether + firstBonus} Aether${
+            firstBonus ? " · first" : ""
+          }</span>
+        </div>
+      </div>
+      <div class="end-card end-card-totals">
+        <h3>Totals</h3>
+        <div class="end-totals">${vaultChipsHtml(meta)}</div>
+      </div>
+      ${actions}
+    </div>`;
+}
+
+export function renderGameOver(state) {
+  const meta = state.meta;
+  const sim = state.sim;
+  const endless = !!(sim && sim.modeEndless);
+  const campaign = sim && !sim.modeEndless;
+  const backAct = campaign ? "campaign" : "hub";
+  const backLabel = campaign ? "Campaign Menu" : "Endless Menu";
+  const lv = campaign ? getCampaignLevel(sim.campaignLevelId) : null;
+  const wave = sim?.waveIndex ?? 0;
+  const best = meta.bestWave | 0;
+  const bonus = state.endBestBonus;
+  const isBest = endless && !!bonus;
+  const gains = sim?.economy?.runWaveGains || { coin: 0, parts: 0, aether: 0 };
+  const gainLine = (n, label, kind = "") => {
+    const muted = !(n > 0);
+    const x2 = isBest && n > 0 && (kind === "parts" || kind === "aether");
+    return `<span class="gain-pill ${kind}${muted ? " muted" : ""}${x2 ? " is-x2" : ""}">${
+      n > 0 ? "+" : ""
+    }${n}&nbsp;${label}${x2 ? `<span class="gain-x2">×2</span>` : ""}</span>`;
+  };
+  const seed = sim?.runSeed >>> 0;
+  const actions = endless
+    ? `<div class="end-actions">
+        <button class="btn title-cta" data-act="newrun">New Run</button>
+        <button class="btn" data-act="ghost-replay">Ghost Replay</button>
+        <button class="btn" data-act="forge-from-hub">Forge</button>
+        <button class="btn secondary" data-act="${backAct}">${backLabel}</button>
+        <button class="btn secondary" data-act="main">Main Menu</button>
+      </div>`
+    : `<div class="end-actions">
+        ${
+          lv
+            ? `<button class="btn title-cta" data-act="start-level:${lv.id}">Retry · ${lv.name}</button>`
+            : ""
+        }
+        <button class="btn" data-act="forge-from-campaign">Forge</button>
+        <button class="btn" data-act="${backAct}">${backLabel}</button>
+        <button class="btn secondary" data-act="main">Main Menu</button>
+      </div>`;
+  return `
+    <div class="screen end-screen meta-enter${endless ? " end-endless" : ""}">
+      <header class="end-hero">
+        <h1 class="end-title">Fallen</h1>
+        <p class="end-sub">${lv ? `${lv.name} · ` : ""}Wave</p>
+        <div class="end-wave${isBest ? " is-best" : ""}">
+          <span class="end-wave-num">${wave}</span>
+          ${isBest ? `<span class="end-best-tag">New best</span>` : ""}
+        </div>
+        ${
+          endless && best > 0 && !isBest
+            ? `<p class="end-best-line">Best W${best}</p>`
+            : ""
+        }
+        ${
+          isBest && (bonus.parts || bonus.aether)
+            ? `<p class="end-best-line end-bonus-line">Parts &amp; Aether ×2</p>`
+            : ""
+        }
+      </header>
+      <div class="end-card">
+        <h3>Gains</h3>
+        <div class="end-gains">
+          ${gainLine(gains.parts, "Parts", "parts")}
+          ${gainLine(gains.aether, "Aether", "aether")}
+        </div>
+        <p class="end-note run-stats">Leaks ${sim?.leakCount || 0} · Kills ${
+          sim?.killCount || 0
+        } · Seed ${seed || "—"}</p>
+      </div>
+      <div class="end-card end-card-totals">
+        <h3>Vault</h3>
+        <div class="end-totals">${vaultChipsHtml(meta, best)}</div>
+      </div>
+      ${actions}
     </div>`;
 }

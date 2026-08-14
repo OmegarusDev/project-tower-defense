@@ -5,7 +5,8 @@
 <body>
 <script type="module">
   import { ProcPalette } from "/js/view/palette.js";
-  import { BoardView } from "/js/view/boardView.js";
+  import { BoardView as OracleBoardView } from "/js/view/boardView.js";
+  import { BoardView as NextBoardView } from "/js/view/next/boardView.js";
   import { SimWorld } from "/js/sim/simWorld.js";
   import { ENDLESS_GRID } from "/js/data/endlessGrid.js";
   import { buildAttackPlan, planOptsFromParts } from "/js/sim/attackPlan.js";
@@ -82,7 +83,7 @@
       ];
     }
 
-    const board = new BoardView(canvas, palette);
+    const board = new OracleBoardView(canvas, palette);
     board.setSim(sim);
     board._fit(true);
     board.hover = { x: 7, y: 6 };
@@ -134,76 +135,6 @@
     board._drawAtmosphere(W, H);
     return canvas.toDataURL("image/png");
   };
-
-  window.__debugPairInfo = (label) => {
-    const mk = () => { const c = document.createElement("canvas"); c.width = W; c.height = H; return c; };
-    const t = 1;
-    const scene = () => {
-      const { board, sim, motes } = buildScene();
-      const cam = board.cam; const g = sim.grid; const cell = board.cell;
-      return { board, sim, cam, g, cell, motes };
-    };
-    const run = (sc, drawFn) => {
-      const c = mk();
-      const prev = sc.board.ctx;
-      sc.board.ctx = c.getContext("2d");
-      drawFn(sc, c.getContext("2d"));
-      sc.board.ctx = prev;
-      return c;
-    };
-    const en4 = (s2) => s2.sim.enemies.find((e) => e.id === 4);
-    const proj = (s2, type) => s2.sim.projectiles.find((p3) => p3.damageType === type);
-    const pairs = {
-      enemy4: [
-        (s2, c) => s2.board._drawEnemy(en4(s2)),
-        (s2, c) => S.drawEnemyFrame(c, s2.cam, palette, en4(s2), s2.cell, t),
-      ],
-      projkinetic: [
-        (s2, c) => s2.board._drawProjectile(proj(s2, "kinetic")),
-        (s2, c) => S.drawProjectile(c, s2.cam, palette, proj(s2, "kinetic"), s2.cell),
-      ],
-      projfire: [
-        (s2, c) => s2.board._drawProjectile(proj(s2, "fire")),
-        (s2, c) => S.drawProjectile(c, s2.cam, palette, proj(s2, "fire"), s2.cell),
-      ],
-      projacid: [
-        (s2, c) => s2.board._drawProjectile(proj(s2, "acid")),
-        (s2, c) => S.drawProjectile(c, s2.cam, palette, proj(s2, "acid"), s2.cell),
-      ],
-      projshock: [
-        (s2, c) => s2.board._drawProjectile(proj(s2, "shock")),
-        (s2, c) => S.drawProjectile(c, s2.cam, palette, proj(s2, "shock"), s2.cell),
-      ],
-      projpoison: [
-        (s2, c) => s2.board._drawProjectile(proj(s2, "poison")),
-        (s2, c) => S.drawProjectile(c, s2.cam, palette, proj(s2, "poison"), s2.cell),
-      ],
-      atmo: [
-        (s2, c) => s2.board._drawAtmosphere(W, H),
-        (s2, c) => S.drawAtmosphere(c, palette, W, H, t, s2.board._motes, { themePulse: 0, bossVignette: 0, plate: s2.cam.boardCorners() }),
-      ],
-    };
-    const [ofn, nfn] = pairs[label];
-    if (!ofn) return { err: "no pair " + label };
-    const a = run(scene(), ofn);
-    const b = run(scene(), nfn);
-    const ad = a.getContext("2d").getImageData(0, 0, W, H).data;
-    const bd = b.getContext("2d").getImageData(0, 0, W, H).data;
-    let minX = 1e9, minY = 1e9, maxX = -1, maxY = -1, n = 0;
-    const samples = [];
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      const i = (y * W + x) * 4;
-      const d = Math.abs(ad[i] - bd[i]) + Math.abs(ad[i + 1] - bd[i + 1]) + Math.abs(ad[i + 2] - bd[i + 2]) + Math.abs(ad[i + 3] - bd[i + 3]);
-      if (d > 12) {
-        n++;
-        if (x < minX) minX = x; if (x > maxX) maxX = x;
-        if (y < minY) minY = y; if (y > maxY) maxY = y;
-        if (samples.length < 8) samples.push(`(${x},${y}) o=[${ad[i]},${ad[i + 1]},${ad[i + 2]},${ad[i + 3]}] n=[${bd[i]},${bd[i + 1]},${bd[i + 2]},${bd[i + 3]}]`);
-      }
-    }
-    return { n, minX, minY, maxX, maxY, samples };
-  };
-  window.__buildScene = buildScene;
   window.__debugScene = (name) => {
     try {
       const { board, sim, motes } = buildScene();
@@ -312,6 +243,31 @@
     return out;
   };
   window.__buildScene = buildScene;
+  const fxStub = { drawProjected() {}, portalMote() {} };
+
+  window.__drawBoardViewOracle = () => {
+    const { canvas, board, sim } = buildScene();
+    board.fx = fxStub;
+    board.draw(0.016);
+    return canvas.toDataURL("image/png");
+  };
+
+  window.__drawBoardViewNext = () => {
+    const { board } = buildScene();
+    board.fx = fxStub;
+    board.draw(0.016);
+    return board.canvas.toDataURL("image/png");
+  };
+
+  window.__buildNextBoard = () => {
+    const c = document.createElement("canvas");
+    c.width = 960;
+    c.height = 540;
+    document.body.appendChild(c);
+    const b = new NextBoardView(c, new ProcPalette());
+    return { canvas: c, board: b };
+  };
+
   window.__debugScene = (name) => {
     try {
       const { board, sim, motes } = buildScene();

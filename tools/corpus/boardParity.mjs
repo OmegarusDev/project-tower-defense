@@ -31,6 +31,29 @@ await page.goto(`http://127.0.0.1:8123/probe-board.html`, { waitUntil: "networki
 const { PNG } = await import("pngjs");
 const oracle = PNG.sync.read(Buffer.from((await page.evaluate(() => window.__drawBoardOracle())).split(",")[1], "base64"));
 const next = PNG.sync.read(Buffer.from((await page.evaluate(() => window.__drawBoardNext())).split(",")[1], "base64"));
+const viewO = PNG.sync.read(Buffer.from((await page.evaluate(() => window.__drawBoardViewOracle())).split(",")[1], "base64"));
+const viewN = PNG.sync.read(Buffer.from((await page.evaluate(() => window.__drawBoardViewNext())).split(",")[1], "base64"));
+
+const countDiff = (a, b) => {
+  let n = 0;
+  for (let i = 0; i < a.data.length; i += 4) {
+    if (
+      Math.abs(a.data[i] - b.data[i]) +
+        Math.abs(a.data[i + 1] - b.data[i + 1]) +
+        Math.abs(a.data[i + 2] - b.data[i + 2]) +
+        Math.abs(a.data[i + 3] - b.data[i + 3]) >
+      12
+    ) n++;
+  }
+  return n;
+};
+const viewDiff = countDiff(viewO, viewN);
+if (viewDiff === 0) {
+  console.log("BOARD VIEW PARITY OK (byte-identical)");
+} else {
+  console.log(`BOARD VIEW DIVERGES: ${viewDiff} px`);
+  process.exitCode = 1;
+}
 
 let diff = 0;
 let total = 0;

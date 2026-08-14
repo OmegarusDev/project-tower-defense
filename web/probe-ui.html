@@ -51,6 +51,8 @@
   const ORACLE = {
     main: (app) => menus.renderMain(app),
     hub: (app) => ends.showEndlessHub(app),
+    victory: (app) => ends.showVictory(app, { firstClear: !!app.__opts.firstClear }),
+    gameover: (app) => ends.showGameOver(app),
     campaign: (app) => menus.renderCampaign(app),
     forge: (app) => forge.showForge(app),
     tech: (app) => tech.showUpgrade(app),
@@ -60,14 +62,34 @@
   const NEXT = {
     main: (s) => N.renderMain(s),
     hub: (s) => N.renderHub(s),
+    victory: (s) => N.renderVictory(s),
+    gameover: (s) => N.renderGameOver(s),
     campaign: (s) => N.renderCampaign(s),
     forge: (s) => N.renderForge(s),
     tech: (s) => N.renderTech(s),
     settings: (s) => N.renderSettings(s),
   };
 
+  function campaignSim(endless) {
+    return {
+      modeEndless: endless,
+      campaignLevelId: 3,
+      waveIndex: 5,
+      lives: 0,
+      leakCount: 7,
+      killCount: 41,
+      runSeed: 42,
+      economy: { runWaveGains: { coin: 60, parts: 9, aether: 4 } },
+    };
+  }
+
   W.__renderScreen = (name, opts = {}) => {
     const app = mkApp();
+    app.__opts = opts;
+    if (name === "victory" || name === "gameover") {
+      app.sim = opts.endless ? campaignSim(true) : campaignSim(false);
+    }
+    if (name === "gameover") app._endBestBonus = opts.endBestBonus ?? null;
     app.techTreeTab = opts.techTreeTab || "foundations";
     app.techSelectedId = opts.techSelectedId ?? null;
     app.status = opts.status ?? "";
@@ -79,6 +101,9 @@
     ORACLE[name](app);
     const state = {
       meta: app.meta,
+      sim: app.sim,
+      firstClear: !!opts.firstClear,
+      endBestBonus: opts.endBestBonus ?? null,
       status: app.status,
       forgeSlot: app.forgeSlot,
       forgeReturn: app.forgeReturn || "main",
