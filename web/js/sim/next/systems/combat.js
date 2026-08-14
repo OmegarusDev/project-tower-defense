@@ -8,6 +8,7 @@ import { ballastPressureFactor, isConductive } from "../../../data/enemies.js";
 import { buildAttackPlan, Pattern, planOptsFromParts } from "../../attackPlan.js";
 import { INF } from "../../boardGrid.js";
 import { allocId, emit, logAction } from "../state.js";
+import { applyStatus as applyStatusRegistry, tickStatus as tickStatusRegistry } from "../combat/status.js";
 
 export function invalidatePlans(state) {
   state.plans.clear();
@@ -491,25 +492,10 @@ function applyHit(state, e, damage, plan, tower, opts = {}) {
 }
 
 function applyStatus(state, e, status) {
-  if (status.burn) {
-    e.burnT = Math.max(e.burnT || 0, status.burn.duration);
-    e.burnDps = Math.max(e.burnDps || 0, status.burn.dps);
-    e.burnEvery = status.burn.every || 0.5;
-  }
-  if (status.poison) {
-    e.poisonT = Math.max(e.poisonT || 0, status.poison.duration);
-    e.poisonDps = Math.max(e.poisonDps || 0, status.poison.dps);
-    e.poisonEvery = status.poison.every || 0.5;
-  }
-  if (status.slow) {
-    e.slowT = Math.max(e.slowT || 0, status.slow.duration);
-    e.slowAmount = Math.max(e.slowAmount || 0, status.slow.amount);
-    if (e.slowAmount >= 1) e.slowAmount = 1;
-  }
-  if (status.shred) {
-    e.shred = Math.max(e.shred || 0, status.shred.amount || 0);
-    e.shredT = Math.max(e.shredT || 0, status.shred.duration || 0);
-  }
+  return applyStatusRegistry(state, e, status);
+}
+function tickStatus(state) {
+  tickStatusRegistry(state);
 }
 
 function grantXp(state, tower, amount) {
@@ -554,66 +540,6 @@ function grantXp(state, tower, amount) {
       gained,
       pendingPicks: tower.pendingPicks | 0,
     });
-  }
-}
-
-function tickStatus(state) {
-  const dt = state.dt;
-  for (const e of state.enemies) {
-    if (e.burnT > 0) {
-      e.burnT -= dt;
-      e.burnAcc = (e.burnAcc || 0) + dt;
-      if (e.burnAcc >= (e.burnEvery || 0.5)) {
-        e.burnAcc -= e.burnEvery || 0.5;
-        let tick = e.burnDps || 1;
-        if ((e.armorKind || "none") === "none") tick *= 1.35;
-        else if ((e.armorKind === "plate" || e.armorKind === "insulated") && (e.shred || 0) < (e.armorFlat || 0) + (e.auraArmor || 0)) tick *= 0.55;
-        e.hp -= tick;
-      }
-      e._fxBurn = (e._fxBurn || 0) + dt;
-      if (e._fxBurn > 0.12) {
-        e._fxBurn = 0;
-        emit(state, "status_fx", { x: e.pos.x, y: e.pos.y, type: "fire" });
-      }
-    }
-    if (e.poisonT > 0) {
-      e.poisonT -= dt;
-      e.poisonAcc = (e.poisonAcc || 0) + dt;
-      if (e.poisonAcc >= (e.poisonEvery || 0.5)) {
-        e.poisonAcc -= e.poisonEvery || 0.5;
-        let tick = e.poisonDps || 1;
-        // Burn x poison: flames cook the toxin — burning targets take +50% poison
-        if ((e.burnT || 0) > 0) tick *= 1.5;
-        e.hp -= tick;
-      }
-      e._fxPoison = (e._fxPoison || 0) + dt;
-      if (e._fxPoison > 0.16) {
-        e._fxPoison = 0;
-        emit(state, "status_fx", { x: e.pos.x, y: e.pos.y, type: "poison" });
-      }
-    }
-    if (e.slowT > 0) {
-      e.slowT -= dt;
-      if (e.slowT <= 0) e.slowAmount = 0;
-      else {
-        e._fxSlow = (e._fxSlow || 0) + dt;
-        if (e._fxSlow > 0.22) {
-          e._fxSlow = 0;
-          emit(state, "status_fx", { x: e.pos.x, y: e.pos.y, type: "frost" });
-        }
-      }
-    }
-    if (e.shredT > 0) {
-      e.shredT -= dt;
-      if (e.shredT <= 0) e.shred = 0;
-      else {
-        e._fxShred = (e._fxShred || 0) + dt;
-        if (e._fxShred > 0.2) {
-          e._fxShred = 0;
-          emit(state, "status_fx", { x: e.pos.x, y: e.pos.y, type: "acid" });
-        }
-      }
-    }
   }
 }
 
