@@ -1,5 +1,5 @@
 /** Extracted from App — pure move, no gameplay changes. */
-import { makeSlot, forgeBuyCost, ownsPart, normalizeRoster } from "../data/parts.js";
+import { makeSlot, forgeBuyCost, ownsPart, normalizeRoster, MAX_ROSTER_SLOTS } from "../data/parts.js";
 import {
   forgeApplyPart,
   forgeClearSlot,
@@ -7,9 +7,7 @@ import {
   forgeBuyPart,
 } from "../app/forgeLogic.js";
 import { renderTowerNext } from "../view/next/renderTower.js";
-import { forgePlanSummary, forgePartGridHtml } from "./next/screens.js";
-import { rosterSlotButtons } from "../app/gameChrome.js";
-import { partIconHtml } from "./partIcons.js";
+import { forgePartGridHtml, forgePreviewCard, forgeUnlockCard } from "./next/screens.js";
 import { renderForge } from "./next/screens.js";
 import { forgeState } from "./next/stateOf.js";
 
@@ -26,7 +24,6 @@ export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true 
     app.meta.slotCount,
     app.meta.levelCap
   );
-  if (app.forgeSlot >= app.meta.roster.length) app.forgeSlot = 0;
   const slot = app.meta.roster[app.forgeSlot] || makeSlot();
 
   const status = root.querySelector("#status");
@@ -44,21 +41,25 @@ export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true 
           <span><i>Slots</i>${app.meta.slotCount}</span>`;
   }
 
-  const strip = root.querySelector(".build-strip");
-  if (strip) strip.innerHTML = rosterSlotButtons(app, "forge");
+  const slotCount = app.meta.slotCount | 0;
+  const total = slotCount + (slotCount < MAX_ROSTER_SLOTS ? 1 : 0);
+  if ((app.forgeSlot | 0) >= total) app.forgeSlot = 0;
+  const isPanel = app.forgeSlot === slotCount && slotCount < MAX_ROSTER_SLOTS;
+  const st = forgeState(app);
 
-  const heading = root.querySelector(".forge-summary h3");
-  if (heading) heading.textContent = `Slot ${app.forgeSlot + 1}`;
-  const loadout = root.querySelector("#forgeLoadout");
-  if (loadout) loadout.innerHTML = forgePlanSummary(slot);
-
-  if (rebuildParts) {
-    const grid = root.querySelector(".forge-part-grid");
-    if (grid) grid.innerHTML = forgePartGridHtml(forgeState(app), slot);
-  } else {
-    for (const btn of root.querySelectorAll("[data-act^='forge-part:']")) {
-      const [, kind, id] = btn.getAttribute("data-act").split(":");
-      btn.classList.toggle("equipped", slot[kind] === id);
+  const wrap = root.querySelector(".forge-preview-wrap");
+  if (wrap) {
+    wrap.innerHTML = isPanel ? forgeUnlockCard(st, total) : forgePreviewCard(st, total);
+  }
+  const grid = root.querySelector(".forge-part-grid");
+  if (grid) {
+    grid.hidden = isPanel;
+    if (rebuildParts && !isPanel) grid.innerHTML = forgePartGridHtml(st, slot);
+    else if (!isPanel) {
+      for (const btn of grid.querySelectorAll("[data-act^='forge-part:']")) {
+        const [, kind, id] = btn.getAttribute("data-act").split(":");
+        btn.classList.toggle("equipped", slot[kind] === id);
+      }
     }
   }
 
@@ -86,16 +87,9 @@ export function showForge(app, returnTo) {
     app.meta.slotCount,
     app.meta.levelCap
   );
-  if (app.forgeSlot >= app.meta.roster.length) app.forgeSlot = 0;
-  const slot = app.meta.roster[app.forgeSlot] || makeSlot();
-  const backAct =
-    app.forgeReturn === "hub"
-      ? "hub"
-      : app.forgeReturn === "campaign"
-        ? "campaign"
-        : app.forgeReturn === "prep"
-          ? `prep:${app.prepLevelId || 1}`
-          : "main";
+  const slotCount = app.meta.slotCount | 0;
+  const total = slotCount + (slotCount < MAX_ROSTER_SLOTS ? 1 : 0);
+  if ((app.forgeSlot | 0) >= total) app.forgeSlot = 0;
   app.ui.innerHTML = renderForge(forgeState(app));
   app.bindUi();
   paintForgePreview(app);

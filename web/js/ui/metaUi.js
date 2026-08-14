@@ -70,27 +70,6 @@ export function rosterPeekHtml(meta) {
   return `<div class="roster-peek" aria-label="Loadout">${chips.join("")}</div>`;
 }
 
-/** Prep-only arsenal swap buttons (does not start a run). */
-export function prepSlotButtonsHtml(meta, activeSlot = 0) {
-  const n = meta.slotCount | 0 || 3;
-  const roster = meta.roster || [];
-  const btns = [];
-  for (let i = 0; i < n; i++) {
-    const slot = roster[i];
-    const ok = !!slot?.complete;
-    const active = i === activeSlot ? " equipped" : "";
-    const label = ok
-      ? `${partLabel(slot.base).slice(0, 6)}`
-      : `Slot ${i + 1}`;
-    btns.push(
-      `<button type="button" class="btn part-chip${active}${ok ? "" : " cant-afford"}" data-act="prep-slot:${i}" ${
-        ok ? "" : "disabled"
-      }>${label}</button>`
-    );
-  }
-  return `<div class="prep-slots row">${btns.join("")}</div>`;
-}
-
 export function endlessThemeBlurb() {
   return ENDLESS_THEMES.map((t) => t.id).slice(0, 5).join(" → ") + "…";
 }

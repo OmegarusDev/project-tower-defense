@@ -1,6 +1,7 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { ENDLESS_GRID } from "../data/endlessGrid.js";
 import { Sim as SimWorld } from "../sim/next/sim.js"; // swapped: next facade (SimWorld alias kept for call-site parity)
+import { confirmSheet } from "../ui/next/modal.js";
 import { BASE_START_CASH } from "../data/techTree.js";
 import {
   hasEndless,
@@ -11,8 +12,20 @@ import { getCampaignLevel, isLevelUnlocked, levelPortalCell } from "../data/camp
 
 export function newRun(app, seed, { skipConfirm = false } = {}) {
   if (!skipConfirm && hasEndless()) {
-    if (!confirm("Overwrite endless checkpoint?")) return;
+    confirmSheet(app.ui, {
+      mark: "Vein",
+      title: "New Claim?",
+      note: "Your checkpoint — the board, the Coin, the wave — is overwritten.",
+      confirmLabel: "New Run",
+    }).then((yes) => {
+      if (yes) startNewRun(app, seed);
+    });
+    return;
   }
+  startNewRun(app, seed);
+}
+
+function startNewRun(app, seed) {
   clearEndless();
   const runSeed = (seed >>> 0) || ((Math.random() * 0xffffffff) | 1);
   app.sim = new SimWorld();

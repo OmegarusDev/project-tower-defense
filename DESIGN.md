@@ -1,8 +1,8 @@
 # DESIGN — Identity, Copy, Dialogs, Forge UX + UI scour
 
-Status: PLANNING — comprehensive and decision-complete. Implementation order at
-the end. Every change is gated (goldens re-captured deliberately, never
-silently).
+Status: STEPS 1-4 IMPLEMENTED AND VERIFIED (copy+faction, dialogs, forge UX,
+toasts+Esc). Step 5 (identity pass) is pending — break it into a million
+steps when we regroup. Every change was gated; re-captures were deliberate.
 
 ---
 

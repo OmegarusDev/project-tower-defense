@@ -4,6 +4,8 @@
  * see `app`.
  */
 import { VIEW25 } from "../../view/view25.js";
+import { MAX_ROSTER_SLOTS } from "../../data/parts.js";
+import { nextRosterSlotUnlock } from "../../data/techTree.js";
 import { waveBusy, gameSlotQuote } from "../../app/gameChrome.js";
 import { hasEndless, loadEndless } from "../../saveStore.js";
 
@@ -44,6 +46,8 @@ export function forgeState(app) {
     forgeReturn: app.forgeReturn || "main",
     prepLevelId: app.prepLevelId,
     status: app.status,
+    maxSlots: MAX_ROSTER_SLOTS,
+    nextUnlock: nextRosterSlotUnlock(app.meta),
   };
 }
 

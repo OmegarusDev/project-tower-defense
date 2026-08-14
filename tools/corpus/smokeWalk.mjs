@@ -15,8 +15,6 @@ page.on("pageerror", (e) => errors.push("PAGEERROR: " + e.message));
 page.on("console", (m) => {
   if (m.type() === "error") errors.push("CONSOLE: " + m.text());
 });
-page.on("dialog", (d) => d.accept());
-
 let failures = 0;
 const step = (name, ok) => {
   if (!ok) failures++;
@@ -105,6 +103,18 @@ await page.waitForTimeout(500);
 await page.click("text=Forge");
 await page.waitForTimeout(700);
 step("forge screen", await page.evaluate(() => !!document.querySelector(".forge-screen")));
+step("forge nav arrows", await page.evaluate(() => document.querySelectorAll(".forge-arrow").length === 2));
+await page.click("[data-act='forge-slot-next']");
+await page.waitForTimeout(400);
+step("forge cycles slots", await page.evaluate(() => document.querySelector(".forge-summary h3")?.textContent?.startsWith("Slot 2") ?? false));
+// cycle to the unlock panel (slotCount 3 fresh -> panel at index 3)
+await page.click("[data-act='forge-slot-next']");
+await page.click("[data-act='forge-slot-next']");
+await page.waitForTimeout(400);
+step("forge unlock panel", await page.evaluate(() => !!document.querySelector(".forge-unlock")));
+await page.click("[data-act='forge-slot-next']");
+await page.waitForTimeout(400);
+step("forge loops back to slot 1", await page.evaluate(() => document.querySelector(".forge-summary h3")?.textContent?.startsWith("Slot 1") ?? false));
 await page.click(".x-close");
 await page.waitForTimeout(400);
 await page.click("text=Tech Tree");

@@ -32,7 +32,7 @@ import {
   nextRosterSlotUnlock,
 } from "../../data/techTree.js";
 import { MAX_ROSTER_SLOTS } from "../../data/parts.js";
-import { threatTagsForLevel, rosterPeekHtml, prepSlotButtonsHtml, endlessThemeBlurb } from "../metaUi.js";
+import { threatTagsForLevel, rosterPeekHtml, endlessThemeBlurb } from "../metaUi.js";
 import { xClose } from "../xClose.js";
 import { partIconHtml, techCategoryIcon, techNodeIconHtml } from "../partIcons.js";
 
@@ -343,6 +343,7 @@ export function renderMain(state) {
   const meta = state.meta;
   return `
     <div class="screen title-screen meta-enter">
+      <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
       <div class="frame-bolts" aria-hidden="true"></div>
       <header class="title-hero">
         <div class="title-crest" aria-hidden="true"><span></span><i></i><span></span></div>
@@ -368,7 +369,7 @@ export function renderMain(state) {
           <span><i>Parts</i>${meta.forge}</span>
           <span><i>Best</i>W${meta.bestWave}</span>
         </div>
-        <p class="title-credit">Bastion vs Slag Host</p>
+        <p class="title-credit">Bastion vs the Cinder</p>
       </footer>
     </div>`;
 }
@@ -380,6 +381,7 @@ export function renderSettings(state) {
   const musicVol = Math.round((meta.settings?.musicVolume ?? 0.4) * 100);
   return `
     <div class="screen scroll meta-screen meta-enter">
+      <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
       <header class="meta-hero">
         <div class="meta-hero-row">
           <div>
@@ -424,7 +426,7 @@ export function renderSettings(state) {
         </div>
 <div class="set-block">
             <h3>Tech</h3>
-            <p class="end-note" style="margin:0">Ranks are permanent — pick Foundations and Arsenal upgrades with care.</p>
+            <p class="end-note" style="margin:0">Ranks are permanent. Choose with care.</p>
           </div>
         <div class="set-block" style="border-top:1px solid rgba(200,130,60,0.25);padding-top:10px">
           <h3>Testing</h3>
@@ -466,6 +468,7 @@ export function renderCampaign(state) {
   }).join("");
   return `
     <div class="screen scroll meta-screen meta-enter">
+      <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
       <header class="meta-hero">
         <div class="meta-hero-row">
           <div>
@@ -473,7 +476,7 @@ export function renderCampaign(state) {
           </div>
           ${xClose("main")}
         </div>
-        <p class="meta-blurb">Seal each Yard before the Claim walks it.</p>
+        <p class="meta-blurb">Seal each Yard before the Cinder walks it.</p>
         <div class="title-stats tech-stats">
           <span><i>Æ</i>${meta.aether}</span>
           <span><i>Parts</i>${meta.forge}</span>
@@ -504,6 +507,7 @@ export function renderPrep(state) {
     .join("");
   return `
     <div class="screen scroll meta-screen meta-enter">
+      <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
       <header class="meta-hero">
         <div class="meta-hero-row">
           <div>
@@ -525,7 +529,11 @@ export function renderPrep(state) {
         <h3>Loadout</h3>
         ${rosterPeekHtml(meta)}
         <p class="end-note" style="margin-top:8px;text-align:left">${planLine}</p>
-        ${prepSlotButtonsHtml(meta, state.prepSlot || 0)}
+        <div class="prep-slots row">
+          <button type="button" class="btn part-chip" data-act="prep-slot-prev" aria-label="Previous slot">◀</button>
+          <button type="button" class="btn part-chip equipped">Slot ${(state.prepSlot || 0) + 1}</button>
+          <button type="button" class="btn part-chip" data-act="prep-slot-next" aria-label="Next slot">▶</button>
+        </div>
       </div>
       <div class="screen-foot">
         <button class="btn title-cta" data-act="start-level:${lv.id}">Start Level</button>
@@ -543,6 +551,7 @@ export function renderHub(state) {
   const themes = endlessThemeBlurb();
   return `
     <div class="screen scroll meta-screen hub-screen meta-enter">
+      <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
       <header class="meta-hero">
         <div class="meta-hero-row">
           <div>
@@ -581,9 +590,64 @@ export function renderHub(state) {
     </div>`;
 }
 
+/**
+ * Forge stat bars — DMG / ROF / RNG normalized against fixed caps.
+ * plan may be null (empty slot) → zeroed bars with — values.
+ */
+export function forgeStatBars(plan) {
+  const bars = [
+    { k: "DMG", v: plan ? plan.damage : 0, cap: 60, f: 0 },
+    { k: "ROF", v: plan && plan.fireInterval ? 1 / plan.fireInterval : 0, cap: 5, f: 2 },
+    { k: "RNG", v: plan ? plan.rangeCells : 0, cap: 8, f: 1 },
+  ];
+  return `<div class="stat-bars">${bars
+    .map((b) => {
+      const pct = Math.max(0, Math.min(1, b.v / b.cap)) * 100;
+      const val = b.v > 0 ? (b.f === 0 ? Math.round(b.v) : b.v.toFixed(b.f)) : "—";
+      return `<div class="stat-bar"><span class="stat-bar-k">${b.k}</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%"></div></div><span class="stat-bar-v">${val}</span></div>`;
+    })
+    .join("")}</div>`;
+}
+
+/** The preview card: canvas + slot line + stat bars + loadout. */
+export function forgePreviewCard(state, total) {
+  const idx = state.forgeSlot ?? 0;
+  const slot = state.meta.roster?.[idx] || makeSlot();
+  const plan = slot?.complete
+    ? buildAttackPlan(slot.base, slot.barrel, slot.payload, 1, {})
+    : null;
+  return `
+    <canvas id="forgePreview" class="forge-preview-flash" width="160" height="160" aria-label="Tower preview"></canvas>
+    <div class="forge-summary">
+      <h3>Slot ${idx + 1} / ${total}</h3>
+      ${forgeStatBars(plan)}
+      <p id="forgeLoadout">${forgePlanSummary(slot)}</p>
+      <button class="btn secondary part-chip" data-act="forge-clear" style="margin-top:8px">Clear slot</button>
+    </div>`;
+}
+
+/** The unlock card: shown at the end of the slot cycle while slots remain. */
+export function forgeUnlockCard(state, total) {
+  const slotCount = state.meta.slotCount | 0;
+  const unlock = state.nextUnlock;
+  return `
+    <div class="forge-unlock plate">
+      <p class="forge-unlock-k">Slot ${slotCount + 1} / ${total}</p>
+      <h3>Unlock Slot ${slotCount + 1}?</h3>
+      <p class="forge-unlock-cost">${unlock ? formatTechCost(unlock.cost) : "—"}</p>
+      <button class="btn title-cta" data-act="forge-unlock-slot" ${unlock ? "" : "disabled"}>Unlock</button>
+    </div>`;
+}
+
 export function renderForge(state) {
   const meta = state.meta;
-  const slot = meta.roster?.[state.forgeSlot || 0] || makeSlot();
+  const maxSlots = state.maxSlots || MAX_ROSTER_SLOTS;
+  const slotCount = meta.slotCount | 0;
+  const canUnlock = slotCount < maxSlots;
+  const total = slotCount + (canUnlock ? 1 : 0);
+  const idx = state.forgeSlot ?? 0;
+  const isPanel = canUnlock && idx === slotCount;
+  const slot = isPanel ? null : meta.roster?.[idx] || makeSlot();
   const backAct =
     state.forgeReturn === "hub"
       ? "hub"
@@ -592,7 +656,6 @@ export function renderForge(state) {
         : state.forgeReturn === "prep"
           ? `prep:${state.prepLevelId || 1}`
           : "main";
-  const slotBtns = rosterSlotButtonsHtml(state, "forge");
   return `
     <div class="screen meta-shell meta-screen forge-screen meta-enter">
       <header class="meta-hero">
@@ -611,17 +674,15 @@ export function renderForge(state) {
         <div class="status tech-status forge-status" id="status"${state.status ? "" : " hidden"}>${state.status || ""}</div>
       </header>
       <div class="meta-scroll">
-        <div class="row build-strip">${slotBtns}</div>
-        <div class="forge-preview-wrap">
-          <canvas id="forgePreview" class="forge-preview-flash" width="160" height="160" aria-label="Tower preview"></canvas>
-          <div class="forge-summary">
-            <h3>Slot ${(state.forgeSlot || 0) + 1}</h3>
-            <p id="forgeLoadout">${forgePlanSummary(slot)}</p>
-            <button class="btn secondary part-chip" data-act="forge-clear" style="margin-top:8px">Clear slot</button>
+        <div class="forge-nav">
+          <button type="button" class="forge-arrow" data-act="forge-slot-prev" aria-label="Previous slot">◀</button>
+          <div class="forge-preview-wrap">
+            ${isPanel ? forgeUnlockCard(state, total) : forgePreviewCard(state, total)}
           </div>
+          <button type="button" class="forge-arrow" data-act="forge-slot-next" aria-label="Next slot">▶</button>
         </div>
-        <div class="cols forge-part-grid">${forgePartGridHtml(state, slot)}</div>
-        <p class="end-note">Locked parts cost Parts (price rises with each purchase). Wave gifts are free. Unlock slots with Æ here or in Tech.</p>
+        ${isPanel ? "" : `<div class="cols forge-part-grid">${forgePartGridHtml(state, slot)}</div>`}
+        <p class="end-note">Parts unlock pieces — prices climb with each buy. Slots open with Æ.</p>
       </div>
       <footer class="meta-dock">
         <button class="btn warn" data-act="upgrade">Tech Tree</button>
@@ -632,7 +693,7 @@ export function renderForge(state) {
 export function renderTech(state) {
   const meta = state.meta;
   const cash = BASE_START_CASH + (meta.startCashBonus | 0);
-  const giftLine = `Best wave ${meta.bestWave || 0} · earn Parts in runs, unlock parts at the Forge`;
+  const giftLine = `Best wave ${meta.bestWave || 0} — Parts come from runs, pieces from the Forge`;
   const tabs = TECH_TREES.map((tree) => {
     const active = state.techTreeTab === tree.id ? "active" : "";
     return `<button type="button" class="ttree-tab ${active}" data-act="tech-tab:${tree.id}">${tree.name}</button>`;
@@ -697,6 +758,7 @@ export function renderEditor(state) {
   }
   return `
     <div class="screen scroll meta-screen meta-enter">
+      <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
       <header class="meta-hero">
         <div class="meta-hero-row">
           <div>
@@ -766,6 +828,7 @@ export function renderVictory(state) {
     </div>`;
   return `
     <div class="screen end-screen meta-enter">
+      <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
       <header class="end-hero">
         <h1 class="end-title">Clear</h1>
         <p class="end-sub">${lv ? lv.name : "Level"}</p>
@@ -829,6 +892,7 @@ export function renderGameOver(state) {
       </div>`;
   return `
     <div class="screen end-screen meta-enter${endless ? " end-endless" : ""}">
+      <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
       <header class="end-hero">
         <h1 class="end-title">Fallen</h1>
         <p class="end-sub">${lv ? `${lv.name} · ` : ""}Wave</p>

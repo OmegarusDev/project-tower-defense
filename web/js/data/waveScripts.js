@@ -5,7 +5,7 @@
 
 import { ENEMY_COST, resolveEnemyKind } from "./enemies.js";
 
-/** Named reusable packs for campaign authoring (Slag Host ids). */
+/** Named reusable packs for campaign authoring (Cinder ids). */
 export const WAVE_PACKS = {
   mite_line: ["mite", "mite", "mite", "mite", "mite", "mite", "mite"],
   couriers: ["courier", "courier", "courier", "mite", "courier", "courier", "courier"],

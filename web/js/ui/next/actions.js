@@ -6,6 +6,8 @@
  * both sides and requires identical call traces.
  */
 import { loadEditorLevels } from "../levelEditor.js";
+import { MAX_ROSTER_SLOTS } from "../../data/parts.js";
+import { confirmSheet } from "./modal.js";
 
 const R = [
   // ---- screen nav (exact) ----
@@ -25,19 +27,28 @@ const R = [
       if (app.screen === "prep" && app.prepLevelId) app.showPrep(app.prepLevelId);
     },
   },
+  { is: "prep-slot-prev", run: (app) => shiftPrepSlot(app, -1) },
+  { is: "prep-slot-next", run: (app) => shiftPrepSlot(app, 1) },
   { has: "start-level:", run: (app, act) => app.startCampaignLevel(+act.slice(12)) },
 
   // ---- meta reset ----
   {
     is: "reset-meta",
     run: (app) => {
-      if (confirm("Reset all progress? This wipes your save and cannot be undone.")) {
+      confirmSheet(app.ui, {
+        mark: "Forgeworks",
+        title: "Scuttle the Forge?",
+        note: "All progress, parts and ranks are burned. This cannot be undone.",
+        confirmLabel: "Scuttle",
+        danger: true,
+      }).then((yes) => {
+        if (!yes) return;
         try {
           localStorage.removeItem("ptd_meta_v1");
           localStorage.removeItem("ptd_endless_v1");
         } catch (_) {}
         location.reload();
-      }
+      });
     },
   },
 
@@ -182,15 +193,13 @@ const R = [
     has: "forge-slot:",
     run: (app, act) => {
       const i = +act.slice(11);
-      if (i < 0 || i >= (app.meta.slotCount | 0)) {
-        app.unlockForgeSlot();
-        return;
-      }
       app.forgeSlot = i;
       app.status = `Editing slot ${i + 1}`;
       app._refreshForgeUi();
     },
   },
+  { is: "forge-slot-prev", run: (app) => shiftForgeSlot(app, -1) },
+  { is: "forge-slot-next", run: (app) => shiftForgeSlot(app, 1) },
   {
     has: "forge-part:",
     run: (app, act) => {
@@ -246,6 +255,25 @@ export function runAction(app, act) {
     }
   }
   return false;
+}
+
+/** Cycle the prep loadout slot (loops within unlocked slots). */
+function shiftPrepSlot(app, delta) {
+  const n = Math.max(1, app.meta.slotCount | 0 || 3);
+  app.prepSlot = ((app.prepSlot | 0) + delta + n) % n;
+  if (app.screen === "prep" && app.prepLevelId) app.showPrep(app.prepLevelId);
+}
+
+/** Cycle the forge slot — the last position is the unlock panel (loops). */
+function shiftForgeSlot(app, delta) {
+  const slotCount = app.meta.slotCount | 0;
+  const total = slotCount + (slotCount < MAX_ROSTER_SLOTS ? 1 : 0);
+  app.forgeSlot = ((app.forgeSlot | 0) + delta + total) % total;
+  app.status =
+    app.forgeSlot === slotCount
+      ? `Slot ${slotCount + 1} — locked`
+      : `Editing slot ${app.forgeSlot + 1}`;
+  app._refreshForgeUi();
 }
 
 /** Ordered list of registry entries (for parity corpus introspection). */

@@ -1,5 +1,5 @@
 /**
- * Slag Host archetypes — Vein Claim reclaimers.
+ * the Cinder archetypes — Vein Claim reclaimers.
  * Stats are base values; WaveManager scales HP (and endless speed) by wave.
  *
  * armorKind: none | plate | insulated | energy
@@ -182,7 +182,7 @@ export const ENEMY_KINDS = {
   },
 };
 
-/** Legacy + paper-TD ids → Slag Host kinds. */
+/** Legacy + paper-TD ids → the Cinder kinds. */
 const ENEMY_ALIASES = {
   // paper / early web
   basic: "mite",

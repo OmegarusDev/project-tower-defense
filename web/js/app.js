@@ -187,7 +187,10 @@ export class App {
   toast(msg) {
     this.status = msg;
     const st = this.ui.querySelector("#status");
-    if (st) st.textContent = msg;
+    if (st) {
+      st.textContent = msg;
+      st.classList.remove("empty");
+    }
     this.synth.play("ui", 1);
   }
 

@@ -1,6 +1,14 @@
 /** Extracted from App — pure move, no gameplay changes. */
 
 export function onKeyDown(app, e) {
+  if (e.code === "Escape" || e.key === "Escape") {
+    // Meta screens: Esc closes the tech overlay (modals handle their own Esc).
+    if (app.screen === "upgrade" && app.techSelectedId) {
+      e.preventDefault();
+      app.closeTechOverlay();
+      return;
+    }
+  }
   if (app.screen !== "game" || !app.sim) return;
   if (e.code === "Escape" || e.key === "Escape") {
     e.preventDefault();

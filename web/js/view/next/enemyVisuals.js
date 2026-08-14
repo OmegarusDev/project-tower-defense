@@ -1,5 +1,5 @@
 /**
- * Enemy visuals — the Slag Host silhouettes as data, transcribed EXACTLY
+ * Enemy visuals — the Cinder silhouettes as data, transcribed EXACTLY
  * from the oracle enemyPainter. yTop = s-factor above cy; alpha may be a
  * pure function of the frozen animation phase t.
  */

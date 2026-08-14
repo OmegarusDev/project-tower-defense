@@ -29,6 +29,12 @@ jobs:
       - name: Unit tests + parse gates
         run: node verify.mjs
 
+      - name: No native dialogs
+        run: |
+          if grep -rn "confirm(\|alert(\|prompt(" web/js --include=*.js | grep -v /dev/ | grep -v tests; then
+            echo "native dialog call found — use ui/next/modal.js" && exit 1
+          fi
+
       - name: Sim parity (bot ladder traces)
         run: node tools/corpus/simParity.mjs
 

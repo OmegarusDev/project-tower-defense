@@ -216,3 +216,107 @@
   display: block;
   shape-rendering: geometricPrecision;
 }
+
+/* Forge slot navigator — arrows + stat bars + unlock panel */
+.forge-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+}
+.forge-arrow {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 0.95rem;
+  line-height: 1;
+  background: linear-gradient(180deg, #2a2f28, #1c201b);
+  border: 1px solid rgba(201, 162, 39, 0.35);
+  color: #e8c56a;
+  border-radius: 6px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.forge-arrow:hover {
+  background: linear-gradient(180deg, #343a30, #242921);
+  border-color: rgba(201, 162, 39, 0.65);
+}
+.forge-arrow:active {
+  transform: translateY(1px);
+}
+.stat-bars {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 6px;
+  width: 100%;
+}
+.stat-bar {
+  display: grid;
+  grid-template-columns: 30px 1fr 38px;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.62rem;
+  color: #9aacbe;
+}
+.stat-bar-k {
+  letter-spacing: 0.12em;
+  text-align: left;
+}
+.stat-bar-track {
+  height: 6px;
+  background: rgba(10, 12, 16, 0.7);
+  border: 1px solid rgba(200, 130, 60, 0.18);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.stat-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c96a2a, #e8c56a);
+  border-radius: 3px;
+}
+.stat-bar-v {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #d8e0ea;
+}
+.forge-summary {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.forge-summary h3 {
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  color: #e8c56a;
+  margin: 0 0 4px;
+}
+.forge-unlock {
+  width: 100%;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  padding: 18px;
+  border: 1px dashed rgba(201, 162, 39, 0.4);
+}
+.forge-unlock-k {
+  margin: 0;
+  font-size: 0.66rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #9aacbe;
+}
+.forge-unlock h3 {
+  margin: 0;
+  font-family: "Chakra Petch", sans-serif;
+  font-size: 1.1rem;
+  color: #e8c56a;
+}
+.forge-unlock-cost {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: #9aacbe;
+}

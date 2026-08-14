@@ -1,5 +1,6 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { saveMeta, saveEndless } from "../saveStore.js";
+import { confirmSheet } from "../ui/next/modal.js";
 import { pauseSheetHtml as renderPauseSheetHtml } from "../ui/next/chrome.js";
 import { pauseState } from "../ui/next/stateOf.js";
 
@@ -41,12 +42,24 @@ export function quitToMenu(app) {
   if (!app.sim) return;
   const fromEditor = !!app.playtestFromEditor;
   const campaign = !app.sim.modeEndless;
-  const msg = fromEditor
-    ? "End playtest and return to the Level Editor?"
+  const note = fromEditor
+    ? "End the playtest and return to the Editor?"
     : campaign
-      ? "Abandon this campaign run and return to the Campaign menu?"
+      ? "Abandon this run? The Yard falls back to the Campaign."
       : "Return to the Endless menu? Your checkpoint is saved.";
-  if (!confirm(msg)) return;
+  confirmSheet(app.ui, {
+    mark: "Command",
+    title: "Stand Down?",
+    note,
+    confirmLabel: "Stand Down",
+  }).then((yes) => {
+    if (!yes) return;
+    finishQuit(app, fromEditor, campaign);
+  });
+}
+
+/** The actual quit — runs only after the Cinder-sheet confirms. */
+function finishQuit(app, fromEditor, campaign) {
   // Between waves: persist post-clear board so Continue keeps towers/Coin.
   // Mid-wave: leave the wave-start checkpoint (GDD Continue = start of last wave).
   if (app.sim.modeEndless && !fromEditor) {

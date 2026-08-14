@@ -13,7 +13,7 @@
   pointer-events: auto;
 }
 
-.game-chrome > .status-toast {
+.status-toast {
   pointer-events: none;
 }
 
