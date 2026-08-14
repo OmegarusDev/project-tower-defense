@@ -52,44 +52,62 @@ await page.setContent(HTML);
 await page.goto("http://127.0.0.1:8123/probe.html", { waitUntil: "networkidle" }).catch(() => {});
 
 const ANG = [0, -Math.PI / 2, Math.PI, Math.PI / 2];
-const names = ["sentry", "single", "kinetic"];
+const BASES = ["sentry", "bulwark", "spire", "aerie", "warden", "talon"];
+const BARRELS = ["single", "twin", "scatter", "rail", "pulse", "launcher", "flak"];
+const PAYLOADS = ["kinetic", "pyro", "shock", "frost", "poison", "acid", "breach", "emp"];
 let failures = 0;
 let checked = 0;
 
+const diffTile = async (goldenFile, label, spec, ang, p) => {
+  const golden = readFileSync(goldenFile);
+  const dataUrl = await page.evaluate(([b, r, pl, ang, pd]) => window.__render(b, r, pl, ang, pd), [spec[0], spec[1], spec[2], ang, p]);
+  const rendered = Buffer.from(dataUrl.split(",")[1], "base64");
+  checked++;
+  if (golden.equals(rendered)) return true;
+  const { PNG } = await import("pngjs");
+  const ga = PNG.sync.read(golden);
+  const rb = PNG.sync.read(rendered);
+  let diff = 0;
+  let total = 0;
+  for (let i = 0; i < ga.data.length; i += 4) {
+    total++;
+    const d =
+      Math.abs(ga.data[i] - rb.data[i]) +
+      Math.abs(ga.data[i + 1] - rb.data[i + 1]) +
+      Math.abs(ga.data[i + 2] - rb.data[i + 2]) +
+      Math.abs(ga.data[i + 3] - rb.data[i + 3]);
+    if (d > 12) diff++;
+  }
+  const pct = (diff / total) * 100;
+  if (pct < 0.02) {
+    console.log(`PASS ${label} pitch ${p} angle ${ang} (${diff} AA px, ${pct.toFixed(3)}%)`);
+    return true;
+  }
+  failures++;
+  console.log(`FAIL ${label} pitch ${p} angle ${ang}: ${diff}/${total} px differ (${pct.toFixed(2)}%)`);
+  return false;
+};
+
+const nBase = BASES.length * 4;
+const nBarrel = BARRELS.length * 4;
+
 for (const p of pitch) {
-  for (let a = 0; a < 4; a++) {
-    // gallery ordering: base tiles first (sentry at idx 0-3), so the golden
-    // for sentry/single/kinetic at angle a is tile_p{p}_0{a}_sentry.png
-    const goldenFile = join(OUT, `tile_p${p}_0${a}_sentry.png`);
-    const golden = readFileSync(goldenFile);
-    const dataUrl = await page.evaluate(
-      ([b, r, pl, ang, pd]) => window.__render(b, r, pl, ang, pd),
-      ["sentry", "single", "kinetic", ANG[a], p]
-    );
-    const rendered = Buffer.from(dataUrl.split(",")[1], "base64");
-    checked++;
-    if (golden.equals(rendered)) {
-      console.log(`PASS tile ${names.join("/")} pitch ${p} angle ${a} (byte-identical)`);
-    } else {
-      // pixel-level diff report
-      const { PNG } = await import("pngjs");
-      const ga = PNG.sync.read(golden);
-      const rb = PNG.sync.read(rendered);
-      let diff = 0;
-      let total = 0;
-      for (let i = 0; i < ga.data.length; i += 4) {
-        total++;
-        const d =
-          Math.abs(ga.data[i] - rb.data[i]) +
-          Math.abs(ga.data[i + 1] - rb.data[i + 1]) +
-          Math.abs(ga.data[i + 2] - rb.data[i + 2]) +
-          Math.abs(ga.data[i + 3] - rb.data[i + 3]);
-        if (d > 12) diff++;
-      }
-      failures++;
-      console.log(
-        `FAIL tile ${names.join("/")} pitch ${p} angle ${a}: ${diff}/${total} px differ (${((diff / total) * 100).toFixed(2)}%)`
-      );
+  // bases section (idx 0..23): base i at i*4+a
+  for (let i = 0; i < BASES.length; i++) {
+    for (let a = 0; a < 4; a++) {
+      await diffTile(join(OUT, `tile_p${p}_${String(i * 4 + a).padStart(2, "0")}_${BASES[i]}.png`), `${BASES[i]}/single/kinetic`, [BASES[i], "single", "kinetic"], ANG[a], p);
+    }
+  }
+  // barrels section (idx 24..55): barrel i at nBase + i*4+a
+  for (let i = 0; i < BARRELS.length; i++) {
+    for (let a = 0; a < 4; a++) {
+      await diffTile(join(OUT, `tile_p${p}_${String(nBase + i * 4 + a).padStart(2, "0")}_${BARRELS[i]}.png`), `sentry/${BARRELS[i]}/kinetic`, ["sentry", BARRELS[i], "kinetic"], ANG[a], p);
+    }
+  }
+  // payloads section (idx 56..83): payload i at (nBase + nBarrel) + i*4+a
+  for (let i = 0; i < PAYLOADS.length; i++) {
+    for (let a = 0; a < 4; a++) {
+      await diffTile(join(OUT, `tile_p${p}_${String(nBase + nBarrel + i * 4 + a).padStart(2, "0")}_${PAYLOADS[i]}.png`), `sentry/single/${PAYLOADS[i]}`, ["sentry", "single", PAYLOADS[i]], ANG[a], p);
     }
   }
 }

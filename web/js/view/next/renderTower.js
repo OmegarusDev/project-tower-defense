@@ -5,8 +5,8 @@
  * per-part knowledge lives in the visual data.
  */
 import { VIEW25, deckRy, groundBasis, capEllipse } from "../view25.js";
-import { vz, cyl25, ring25, rivetRing } from "../prims25.js";
-import { shade, withAlpha, matsFrom } from "../drawUtil.js";
+import { vz, cyl25, box25, frustum25, diamondPrism25, ring25, rivetRing } from "../prims25.js";
+import { shade, withAlpha, matsFrom, roundRect } from "../drawUtil.js";
 import { hubLiftFor, crownFactorFor } from "../towerPainter.js";
 import { BASE_VISUALS, BARREL_VISUALS, PAYLOAD_VISUALS } from "./partVisuals.js";
 
@@ -48,20 +48,20 @@ function drawGroundShadow(ctx, cx, groundY, s) {
 function drawBaseVisuals(ctx, cx, groundY, s, base, m) {
   const deckY = groundY - vz(s, 0.02);
   const list = BASE_VISUALS[base] || [];
+  const yAt = (k) => deckY - vz(s, k);
   for (const [prim, e] of list) {
-    const yAt = (k) => deckY - vz(s, k);
     switch (prim) {
       case "cyl":
-        cyl25(
-          ctx,
-          cx + e.x * s,
-          yAt(e.y),
-          e.rx * s,
-          vz(s, e.rise),
-          m[e.top],
-          m[e.side],
-          e.bottom ? m[e.bottom] : undefined
-        );
+        cyl25(ctx, cx + e.x * s, yAt(e.y), e.rx * s, vz(s, e.rise), m[e.top], m[e.side], e.bottom ? m[e.bottom] : undefined);
+        break;
+      case "box":
+        box25(ctx, cx, yAt(e.y), e.w * s, e.d * s, vz(s, e.h), { top: m[e.top], side: m[e.side], sideDark: m[e.dark] });
+        break;
+      case "frustum":
+        frustum25(ctx, cx, yAt(e.y), e.rxBot * s, e.rxTop * s, vz(s, e.rise), { top: m[e.top], side: m[e.side], sideDark: m[e.dark] });
+        break;
+      case "diamond":
+        diamondPrism25(ctx, cx, yAt(e.y), e.rx * s, vz(s, e.rise), { top: m[e.top], side: m[e.side], sideDark: m[e.dark] });
         break;
       case "vents": {
         ctx.strokeStyle = withAlpha(m[e.color], 0.7);
@@ -74,6 +74,14 @@ function drawBaseVisuals(ctx, cx, groundY, s, base, m) {
         }
         break;
       }
+      case "stroke":
+        ctx.strokeStyle = withAlpha(m[e.color], e.alpha);
+        ctx.lineWidth = e.lw;
+        ctx.beginPath();
+        ctx.moveTo(cx + e.x0 * s, yAt(e.y));
+        ctx.lineTo(cx + e.x1 * s, yAt(e.y));
+        ctx.stroke();
+        break;
       case "ring":
         ring25(ctx, cx, yAt(e.y), e.rx * s, withAlpha(m[e.color], e.alpha));
         break;
@@ -84,9 +92,101 @@ function drawBaseVisuals(ctx, cx, groundY, s, base, m) {
         ctx.ellipse(cx, yAt(e.y), e.rx * s, deckRy(e.rx * s), 0, 0, Math.PI * 2);
         ctx.stroke();
         break;
+      case "ellipseFill":
+        ctx.fillStyle = withAlpha(m[e.color], e.alpha != null ? e.alpha : 1);
+        ctx.beginPath();
+        ctx.ellipse(cx + (e.x || 0) * s, yAt(e.y), e.rx * s, deckRy(e.ryFactor * s), e.rot || 0, 0, Math.PI * 2);
+        ctx.fill();
+        break;
       case "rivets":
         rivetRing(ctx, cx, yAt(e.y), e.rx * s, e.n, m[e.color]);
         break;
+      case "rivetDots":
+        ctx.fillStyle = m[e.color];
+        for (const [ox, oy] of e.pts) {
+          ctx.beginPath();
+          ctx.arc(cx + ox * s, yAt(e.y) + oy * s, s * e.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      case "roundRectFill":
+        ctx.fillStyle = withAlpha(m[e.color], e.alpha != null ? e.alpha : 1);
+        roundRect(ctx, cx + e.x0 * s, yAt(e.y), e.w * s, vz(s, e.h), e.r);
+        ctx.fill();
+        if (e.stroke) {
+          ctx.strokeStyle = withAlpha(m[e.stroke], e.strokeAlpha != null ? e.strokeAlpha : 1);
+          ctx.stroke();
+        }
+        break;
+      case "legs": {
+        for (const ang of e.angles) {
+          const fx = cx + Math.cos(ang) * e.r * s;
+          const fy = deckY + Math.sin(ang) * e.dr * s;
+          cyl25(ctx, fx, fy - vz(s, e.rise >= 0 ? 0.02 : 0.02), e.rx * s, vz(s, e.rise), m[e.top], m[e.side], m[e.bottom]);
+        }
+        break;
+      }
+      case "struts": {
+        ctx.fillStyle = m[e.color];
+        for (const ang of e.angles) {
+          const fx = cx + Math.cos(ang) * e.r * s;
+          const x0 = cx + Math.cos(ang) * e.r0 * s;
+          ctx.beginPath();
+          ctx.moveTo(x0 - 2, yAt(e.yTop));
+          ctx.lineTo(fx - 2, deckY);
+          ctx.lineTo(fx + 2, deckY);
+          ctx.lineTo(x0 + 2, yAt(e.yTop));
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = withAlpha(m[e.rim], e.alpha);
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+        break;
+      }
+      case "claws": {
+        ctx.strokeStyle = withAlpha(m[e.color], e.alpha);
+        ctx.lineWidth = e.lw;
+        for (const a of e.angles) {
+          ctx.beginPath();
+          ctx.moveTo(cx + Math.cos(a) * e.r0 * s, yAt(e.y) + Math.sin(a) * e.dy0 * s);
+          ctx.lineTo(cx + Math.cos(a) * e.r1 * s, yAt(e.y) + Math.sin(a) * e.dy1 * s);
+          ctx.stroke();
+        }
+        break;
+      }
+      case "roof": {
+        const roofH = vz(s, e.h);
+        const topY = yAt(e.y);
+        const hw = e.hw * s;
+        ctx.fillStyle = m[e.fillRight];
+        ctx.beginPath();
+        ctx.moveTo(cx, topY - roofH);
+        ctx.lineTo(cx + hw, topY);
+        ctx.lineTo(cx + hw, topY + vz(s, e.lip));
+        ctx.lineTo(cx, topY + vz(s, e.lip) - roofH * 0.15);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = m[e.fillLeft];
+        ctx.beginPath();
+        ctx.moveTo(cx, topY - roofH);
+        ctx.lineTo(cx - hw, topY);
+        ctx.lineTo(cx - hw, topY + vz(s, e.lip));
+        ctx.lineTo(cx, topY + vz(s, e.lip) - roofH * 0.15);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = m[e.ridge];
+        ctx.lineWidth = 1.25;
+        ctx.beginPath();
+        ctx.moveTo(cx, topY - roofH);
+        ctx.lineTo(cx, topY + vz(s, 0.02));
+        ctx.stroke();
+        ctx.fillStyle = withAlpha(m[e.tip], e.tipAlpha);
+        ctx.beginPath();
+        ctx.arc(cx, topY - roofH + 1, s * 0.02, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
     }
   }
 }
@@ -97,28 +197,37 @@ function drawTurretStem(ctx, cx, groundY, hubY, baseS, base, metal) {
   const topY = hubY + Math.max(1, baseS * 0.015);
   const rise = crownY - topY;
   if (rise < 3) return;
-  cyl25(
-    ctx,
-    cx,
-    topY,
-    baseS * 0.05,
-    rise,
-    shade(metal, 0.08),
-    shade(metal, -0.12),
-    shade(metal, -0.28)
-  );
+  cyl25(ctx, cx, topY, baseS * 0.05, rise, shade(metal, 0.08), shade(metal, -0.12), shade(metal, -0.28));
 }
 
-/** Turret: hub + tube visuals + hub cap (drawn in a frame at (cx, hubY)). */
+/** Turret: hub + tubes + extras + hub cap, drawn in a frame at (cx, hubY). */
 function drawTurret(ctx, t, cx, hubY, s, b, metal, tip, m) {
   ctx.save();
   ctx.translate(cx, hubY);
   const hubR = s * 0.125;
   drawHub(ctx, metal, hubR, b.D);
-  const barrels = BARREL_VISUALS[t.barrel] || [];
-  for (const [prim, e] of barrels) {
-    if (prim === "tube") {
-      drawTube(ctx, metal, tip, e.len * s, e.th * s, t.payload, b, 0, 0);
+  const def = BARREL_VISUALS[t.barrel] || { tubes: [], extras: [] };
+  for (const tube of def.tubes) {
+    drawTube(ctx, metal, tip, tube.len * s, tube.th * s, tube.noGem ? "kinetic" : t.payload, b, (tube.off || 0) * s, tube.sub || 0);
+  }
+  for (const [prim, e] of def.extras || []) {
+    switch (prim) {
+      case "housing":
+        housingQuad(ctx, b, e, s, metal);
+        break;
+      case "dish":
+        drawDish(ctx, b, e, s, metal, tip, t.payload);
+        break;
+      case "gem":
+        ctx.save();
+        ctx.translate(b.ax * e.d * s, b.ay * e.d * s);
+        ctx.rotate(Math.atan2(b.ay, b.ax));
+        drawGem(ctx, tip, t.payload, e.size * s);
+        ctx.restore();
+        break;
+      case "nose":
+        drawNose(ctx, b, e, s, metal, tip);
+        break;
     }
   }
   drawHubCap(ctx, metal, hubR * 0.72, b.D);
@@ -161,8 +270,23 @@ function drawHubCap(ctx, metal, r, D) {
   ctx.fill();
 }
 
+/** Tube with optional perpendicular offset + sub-angle (scatter/twin/flak). */
+function drawTube(ctx, metal, tip, length, th, payload, b, off, sub) {
+  const bb = sub ? groundBasis(aimOf(b, sub)) : b;
+  const ox = off * bb.px;
+  const oy = off * bb.py;
+  tubeBody(ctx, metal, tip, length, th, payload, bb, ox, oy);
+}
+
+function aimOf(b, sub) {
+  // the painter recomputes the basis from the ORIGINAL angle + sub; we
+  // recover the angle via atan2 of the un-squashed aim, then re-derive.
+  const angle = Math.atan2(b.ay / b.D, b.ax);
+  return angle + sub;
+}
+
 /** Exact orthographic cylinder (mirror of drawCannon) — tangent tubes + caps. */
-function drawTube(ctx, metal, tip, length, th, payload, b, ox, oy) {
+function tubeBody(ctx, metal, tip, length, th, payload, b, ox, oy) {
   const h = th;
   const r = h / 2;
   const L = length * b.len;
@@ -252,4 +376,133 @@ function drawTube(ctx, metal, tip, length, th, payload, b, ox, oy) {
   ctx.beginPath();
   ctx.ellipse(ex, ey, capT * 0.16 * b.D, capT * 0.16 * b.V, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  if (payload && payload !== "kinetic") {
+    ctx.save();
+    ctx.translate(ex + b.ax * h * 0.1, ey + b.ay * h * 0.1);
+    ctx.rotate(Math.atan2(b.ay, b.ax));
+    drawGem(ctx, tip, payload, h * 0.5);
+    ctx.restore();
+  }
+}
+
+/** Rail/flak housing — aim-aligned quads (segQuad port; t is RAW like the oracle). */
+function housingQuad(ctx, b, e, s, metal) {
+  const fill = shade(metal, e.shade);
+  const dy = e.dy * s;
+  const x0 = b.ax * e.t0;
+  const y0 = b.ay * e.t0;
+  const x1 = b.ax * e.t1;
+  const y1 = b.ay * e.t1;
+  const w = e.w * s;
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.moveTo(x0 + b.px * w, y0 + b.py * w + dy);
+  ctx.lineTo(x0 - b.px * w, y0 - b.py * w + dy);
+  ctx.lineTo(x1 - b.px * w, y1 - b.py * w + dy);
+  ctx.lineTo(x1 + b.px * w, y1 + b.py * w + dy);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/** Pulse emitter — depth-squashed dish along the aim + gem. */
+function drawDish(ctx, b, e, s, metal, tip, payload) {
+  const dishR = e.r * s;
+  const ddx = b.ax * e.d * s;
+  const ddy = b.ay * e.d * s;
+  const angle = aimOf(b, 0);
+  ctx.fillStyle = shade(metal, -0.22);
+  ctx.beginPath();
+  ctx.ellipse(ddx, ddy + s * 0.04, dishR, dishR * b.D, angle, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = shade(metal, -0.05);
+  ctx.beginPath();
+  ctx.ellipse(ddx, ddy, dishR, dishR * b.D, angle, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = shade(metal, 0.12);
+  ctx.beginPath();
+  ctx.ellipse(ddx, ddy - s * 0.02, dishR * 0.7, dishR * 0.7 * b.D, angle, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = withAlpha(tip, 0.55);
+  ctx.beginPath();
+  ctx.ellipse(ddx, ddy, dishR * 0.4, dishR * 0.4 * b.D, angle, 0, Math.PI * 2);
+  ctx.fill();
+  void payload;
+}
+
+/** Launcher nose cone — 3 end-on ellipses scaled to the two factors. */
+function drawNose(ctx, b, e, s, metal, tip) {
+  const len = e.len * s;
+  const th = e.th * s;
+  const nx = b.ax * len;
+  const ny = b.ay * len;
+  const angle = aimOf(b, 0);
+  const crx = th * 0.5 * b.D;
+  const cry = th * 0.36 * b.V;
+  ctx.fillStyle = shade(tip, -0.2);
+  ctx.beginPath();
+  ctx.ellipse(nx + b.ax * th * 0.4, ny + b.ay * th * 0.4 + s * 0.03, crx, cry, angle, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = tip;
+  ctx.beginPath();
+  ctx.ellipse(nx + b.ax * th * 0.4, ny + b.ay * th * 0.4, crx, cry, angle, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = shade(tip, 0.22);
+  ctx.beginPath();
+  ctx.ellipse(nx + b.ax * th * 0.3, ny + b.ay * th * 0.3 - th * 0.08, th * 0.18 * b.D, th * 0.12 * b.V, angle, 0, Math.PI * 2);
+  ctx.fill();
+  void metal;
+}
+
+/** Payload tip gem — shapes from PAYLOAD_VISUALS, drawn in the aim frame. */
+function drawGem(ctx, tip, payload, size) {
+  const list = PAYLOAD_VISUALS[payload];
+  if (!list) return;
+  ctx.save();
+  ctx.translate(0, 0);
+  ctx.fillStyle = tip;
+  ctx.strokeStyle = shade(tip, 0.25);
+  ctx.lineWidth = 1;
+  for (const [prim, e] of list) {
+    switch (prim) {
+      case "poly": {
+        ctx.beginPath();
+        const pts = e.pts;
+        ctx.moveTo(pts[0][0] * size, pts[0][1] * size);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * size, pts[i][1] * size);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      }
+      case "polyline": {
+        ctx.strokeStyle = tip;
+        ctx.lineWidth = Math.max(1.25, size * e.lw);
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        const pts = e.pts;
+        ctx.moveTo(pts[0][0] * size, pts[0][1] * size);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * size, pts[i][1] * size);
+        ctx.stroke();
+        break;
+      }
+      case "circle": {
+        ctx.beginPath();
+        ctx.arc(e.x * size, e.y * size, e.r * size, 0, Math.PI * 2);
+        if (e.fill === "hi") ctx.fillStyle = shade(tip, 0.2);
+        ctx.fill();
+        break;
+      }
+      case "quadratic": {
+        ctx.beginPath();
+        const pts = e.pts;
+        ctx.moveTo(pts[0][0] * size, pts[0][1] * size);
+        ctx.quadraticCurveTo(pts[1][0] * size, pts[1][1] * size, pts[2][0] * size, pts[2][1] * size);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      }
+    }
+  }
+  ctx.restore();
 }
