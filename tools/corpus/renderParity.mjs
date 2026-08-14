@@ -31,6 +31,7 @@ const HTML = `
 <script type="module">
   import { ProcPalette } from "/js/view/palette.js";
   import { renderTowerNext } from "/js/view/next/renderTower.js";
+  import { renderEnemyNext } from "/js/view/next/renderEnemy.js";
   import { setPitch } from "/js/view/view25.js";
   const palette = new ProcPalette();
   const SIZE = 200, CSS = 92;
@@ -40,6 +41,14 @@ const HTML = `
     c.width = SIZE; c.height = SIZE;
     const ctx = c.getContext("2d");
     renderTowerNext(ctx, palette, { base, barrel, payload, aimAngle: angle, level: 1 }, (SIZE - CSS) / 2, (SIZE - CSS) / 2 + 6, CSS, { showBadge: false });
+    return c.toDataURL("image/png");
+  };
+  window.__renderEnemy = (kind, pitchDeg) => {
+    setPitch(pitchDeg);
+    const c = document.createElement("canvas");
+    c.width = SIZE; c.height = SIZE;
+    const ctx = c.getContext("2d");
+    renderEnemyNext(ctx, palette, kind, SIZE / 2, (SIZE - CSS) / 2 + 6 + CSS / 2, CSS, { t: 1, phase: 0 });
     return c.toDataURL("image/png");
   };
 </script></body></html>
@@ -90,6 +99,8 @@ const diffTile = async (goldenFile, label, spec, ang, p) => {
 
 const nBase = BASES.length * 4;
 const nBarrel = BARRELS.length * 4;
+const nPayload = PAYLOADS.length * 4;
+const ENEMY_KINDS = ["mite", "courier", "hauler", "hauler_ceramite", "duct", "ward", "ward_volt", "cask", "phantom", "kiln", "siphon", "claim"];
 
 for (const p of pitch) {
   // bases section (idx 0..23): base i at i*4+a
@@ -109,6 +120,35 @@ for (const p of pitch) {
     for (let a = 0; a < 4; a++) {
       await diffTile(join(OUT, `tile_p${p}_${String(nBase + nBarrel + i * 4 + a).padStart(2, "0")}_${PAYLOADS[i]}.png`), `sentry/single/${PAYLOADS[i]}`, ["sentry", "single", PAYLOADS[i]], ANG[a], p);
     }
+  }
+  // enemies section (idx 84..95): kind i at (nBase + nBarrel + nPayload) + i
+  for (let i = 0; i < ENEMY_KINDS.length; i++) {
+    const golden = readFileSync(join(OUT, `tile_p${p}_${String(nBase + nBarrel + nPayload + i).padStart(2, "0")}_${ENEMY_KINDS[i]}.png`));
+    const dataUrl = await page.evaluate(([k, pd]) => window.__renderEnemy(k, pd), [ENEMY_KINDS[i], p]);
+    const rendered = Buffer.from(dataUrl.split(",")[1], "base64");
+    checked++;
+    if (golden.equals(rendered)) continue;
+    const { PNG } = await import("pngjs");
+    const ga = PNG.sync.read(golden);
+    const rb = PNG.sync.read(rendered);
+    let diff = 0;
+    let total = 0;
+    for (let i2 = 0; i2 < ga.data.length; i2 += 4) {
+      total++;
+      const d =
+        Math.abs(ga.data[i2] - rb.data[i2]) +
+        Math.abs(ga.data[i2 + 1] - rb.data[i2 + 1]) +
+        Math.abs(ga.data[i2 + 2] - rb.data[i2 + 2]) +
+        Math.abs(ga.data[i2 + 3] - rb.data[i2 + 3]);
+      if (d > 12) diff++;
+    }
+    const pct = (diff / total) * 100;
+    if (pct < 0.02) {
+      console.log(`PASS enemy ${ENEMY_KINDS[i]} pitch ${p} (${diff} AA px, ${pct.toFixed(3)}%)`);
+      continue;
+    }
+    failures++;
+    console.log(`FAIL enemy ${ENEMY_KINDS[i]} pitch ${p}: ${diff}/${total} px differ (${pct.toFixed(2)}%)`);
   }
 }
 console.log(failures === 0 ? `RENDER PARITY OK (${checked} tiles)` : `${failures} tile(s) diverge`);

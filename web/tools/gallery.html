@@ -64,10 +64,15 @@
   <h2>Payloads on sentry × single — 4 angles</h2>
   <div id="payloads" class="grid"></div>
 
+  <h2>Enemies — silhouettes (frozen animation phase)</h2>
+  <div id="enemies" class="grid"></div>
+
   <script type="module">
     import { PARTS } from "../js/data/parts.js";
+    import { ENEMY_KINDS } from "../js/data/enemies.js";
     import { ProcPalette } from "../js/view/palette.js";
     import { renderTower, hubLiftFor, crownFactorFor } from "../js/view/towerPainter.js";
+    import { drawEnemyBody } from "../js/view/enemyPainter.js";
     import { VIEW25, setPitch } from "../js/view/view25.js";
 
     const palette = new ProcPalette();
@@ -115,6 +120,7 @@
     const bases = Object.keys(PARTS.bases);
     const barrels = Object.keys(PARTS.barrels);
     const payloads = Object.keys(PARTS.payloads);
+    const enemies = Object.keys(ENEMY_KINDS);
 
     // ——— self-check: pixel + geometry invariants over every tile ———
     const checkLog = [];
@@ -315,6 +321,30 @@
         }
       }
       renderRow(document.getElementById("payloads"), payloadSpecs);
+
+      const enemySpecs = enemies.map((kind) => ({
+        label: `<b>${kind}</b>`,
+        angle: 0,
+        pitch,
+        draw: (cv) => {
+          const ctx = cv.getContext("2d");
+          ctx.clearRect(0, 0, SIZE, SIZE);
+          drawEnemyBody(ctx, palette, kind, SIZE / 2, (SIZE - CSS) / 2 + 6 + CSS / 2, CSS, {
+            t: 1,
+            phase: 0,
+          });
+        },
+      }));
+      const enemyRow = document.getElementById("enemies");
+      enemyRow.innerHTML = "";
+      for (const spec of enemySpecs) {
+        const cv = makeCanvas(kindLabel(spec.label));
+        spec.draw(cv);
+        enemyRow.appendChild(tile(cv, spec.label, 0, pitch));
+      }
+    }
+    function kindLabel(html) {
+      return html.replace(/<[^>]*>/g, "");
     }
 
     document.getElementById("pitch").addEventListener("input", renderAll);
