@@ -113,10 +113,13 @@ tolerance (render). The live game must remain the oracle throughout.
 - **Phase 6 (done):** swap completed — main now launches the NEW implementation
   (next Sim facade, next BoardView, screen/chrome/action registries).
 - **Oracle-free (done):** nothing imports the oracle anymore — the live game,
-  the 12 unit tests, the balance tooling and every gate run on the next
-  implementation. The oracle files moved to the top-level `oracle/` directory
-  (outside web/, never served) as a pure design reference — `rm -rf oracle/`
-  is safe any time. Gates are now corpus/golden-based: simParity (committed
+  the unit tests, the balance tooling and every gate run on the next
+  implementation. The oracle is COMPLETELY OUT of the game's codebase: the
+  original implementation lives in the museum repository
+  `OmegarusDev/project-tower-defense-oracle` (browseable, never runs), and the
+  pre-swap snapshots are preserved in this repo's git refs — branch `oracle`
+  (original snapshot), branch `oracle-current` + tag `replica-oracle`
+  (pre-swap main, all gates green). Gates are now corpus/golden-based: simParity (committed
   traces), ladderParity (committed baselines), simFuzz (robustness +
   determinism), boardParity (committed goldens), ui/chrome/actions (committed
   goldens), renderParity (committed goldens), smokeWalk (live app). The sim
