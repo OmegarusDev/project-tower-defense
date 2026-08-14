@@ -32,8 +32,20 @@ export function chromeHtml(state) {
       </button>`
     : "";
   const composeSheet = endless && state.liveCompose ? composeSheetHtml(state) : "";
+  const ghostBar = state.ghost
+    ? `<div class="ghost-bar plate" id="ghostBar" role="region" aria-label="Replay controls">
+        <span class="ghost-label">Replay <span id="ghostCount">${state.ghost.i}/${state.ghost.total}</span></span>
+        <div class="ghost-speeds" role="group" aria-label="Replay speed">
+          <button type="button" class="btn secondary ${state.ghost.speed === 1 ? "equipped" : ""}" data-act="ghost-speed:1">1×</button>
+          <button type="button" class="btn secondary ${state.ghost.speed === 2 ? "equipped" : ""}" data-act="ghost-speed:2">2×</button>
+          <button type="button" class="btn secondary ${state.ghost.speed === 4 ? "equipped" : ""}" data-act="ghost-speed:4">4×</button>
+        </div>
+        <button type="button" class="btn secondary" data-act="ghost-skip">Skip</button>
+      </div>`
+    : "";
   return `
     <div class="game-chrome">
+      ${ghostBar}
       <header class="hud-bar">
         <div class="wave-badge plate" id="waveBadge">
           <span class="wave-badge-k">Wave</span>
@@ -187,6 +199,19 @@ export function callButtonState(state) {
   const busy = state.waveBusy();
   const done = !sim.modeEndless && sim.wavesToWin > 0 && sim.waveIndex >= sim.wavesToWin;
   const ff = !!state.ffHeld;
+  if (state.ghost) {
+    const next = state.ghost.log?.[state.ghost.i];
+    const a = next?.type || "done";
+    const label = a === "call" ? "Call" : a === "place" ? "Place" : a === "sell" ? "Sell" : "Done";
+    return {
+      disabled: true,
+      clsBusy: false,
+      clsHot: false,
+      title: `Replay — next action: ${label}`,
+      kicker: "Replay",
+      label,
+    };
+  }
   return {
     disabled: done,
     clsBusy: busy && !ff,
@@ -334,6 +359,14 @@ export function syncTowerOverlay(container, state) {
   overlay.style.top = `${top}px`;
 }
 
+/** Ghost replay counter + speed sync (syncHud) — DOM sync over the mounted chrome. */
+export function syncGhostBar(container, state) {
+  const count = container.querySelector("#ghostCount");
+  if (count && state.ghost) count.textContent = `${state.ghost.i}/${state.ghost.total}`;
+  const bar = container.querySelector("#ghostBar");
+  if (bar) bar.classList.toggle("hidden", !state.ghost);
+}
+
 /** Full HUD sync (mirror of refreshHud) — DOM sync over the mounted chrome. */
 export function syncHud(container, state) {
   const chips = container.querySelector("#statChips");
@@ -341,6 +374,7 @@ export function syncHud(container, state) {
   chips.innerHTML = statChipsHtml(state);
   syncWaveAndStatus(container, state);
   syncBuildDock(container, state);
+  syncGhostBar(container, state);
   const callBtn = container.querySelector("#callBtn");
   if (callBtn) {
     const cs = callButtonState(state);

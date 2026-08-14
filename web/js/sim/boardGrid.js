@@ -77,8 +77,6 @@ export class BoardGrid {
 
   isBuildable(x, y) {
     if (!this.inBounds(x, y)) return false;
-    // Seam row (back line) is portal territory — never buildable
-    if (y === 0) return false;
     if (this.isSpawn(x, y) || this.isExit(x, y)) return false;
     return !this.isBlocked(x, y);
   }
@@ -336,7 +334,7 @@ export class BoardGrid {
         return { x: entity._pick.bx, y: entity._pick.by };
       }
       const k = this.idx(x, y);
-      const h = this.forkTicks[k] || 0;
+      const h = (this.forkTicks[k] || 0) % pool.length;
       this.forkTicks[k] = (h + 1) % pool.length;
       const branch = pool[h];
       if (entity) entity._pick = { cx: x, cy: y, bx: branch.x, by: branch.y };

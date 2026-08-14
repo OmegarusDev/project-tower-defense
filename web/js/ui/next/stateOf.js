@@ -78,6 +78,14 @@ export function chromeState(app) {
     speed: app.speed,
     paused: !!app.paused,
     liveCompose: !!app.liveCompose,
+    ghost: app._ghost
+      ? {
+          log: app._ghost.log,
+          i: app._ghost.i,
+          total: app._ghost.log.length,
+          speed: app._ghost.speed || 1,
+        }
+      : null,
     playtestFromEditor: !!app.playtestFromEditor,
     selectedTowerId: app.selectedTowerId ?? -1,
     selectedWallId: app.selectedWallId ?? -1,

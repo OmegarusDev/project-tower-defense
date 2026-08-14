@@ -367,7 +367,6 @@
   writing-mode: vertical-lr;
   direction: rtl;
   appearance: none;
-  -webkit-appearance: slider-vertical;
   width: 18px;
   height: auto;
   flex: 1 1 auto;
@@ -1329,4 +1328,40 @@
 .hud-bar {
   background:
     linear-gradient(180deg, rgba(14, 16, 20, 0.96) 0%, rgba(14, 16, 20, 0.5) 72%, transparent) !important;
+}
+
+/* ── Ghost replay bar ── */
+.ghost-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  margin: 6px 10px 0;
+  background:
+    var(--tex-scratches),
+    linear-gradient(90deg, rgba(40, 44, 54, 0.96), rgba(24, 26, 32, 0.94), rgba(40, 44, 54, 0.96)) !important;
+  box-shadow: var(--rim-brass), 0 3px 0 #0c0e12;
+}
+
+.ghost-label {
+  flex: 1 1 auto;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: #9aacbe;
+  text-transform: uppercase;
+}
+
+.ghost-speeds {
+  display: flex;
+  gap: 4px;
+}
+
+.ghost-speeds .btn {
+  padding: 3px 8px;
+  font-size: 0.68rem;
+}
+
+.ghost-bar > .btn {
+  padding: 3px 10px;
+  font-size: 0.68rem;
 }

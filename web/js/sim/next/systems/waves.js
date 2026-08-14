@@ -177,7 +177,13 @@ export function makeEnemy(state, kind, wave, opts = {}) {
   };
 }
 
-/** Endless only: seeded back-line portal cycle + dwell schedule (oracle order). */
+/**
+ * Endless only: seeded back-line portal cycle + dwell schedule. The seam row
+ * is buildable, so the portal must never sit on an occupied seam cell. Wave
+ * start picks the first open column from the seeded cycle; if every seam
+ * cell is blocked it falls back to the least-occupied column (tie → cycle
+ * order), and only forces the center when every column is fully walled.
+ */
 function buildPortal(state, w) {
   if (!state.modeEndless) return;
   state.waves.portalRand = mulberry32(
@@ -197,20 +203,62 @@ function buildPortal(state, w) {
   state.waves.portalTimer = dwellFor(state, w);
   state.waves.lastPortalX = state.portal ? state.portal.x : -1;
   if (w <= 1) {
-    state.portal = { x: state.grid.spawn.x, y: 0 };
+    const centerX = state.grid.spawn.x;
+    state.portal = { x: centerX, y: 0 };
+    if (state.grid.isBlocked(centerX, 0)) {
+      const { x } = pickPortalX(state, cycle, 0, state.waves.lastPortalX);
+      state.portal = { x, y: 0 };
+    }
   } else {
     relocatePortal(state);
   }
 }
 
+/**
+ * Deterministic seam-column choice: prefer open seam cells in seeded cycle
+ * order (skipping the previous column when an alternative exists), then the
+ * least-occupied column, then the center. Returns { x, k } where k is the
+ * cycle offset from startIdx, so the caller can advance its cycle pointer.
+ */
+function pickPortalX(state, cycle, startIdx, lastX) {
+  const g = state.grid;
+  const n = cycle.length;
+  const open = [];
+  for (let x = 0; x < g.cols; x++) {
+    if (!g.isBlocked(x, 0)) open.push(x);
+  }
+  if (open.length) {
+    const alt = open.filter((x) => x !== lastX);
+    const pool = alt.length ? alt : open;
+    for (let k = 0; k < n; k++) {
+      const x = cycle[(startIdx + k) % n];
+      if (pool.indexOf(x) !== -1) return { x, k };
+    }
+  }
+  const occ = [];
+  for (let x = 0; x < g.cols; x++) {
+    let c = 0;
+    for (let y = 0; y < g.rows; y++) if (g.isBlocked(x, y)) c++;
+    occ.push(c);
+  }
+  const allFull = occ.every((c) => c === g.rows);
+  if (allFull) return { x: g.spawn.x, k: 0 };
+  const min = Math.min.apply(null, occ);
+  const least = [];
+  for (let x = 0; x < g.cols; x++) if (occ[x] === min) least.push(x);
+  for (let k = 0; k < n; k++) {
+    const x = cycle[(startIdx + k) % n];
+    if (least.indexOf(x) !== -1) return { x, k };
+  }
+  return { x: g.spawn.x, k: 0 };
+}
+
 function relocatePortal(state) {
   const cycle = state.waves.portalCycle || [];
   if (!cycle.length) return;
-  let x = cycle[state.waves.portalIdx % cycle.length];
-  if (x === state.waves.lastPortalX) {
-    state.waves.portalIdx = (state.waves.portalIdx + 1) % cycle.length;
-    x = cycle[state.waves.portalIdx % cycle.length];
-  }
+  const startIdx = state.waves.portalIdx % cycle.length;
+  const { x, k } = pickPortalX(state, cycle, startIdx, state.waves.lastPortalX);
+  state.waves.portalIdx = (startIdx + k) % cycle.length;
   state.waves.lastPortalX = x;
   state.portal = { x, y: 0 };
   emit(state, "portal_moved", { x, y: 0 });

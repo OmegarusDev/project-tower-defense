@@ -86,7 +86,7 @@ export class ScoreEngine {
 
   /** Kick interval from wave + crowding + phase. */
   _interval() {
-    const base = Math.max(0.32, 0.78 - (this.wave - 1) * 0.014);
+    const base = Math.max(0.32, 0.918 - (this.wave - 1) * 0.0084);
     const crowd = Math.min(0.18, this.density * 0.01);
     const between = this.phase === "betweenWaves" ? 1.18 : 1;
     return Math.max(0.26, ((base - crowd) * between) / this.speed);

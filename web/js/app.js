@@ -69,6 +69,7 @@ export class App {
     this.prepSlot = 0;
     this.playtestFromEditor = false;
     this._ghost = null;
+    this._ghostEndSim = null;
     this._raf = 0;
     this._last = 0;
 
@@ -249,10 +250,12 @@ export class App {
       if (!ed) return;
       ed.name = this.ui.querySelector("#edName")?.value || ed.name;
       ed.wavesToWin = +(this.ui.querySelector("#edWaves")?.value || ed.wavesToWin);
+      ed.coinGrant = +(this.ui.querySelector("#edCoin")?.value || ed.coinGrant);
       ed.waveScript = this.ui.querySelector("#edScript")?.value || ed.waveScript;
     };
     this.ui.querySelector("#edName")?.addEventListener("change", syncFields);
     this.ui.querySelector("#edWaves")?.addEventListener("change", syncFields);
+    this.ui.querySelector("#edCoin")?.addEventListener("change", syncFields);
     this.ui.querySelector("#edScript")?.addEventListener("change", syncFields);
   }
   showSettings() {
@@ -296,6 +299,8 @@ export class App {
   onCampaignVictory() { return bridge.onCampaignVictory(this); }
   callEarly() { return bridge.callEarly(this); }
   startGhostReplay() { return bridge.startGhostReplay(this); }
+  ghostSetSpeed(n) { return bridge.ghostSetSpeed(this, n); }
+  ghostSkip() { return bridge.ghostSkip(this); }
   _tickGhost(dt) { return bridge.tickGhost(this, dt); }
 
   waveBusy() { return chrome.waveBusy(this); }

@@ -771,6 +771,7 @@ export function renderEditor(state) {
         <label>Cols <input id="edCols" type="number" min="6" max="12" value="${ed.cols}" style="width:3.5em"/></label>
         <label>Rows <input id="edRows" type="number" min="6" max="16" value="${ed.rows}" style="width:3.5em"/></label>
         <label>Waves <input id="edWaves" type="number" min="3" max="12" value="${ed.wavesToWin}" style="width:3.5em"/></label>
+        <label>Start Coin <input id="edCoin" type="number" min="20" max="300" step="5" value="${ed.coinGrant}" style="width:4.5em"/></label>
         <label>Script <select id="edScript">${scripts}</select></label>
       </div>
       <input id="edName" type="text" value="${ed.name}" placeholder="Level name" style="width:100%;margin-bottom:8px"/>
@@ -785,8 +786,10 @@ export function renderEditor(state) {
       ${saved
         .slice(0, 6)
         .map(
-          (lv, i) =>
-            `<button class="btn secondary" data-act="ed-load:${i}" style="margin-top:4px">${lv.name}</button>`
+          (lv, i) => `<div class="ed-slot" style="display:flex;align-items:center;gap:6px;margin-top:4px">
+            <button class="btn secondary ed-slot-load" data-act="ed-load:${i}" style="flex:1">${lv.name} · ${lv.wavesToWin}w · ${lv.coinGrant}₡</button>
+            <button class="btn danger ed-slot-del" data-act="ed-delete:${i}" title="Delete" aria-label="Delete ${lv.name}">✕</button>
+          </div>`
         )
         .join("")}
     </div>`;

@@ -108,4 +108,12 @@ export class LevelEditor {
     saveEditorLevels(list);
     return def;
   }
+
+  deleteLevel(i) {
+    const list = loadEditorLevels();
+    if (i < 0 || i >= list.length) return false;
+    list.splice(i, 1);
+    saveEditorLevels(list);
+    return true;
+  }
 }

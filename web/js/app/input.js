@@ -1,6 +1,28 @@
 /** Extracted from App — pure move, no gameplay changes. */
 
+/** Arrow-key navigation over the visible [data-act] controls (menus + pause sheet). */
+function arrowNav(app, e) {
+  if (!e.key.startsWith("Arrow")) return false;
+  if (e.metaKey || e.ctrlKey || e.altKey) return false;
+  if (app.screen === "game" && !app.paused) return false;
+  const btns = [...app.ui.querySelectorAll("[data-act]")].filter((b) => {
+    if (b.disabled) return false;
+    if (b.classList.contains("pause-backdrop")) return false;
+    const r = b.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  });
+  if (btns.length < 2) return false;
+  e.preventDefault();
+  let idx = btns.indexOf(document.activeElement);
+  const down = e.key === "ArrowDown" || e.key === "ArrowRight";
+  if (idx < 0) idx = down ? -1 : btns.length;
+  idx = (idx + (down ? 1 : -1) + btns.length) % btns.length;
+  btns[idx].focus();
+  return true;
+}
+
 export function onKeyDown(app, e) {
+  if (arrowNav(app, e)) return;
   if (e.code === "Escape" || e.key === "Escape") {
     // Meta screens: Esc closes the tech overlay (modals handle their own Esc).
     if (app.screen === "upgrade" && app.techSelectedId) {

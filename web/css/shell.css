@@ -275,6 +275,19 @@ html, body {
   outline-offset: 3px;
 }
 
+/* Keyboard focus for any interactive control (data-act) without a specific rule.
+   Backdrops are dismiss-only, so they never take focus via arrow-nav. */
+[data-act]:focus-visible:not(:disabled):not(.pause-backdrop):not(.tech-backdrop):not(.confirm-backdrop) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.pause-backdrop:focus-visible,
+.tech-backdrop:focus-visible,
+.confirm-backdrop:focus-visible {
+  outline: none;
+}
+
 .btn:active:not(:disabled) {
   transform: translateY(3px);
   box-shadow: var(--shadow-btn-press);

@@ -10,7 +10,7 @@ export function onSimEvent(app, e) {
   switch (e.kind) {
     case "wave_checkpoint":
       app.clearUndoStack();
-      if (app.sim.modeEndless) {
+      if (app.sim.modeEndless && !app._ghost) {
         app.sim.checkpointPhase = "inWave";
         saveEndless(app.sim.checkpoint());
       }
@@ -25,9 +25,9 @@ export function onSimEvent(app, e) {
           app.palette.setAtmosphere?.(atmo);
         }
         if (event) {
-          app.toast(`Event · ${event.replace(/_/g, " ")}`);
+          if (!app._ghost) app.toast(`Event · ${event.replace(/_/g, " ")}`);
         } else if (theme && theme !== "campaign") {
-          app.toast(`Theme · ${theme}`);
+          if (!app._ghost) app.toast(`Theme · ${theme}`);
         }
       }
       app._refreshThemeChip?.(theme, event);
@@ -100,10 +100,11 @@ export function onSimEvent(app, e) {
       app.synth.play("confirm");
       app.score.setWave(app.sim.waveIndex);
       app.score.setPhase("betweenWaves");
+      app.sim.running = false;
+      app.sim.checkpointPhase = "betweenWaves";
+      if (app._ghost) break;
       {
         const gained = app.syncMetaProgress();
-        app.sim.running = false;
-        app.sim.checkpointPhase = "betweenWaves";
         if (app.sim.modeEndless) saveEndless(app.sim.checkpoint());
         const won =
           !app.sim.modeEndless &&
@@ -121,10 +122,14 @@ export function onSimEvent(app, e) {
       break;
     case "victory":
       app.synth.play("confirm");
-      app.onCampaignVictory();
+      if (!app._ghost) app.onCampaignVictory();
       break;
     case "game_over":
       app.synth.play("explode");
+      if (app._ghost) {
+        finishGhost(app);
+        break;
+      }
       {
         const prevBest = app.meta.bestWave | 0;
         app._endBestBonus = app._applyEndlessBestBonus(prevBest);
@@ -141,7 +146,7 @@ export function onSimEvent(app, e) {
         app.fx.hit(e.x, e.y, "shock");
         app.fx.statusPuff(e.x, e.y, "shock");
       }
-      app.toast(`${partLabel(e.tower?.base)} → L${e.level}`);
+      if (!app._ghost) app.toast(`${partLabel(e.tower?.base)} → L${e.level}`);
       app.syncTowerOverlay();
       break;
     case "level_pick_ready":
@@ -211,6 +216,8 @@ export function startGhostReplay(app) {
     app.toast("No replay log from last run");
     return;
   }
+  // Keep the ended sim so skip/finish restores the exact pre-replay end screen.
+  app._ghostEndSim = app.sim;
   // Rebuild the sim from the replay's own roster so loadout changes after the
   // original run can't break replay determinism.
   const rosterBackup = app.meta.roster;
@@ -222,19 +229,43 @@ export function startGhostReplay(app) {
   if (!app.sim) return;
   // Ghost owns the action log — clear live log so we don't double-record
   app.sim.actionLog = [];
-  app._ghost = { log: blob.actionLog, i: 0, wait: 0.45 };
-  app.toast("Ghost replay");
+  app._ghost = { log: blob.actionLog, i: 0, wait: 0.45, speed: 1 };
+  app.renderGameChrome();
+  app.toast("Ghost replay — speed / skip controls on top");
+  
+}
+
+function finishGhost(app) {
+  if (app._ghostEndSim) {
+    app.sim = app._ghostEndSim;
+    app._ghostEndSim = null;
+  }
+  app._ghost = null;
+  app.showGameOver();
+  
+}
+
+export function ghostSetSpeed(app, n) {
+  if (!app._ghost) return;
+  app._ghost.speed = n;
+  app.toast(`Replay ${n}×`);
+  app.renderGameChrome();
+  
+}
+
+export function ghostSkip(app) {
+  if (!app._ghost) return;
+  finishGhost(app);
   
 }
 
 export function tickGhost(app, dt) {
   const g = app._ghost;
   if (!g || !app.sim || app.paused) return;
-  g.wait -= dt;
+  g.wait -= dt * g.speed;
   if (g.wait > 0) return;
   if (g.i >= g.log.length) {
-    app._ghost = null;
-    app.toast("Ghost replay finished");
+    finishGhost(app);
     return;
   }
   // Wait for waves to clear before next call

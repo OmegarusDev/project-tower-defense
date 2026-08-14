@@ -74,6 +74,7 @@ const R = [
     run: (app) => {
       app.editor.name = app.ui.querySelector("#edName")?.value || "Custom";
       app.editor.wavesToWin = +(app.ui.querySelector("#edWaves")?.value || 5);
+      app.editor.coinGrant = +(app.ui.querySelector("#edCoin")?.value || 50);
       app.editor.waveScript = app.ui.querySelector("#edScript")?.value || "mixed_mid";
       app.editor.saveNamed();
       app.toast("Level saved locally");
@@ -85,8 +86,18 @@ const R = [
     run: (app) => {
       app.editor.name = app.ui.querySelector("#edName")?.value || "Custom";
       app.editor.wavesToWin = +(app.ui.querySelector("#edWaves")?.value || 5);
+      app.editor.coinGrant = +(app.ui.querySelector("#edCoin")?.value || 50);
       app.editor.waveScript = app.ui.querySelector("#edScript")?.value || "mixed_mid";
       app.playtestEditorLevel(app.editor.toLevelDef());
+    },
+  },
+  {
+    has: "ed-delete:",
+    run: (app, act) => {
+      const i = +act.slice(10) | 0;
+      app.editor?.deleteLevel(i);
+      app.toast("Saved level removed");
+      app.showEditor();
     },
   },
   {
@@ -125,6 +136,11 @@ const R = [
 
   // ---- run/end ----
   { is: "ghost-replay", run: (app) => app.startGhostReplay() },
+  {
+    has: "ghost-speed:",
+    run: (app, act) => app.ghostSetSpeed(+act.slice(12)),
+  },
+  { is: "ghost-skip", run: (app) => app.ghostSkip() },
   { is: "newrun", run: (app) => app.newRun() },
   { is: "continue", run: (app) => app.continueRun() },
 
