@@ -1,0 +1,9 @@
+{
+  "name": "project-tower-defense-dev",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only tooling deps (corpus capture / golden images). The game itself has zero dependencies.",
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}
