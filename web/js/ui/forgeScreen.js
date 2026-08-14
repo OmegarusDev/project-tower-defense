@@ -15,42 +15,12 @@ import {
   canAffordTech,
   spendTechCost,
 } from "../data/techTree.js";
-import { renderTower } from "../view/towerPainter.js";
-import { forgePlanSummary } from "./menuScreens.js";
+import { renderTowerNext } from "../view/next/renderTower.js";
+import { forgePlanSummary, forgePartGridHtml } from "./next/screens.js";
 import { rosterSlotButtons } from "../app/gameChrome.js";
 import { partIconHtml } from "./partIcons.js";
-import { xClose } from "./xClose.js";
-
-function forgePartBtnHtml(app, kind, id, slot) {
-  const have = ownsPart(app.meta.owned, kind, id);
-  const equipped = slot[kind] === id;
-  const table = kind === "base" ? PARTS.bases : kind === "barrel" ? PARTS.barrels : PARTS.payloads;
-  const tip = table[id]?.blurb || "";
-  const extra =
-    kind === "base" && table[id]?.doctrine
-      ? ` · ${doctrineLabel(table[id].doctrine)}`
-      : "";
-  const ico = partIconHtml(kind, id);
-  if (have) {
-    const cls = `btn part-btn part-chip ${equipped ? "equipped" : ""}`.trim();
-    return `<button class="${cls}" data-act="forge-part:${kind}:${id}" title="${tip}"><span class="part-btn-inner">${ico}<span class="part-btn-label">${partLabel(id)}${extra}</span></span></button>`;
-  }
-  const cost = forgeCost(app, kind, id);
-  const can = app.meta.forge >= cost;
-  const cls = `btn part-btn part-chip locked ${can ? "" : "cant-afford"}`.trim();
-  return `<button class="${cls}" data-act="buy:${kind}:${id}" title="${tip} — unlock for ${cost} Parts"><span class="part-btn-inner">${ico}<span class="part-btn-label">${partLabel(id)}${extra}<br/><span class="part-btn-cost">${cost} Parts</span></span></span></button>`;
-}
-
-
-function forgePartGridHtml(app, slot) {
-  const col = (title, kind, ids) =>
-    `<div><h4>${title}</h4>${ids.map((id) => forgePartBtnHtml(app, kind, id, slot)).join("")}</div>`;
-  return `
-    ${col("Base", "base", Object.keys(PARTS.bases))}
-    ${col("Barrel", "barrel", Object.keys(PARTS.barrels))}
-    ${col("Payload", "payload", Object.keys(PARTS.payloads))}`;
-  
-}
+import { renderForge } from "./next/screens.js";
+import { forgeState } from "./next/stateOf.js";
 
 /** Patch the open Forge screen without wiping scroll / replaying enter anim. */
 export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true } = {}) {
@@ -93,7 +63,7 @@ export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true 
 
   if (rebuildParts) {
     const grid = root.querySelector(".forge-part-grid");
-    if (grid) grid.innerHTML = forgePartGridHtml(app, slot);
+    if (grid) grid.innerHTML = forgePartGridHtml(forgeState(app), slot);
   } else {
     for (const btn of root.querySelectorAll("[data-act^='forge-part:']")) {
       const [, kind, id] = btn.getAttribute("data-act").split(":");
@@ -135,41 +105,7 @@ export function showForge(app, returnTo) {
         : app.forgeReturn === "prep"
           ? `prep:${app.prepLevelId || 1}`
           : "main";
-  const slotBtns = rosterSlotButtons(app, "forge");
-  app.ui.innerHTML = `
-    <div class="screen meta-shell meta-screen forge-screen meta-enter">
-      <header class="meta-hero">
-        <div class="meta-hero-row">
-          <div>
-            <h1>Forge</h1>
-          </div>
-          ${xClose(backAct)}
-        </div>
-        <div class="title-stats tech-stats">
-          <span><i>Parts</i>${app.meta.forge}</span>
-          <span><i>Æ</i>${app.meta.aether}</span>
-          <span><i>Cap</i>L${app.meta.levelCap}</span>
-          <span><i>Slots</i>${app.meta.slotCount}</span>
-        </div>
-        <div class="status tech-status forge-status" id="status"${app.status ? "" : " hidden"}>${app.status || ""}</div>
-      </header>
-      <div class="meta-scroll">
-        <div class="row build-strip">${slotBtns}</div>
-        <div class="forge-preview-wrap">
-          <canvas id="forgePreview" class="forge-preview-flash" width="160" height="160" aria-label="Tower preview"></canvas>
-          <div class="forge-summary">
-            <h3>Slot ${app.forgeSlot + 1}</h3>
-            <p id="forgeLoadout">${forgePlanSummary(slot)}</p>
-            <button class="btn secondary part-chip" data-act="forge-clear" style="margin-top:8px">Clear slot</button>
-          </div>
-        </div>
-        <div class="cols forge-part-grid">${forgePartGridHtml(app, slot)}</div>
-        <p class="end-note">Locked parts cost Parts (price rises with each purchase). Wave gifts are free. Unlock slots with Æ here or in Tech.</p>
-      </div>
-      <footer class="meta-dock">
-        <button class="btn warn" data-act="upgrade">Tech Tree</button>
-      </footer>
-    </div>`;
+  app.ui.innerHTML = renderForge(forgeState(app));
   app.bindUi();
   paintForgePreview(app);
   // Drop enter anim so later DOM patches never replay a full-screen fade.
@@ -220,7 +156,7 @@ export function paintForgePreview(app) {
   const py = (css - size) / 2;
   // The painter owns ground-plane foreshortening (foreshortenBarrel in the
   // turret) — no pre-scale here, or barrels would double-squash.
-  renderTower(ctx, app.palette, t, px, py, size, {});
+  renderTowerNext(ctx, app.palette, t, px, py, size, {});
   
 }
 

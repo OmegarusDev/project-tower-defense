@@ -30,6 +30,8 @@ import {
   applyPreWalls,
 } from "./systems/towers.js";
 
+export const TICK_HZ = 60;
+
 export class Sim {
   constructor() {
     const self = this;

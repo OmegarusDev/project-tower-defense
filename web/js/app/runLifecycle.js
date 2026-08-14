@@ -1,6 +1,6 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { ENDLESS_GRID } from "../data/endlessGrid.js";
-import { SimWorld } from "../sim/simWorld.js";
+import { Sim as SimWorld } from "../sim/next/sim.js"; // swapped: next facade (SimWorld alias kept for call-site parity)
 import { BASE_START_CASH } from "../data/techTree.js";
 import {
   hasEndless,

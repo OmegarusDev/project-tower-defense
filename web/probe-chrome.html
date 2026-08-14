@@ -16,8 +16,6 @@
   import { SimWorld } from "/js/sim/simWorld.js";
   import { ENDLESS_GRID } from "/js/data/endlessGrid.js";
   import { loadMeta } from "/js/saveStore.js";
-  import * as chrome from "/js/app/gameChrome.js";
-  import * as pause from "/js/app/pauseSettings.js";
   import * as N from "/js/ui/next/chrome.js";
 
   const W = window;
@@ -150,25 +148,6 @@
   }
 
   W.__renderChrome = (variant) => {
-    const sim = buildSim();
-    const board = buildBoard();
-    board.setSim(sim);
-    board._fit(true);
-    const app = mkApp(sim, board);
-    app._ffHeld = variant === "busy";
-    if (variant === "plain") app.selectedTowerId = 1;
-    if (variant === "busy") {
-      app.tool = "wall";
-      app.selectedWallId = 5;
-      app.status = "Wave 2 — hold";
-      sim.waves.waveActive = true;
-    }
-    if (variant === "compose") app.liveCompose = true;
-    chrome.renderGameChrome(app);
-    chrome.refreshHud(app);
-    if (variant === "paused") pause.renderPauseSheet(app);
-    const oracleHtml = app.ui.outerHTML;
-
     const simN = buildSim();
     const boardN = buildBoard();
     boardN.setSim(simN);
@@ -198,6 +177,6 @@
       uiN.appendChild(sheet);
     }
     const nextHtml = uiN.outerHTML;
-    return { oracle: oracleHtml, next: nextHtml, match: oracleHtml === nextHtml };
+    return { next: nextHtml };
   };
 </script></body></html>

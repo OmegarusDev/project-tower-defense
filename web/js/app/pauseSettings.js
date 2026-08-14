@@ -1,5 +1,7 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { saveMeta, saveEndless } from "../saveStore.js";
+import { pauseSheetHtml as renderPauseSheetHtml } from "../ui/next/chrome.js";
+import { pauseState } from "../ui/next/stateOf.js";
 
 /** Persist camera pitch from Settings or the in-game slider. */
 export function applyPitch(app, deg, { save = true } = {}) {
@@ -83,23 +85,7 @@ export function renderPauseSheet(app) {
   const sheet = document.createElement("div");
   sheet.id = "pauseSheet";
   sheet.className = "pause-sheet";
-  sheet.innerHTML = `
-    <button type="button" class="pause-backdrop" data-act="resume" aria-label="Resume"></button>
-    <div class="pause-card" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
-      <p class="pause-mark">Paused</p>
-      <h2 id="pauseTitle">Wave ${wave}</h2>
-      <p class="pause-note">${note}</p>
-      <div class="pause-speeds" role="group" aria-label="Speed">
-        <button type="button" class="btn secondary ${app.speed === 1 ? "equipped" : ""}" data-act="speed:1">1×</button>
-        <button type="button" class="btn secondary ${app.speed === 2 ? "equipped" : ""}" data-act="speed:2">2×</button>
-        <button type="button" class="btn secondary ${app.speed === 3 ? "equipped" : ""}" data-act="speed:3">3×</button>
-      </div>
-      <p class="pause-hint">Hold Deploy for 5× · seed ${app.sim.runSeed >>> 0}</p>
-      <button type="button" class="btn title-cta" data-act="resume">Resume</button>
-      <button type="button" class="btn secondary" data-act="quit-run">${
-        app.playtestFromEditor ? "Editor" : quitLabel
-      }</button>
-    </div>`;
+  sheet.innerHTML = renderPauseSheetHtml(pauseState(app));
   // Delegated [data-act] handling in App.bindUi covers resume/speed/quit —
   // no direct listeners here (they double-fired the quit confirm dialog).
   app.ui.appendChild(sheet);

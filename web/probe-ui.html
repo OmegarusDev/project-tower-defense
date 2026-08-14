@@ -3,10 +3,6 @@
 <script type="module">
   import { ProcPalette } from "/js/view/palette.js";
   import { loadMeta } from "/js/saveStore.js";
-  import * as menus from "/js/ui/menuScreens.js";
-  import * as ends from "/js/ui/endScreens.js";
-  import * as forge from "/js/ui/forgeScreen.js";
-  import * as tech from "/js/ui/techScreen.js";
   import * as N from "/js/ui/next/screens.js";
   import { TECH_TREES } from "/js/data/techTree.js";
 
@@ -48,17 +44,6 @@
     return app;
   }
 
-  const ORACLE = {
-    main: (app) => menus.renderMain(app),
-    hub: (app) => ends.showEndlessHub(app),
-    victory: (app) => ends.showVictory(app, { firstClear: !!app.__opts.firstClear }),
-    gameover: (app) => ends.showGameOver(app),
-    campaign: (app) => menus.renderCampaign(app),
-    forge: (app) => forge.showForge(app),
-    tech: (app) => tech.showUpgrade(app),
-    settings: (app) => menus.renderSettings(app),
-  };
-
   const NEXT = {
     main: (s) => N.renderMain(s),
     hub: (s) => N.renderHub(s),
@@ -98,7 +83,6 @@
     app.prepLevelId = opts.prepLevelId ?? 1;
     app.prepSlot = opts.prepSlot ?? 0;
     app.upgradeReturn = opts.upgradeReturn ?? "";
-    ORACLE[name](app);
     const state = {
       meta: app.meta,
       sim: app.sim,

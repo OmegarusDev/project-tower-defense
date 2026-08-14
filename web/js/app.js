@@ -4,8 +4,8 @@
  */
 
 import { buildAttackPlan, planOptsFromParts } from "./sim/attackPlan.js";
-import { TICK_HZ } from "./sim/simWorld.js";
-import { BoardView } from "./view/boardView.js";
+import { TICK_HZ } from "./sim/next/sim.js";
+import { BoardView } from "./view/next/boardView.js";
 import { ProcPalette } from "./view/palette.js";
 import { TitleView } from "./view/titleView.js";
 import { setPitch } from "./view/view25.js";
@@ -14,7 +14,11 @@ import { SynthBank } from "./audio/synthBank.js";
 import { ScoreEngine } from "./audio/scoreEngine.js";
 import { loadMeta } from "./saveStore.js";
 import { getCampaignLevel } from "./data/campaign.js";
-import * as menus from "./ui/menuScreens.js";
+import { wireSettings, paintCampaignThumbs } from "./ui/menuScreens.js";
+import { LevelEditor, loadEditorLevels } from "./ui/levelEditor.js";
+import { mountScreen } from "./ui/next/registry.js";
+import { screenState, chromeState } from "./ui/next/stateOf.js";
+import { syncTowerOverlay, syncWaveAndStatus } from "./ui/next/chrome.js";
 import { paintLevelThumb } from "./ui/metaUi.js";
 import { handleUiAction } from "./ui/bindActions.js";
 import * as ends from "./ui/endScreens.js";
@@ -204,26 +208,38 @@ export class App {
 
   showMain() {
     this.score.stop();
-    menus.renderMain(this);
+    this.screen = "main";
+    mountScreen(this.ui, "main", screenState(this));
     this.bindUi();
   }
   showCampaign() {
     this.sim = null;
     this.selectedTowerId = -1;
     this.selectedWallId = -1;
-    menus.renderCampaign(this);
+    this.screen = "campaign";
+    mountScreen(this.ui, "campaign", screenState(this));
     this.bindUi();
-    menus.paintCampaignThumbs(this);
+    paintCampaignThumbs(this);
   }
   showPrep(levelId) {
-    if (!menus.renderPrep(this, levelId)) return this.showCampaign();
+    if (!getCampaignLevel(levelId)) return this.showCampaign();
+    this.screen = "prep";
+    this.prepLevelId = levelId;
+    if (this.prepSlot == null) this.prepSlot = 0;
+    mountScreen(this.ui, "prep", screenState(this));
     this.bindUi();
     const thumb = this.ui.querySelector("canvas.prep-thumb");
     const lv = getCampaignLevel(levelId);
     if (thumb && lv) paintLevelThumb(thumb, lv, this.palette);
   }
   showEditor() {
-    menus.renderEditor(this);
+    if (!this.editor) this.editor = new LevelEditor();
+    this.screen = "editor";
+    mountScreen(this.ui, "editor", {
+      ...screenState(this),
+      editor: this.editor,
+      editorLevels: loadEditorLevels(),
+    });
     this.bindUi();
     const syncFields = () => {
       const ed = this.editor;
@@ -237,9 +253,10 @@ export class App {
     this.ui.querySelector("#edScript")?.addEventListener("change", syncFields);
   }
   showSettings() {
-    menus.renderSettings(this);
+    this.screen = "settings";
+    mountScreen(this.ui, "settings", screenState(this));
     this.bindUi();
-    menus.wireSettings(this);
+    wireSettings(this);
   }
 
   // Delegates keep App method names for data-act / hotkeys / cross-module app.* calls
@@ -284,8 +301,8 @@ export class App {
   applyLiveComposePart(k, id) { return chrome.applyLiveComposePart(this, k, id); }
   paintSlotPreviews(force = false) { return chrome.paintSlotPreviews(this, force); }
   refreshHud() { return chrome.refreshHud(this); }
-  _refreshThemeChip(t, e) { return chrome.refreshThemeChip(this, t, e); }
-  syncTowerOverlay() { return chrome.syncTowerOverlay(this); }
+  _refreshThemeChip(t, e) { return syncWaveAndStatus(this.ui, chromeState(this)); }
+  syncTowerOverlay() { return syncTowerOverlay(this.ui, chromeState(this)); }
 
   clearUndoStack() { return place.clearUndoStack(this); }
   pushUndo(e) { return place.pushUndo(this, e); }

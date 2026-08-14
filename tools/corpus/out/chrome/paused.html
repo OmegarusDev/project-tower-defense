@@ -1,0 +1,88 @@
+<div id="ui">
+    <div class="game-chrome">
+      <header class="hud-bar">
+        <div class="wave-badge plate" id="waveBadge">
+          <span class="wave-badge-k">Wave</span>
+          <span class="wave-badge-n" id="waveNum">2</span>
+          <span class="wave-badge-sub hidden" id="waveSub"></span>
+          <span class="theme-chip hidden" id="themeChip"></span>
+        </div>
+        <div class="telemetry plate" id="statChips">
+    <span class="tel tel-lives" title="HP"><i>HP</i>19</span>
+    <span class="tel-sep"></span>
+    <span class="tel tel-coin" title="Coin"><i class="tel-curr">₡</i>42</span>
+    <span class="tel-sep"></span>
+    <span class="tel tel-parts" title="Parts"><i class="tel-gear"><svg class="tel-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.4.9h3.2l.25 1.45c.45.12.87.32 1.25.58l1.3-.7 1.6 1.6-.7 1.3c.26.38.46.8.58 1.25L15.1 6.4v3.2l-1.45.25a4.6 4.6 0 0 1-.58 1.25l.7 1.3-1.6 1.6-1.3-.7a4.6 4.6 0 0 1-1.25.58L9.6 15.1H6.4l-.25-1.45a4.6 4.6 0 0 1-1.25-.58l-1.3.7-1.6-1.6.7-1.3a4.6 4.6 0 0 1-.58-1.25L.9 9.6V6.4l1.45-.25c.12-.45.32-.87.58-1.25l-.7-1.3 1.6-1.6 1.3.7c.38-.26.8-.46 1.25-.58L6.4.9zm1.6 4.3a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z"></path></svg></i>7</span>
+    <span class="tel-sep"></span>
+    <span class="tel tel-aether" title="Aether"><i>Æ</i>3</span></div>
+        <div class="hud-ops">
+          <button type="button" class="hud-pause plate" data-act="pause" title="Pause" aria-label="Pause">
+            <span></span><span></span>
+          </button>
+        </div>
+      </header>
+      <aside class="left-tools" aria-label="Board tools">
+        <div class="cam-rail plate" title="Camera pitch">
+          <svg class="cam-glyph" viewBox="0 0 20 14" aria-hidden="true">
+            <path d="M3.5 2.5h3L8 1h4l1.5 1.5h3A1.5 1.5 0 0 1 18 4v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 2 11.5V4a1.5 1.5 0 0 1 1.5-1.5z" fill="#c9a227" opacity="0.9"></path>
+            <circle cx="10" cy="8" r="3.2" fill="#1a2230" stroke="#8a7020" stroke-width="1"></circle>
+            <circle cx="10" cy="8" r="1.5" fill="#e8e0d0" opacity="0.85"></circle>
+          </svg>
+          <input id="pitchLive" class="cam-pitch" type="range" min="8" max="58" step="1" value="24" orient="vertical" aria-label="Camera angle">
+        </div>
+        <button type="button" class="chrome-fab compose-fab plate" data-act="compose-toggle" title="Live compose" aria-label="Live compose">
+        <svg class="fab-ico" viewBox="0 0 24 24" aria-hidden="true">
+          <path class="fab-ico-body" d="M5 7.5h5.2l1.3-2.2h1l1.3 2.2H19v2.2h-1.6l-2.2 7.1H8.8L6.6 9.7H5V7.5z"></path>
+          <path class="fab-ico-accent" d="M9.2 11.2h5.6l-.7 2.4H9.9l-.7-2.4z"></path>
+          <circle class="fab-ico-rivet" cx="8.2" cy="8.6" r="0.7"></circle>
+          <circle class="fab-ico-rivet" cx="15.8" cy="8.6" r="0.7"></circle>
+        </svg>
+      </button>
+      </aside>
+      
+      <div class="status-toast empty" id="status"></div>
+      <div class="tower-overlay hidden" id="towerOverlay">
+        <div class="meta" id="towerMeta"></div>
+        <div class="xp-line" id="towerXp"></div>
+        <div class="tower-branch-row hidden" id="towerBranchRow" role="group" aria-label="Level branch">
+          <button type="button" class="btn secondary branch-btn" data-act="level-branch:damage">Dmg</button>
+          <button type="button" class="btn secondary branch-btn" data-act="level-branch:rof">ROF</button>
+          <button type="button" class="btn secondary branch-btn" data-act="level-branch:range">Rng</button>
+        </div>
+        <div class="tower-overlay-acts">
+          <button class="btn danger" data-act="sell">Sell</button>
+        </div>
+      </div>
+      <footer class="dock">
+        <div class="dock-head">
+          <div class="dock-meta" id="slotline"><span class="dock-meta-k">Sentry · Single · Kinetic</span><span class="dock-meta-v">6 Coin</span></div>
+          <button type="button" class="btn secondary undo-btn" data-act="undo" title="Undo (Z)" aria-label="Undo">Undo</button>
+        </div>
+        <div class="arsenal">
+          <div class="arsenal-slots"><button type="button" class="slot-tile active" data-act="slot:0" data-build-slot="0" title="sentry/single/kinetic"><span class="slot-tile-idx">1</span><canvas class="slot-preview" data-slot-preview="0" width="72" height="72" aria-hidden="true"></canvas><span class="slot-tile-cost">6</span></button><button type="button" class="slot-tile " data-act="slot:1" data-build-slot="1" title="bulwark/scatter/fire (+1 tax)"><span class="slot-tile-idx">2</span><canvas class="slot-preview" data-slot-preview="1" width="72" height="72" aria-hidden="true"></canvas><span class="slot-tile-cost">15</span></button><button type="button" class="slot-tile " data-act="slot:2" data-build-slot="2" title="spire/pulse/frost (+1 tax)"><span class="slot-tile-idx">3</span><canvas class="slot-preview" data-slot-preview="2" width="72" height="72" aria-hidden="true"></canvas><span class="slot-tile-cost">23</span></button><button type="button" class="slot-tile locked" data-act="slot-locked:3" title="Unlock Slot 4 in Tech Tree → Roster"><span class="slot-tile-idx">4</span><span class="slot-tile-cost">lock</span></button><button type="button" class="slot-tile locked" data-act="slot-locked:4" title="Unlock Slot 5 in Tech Tree → Roster"><span class="slot-tile-idx">5</span><span class="slot-tile-cost">lock</span></button><button type="button" class="slot-tile locked" data-act="slot-locked:5" title="Unlock Slot 6 in Tech Tree → Roster"><span class="slot-tile-idx">6</span><span class="slot-tile-cost">lock</span></button><button type="button" class="slot-tile locked" data-act="slot-locked:6" title="Unlock Slot 7 in Tech Tree → Roster"><span class="slot-tile-idx">7</span><span class="slot-tile-cost">lock</span></button><button type="button" class="slot-tile locked" data-act="slot-locked:7" title="Unlock Slot 8 in Tech Tree → Roster"><span class="slot-tile-idx">8</span><span class="slot-tile-cost">lock</span></button><button type="button" class="slot-tile locked" data-act="slot-locked:8" title="Unlock Slot 9 in Tech Tree → Roster"><span class="slot-tile-idx">9</span><span class="slot-tile-cost">lock</span></button><button type="button" class="slot-tile locked" data-act="slot-locked:9" title="Unlock Slot 10 in Tech Tree → Roster"><span class="slot-tile-idx">10</span><span class="slot-tile-cost">lock</span></button><button type="button" class="slot-tile locked" data-act="slot-locked:10" title="Unlock Slot 11 in Tech Tree → Roster"><span class="slot-tile-idx">11</span><span class="slot-tile-cost">lock</span></button><button type="button" class="slot-tile locked" data-act="slot-locked:11" title="Unlock Slot 12 in Tech Tree → Roster"><span class="slot-tile-idx">12</span><span class="slot-tile-cost">lock</span></button></div>
+          <button type="button" class="wall-tile " data-act="tool:wall" id="wallBtn" title="Wall · 17 Coin">
+            <span class="wall-tile-k">Wall</span>
+            <span class="wall-tile-cost" id="wallCost">17</span>
+          </button>
+        </div>
+        <button type="button" class="call-btn busy" id="callBtn" title="Hold for 5×" aria-label="Deploy wave, hold for fast forward">
+          <span class="call-kicker">Hold</span>
+          <span class="call-label" id="callLabel">Live</span>
+          <span class="call-bolts" aria-hidden="true"></span>
+        </button>
+      </footer>
+    </div><div id="pauseSheet" class="pause-sheet">
+    <button type="button" class="pause-backdrop" data-act="resume" aria-label="Resume"></button>
+    <div class="pause-card" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+      <p class="pause-mark">Paused</p>
+      <h2 id="pauseTitle">Wave 2</h2>
+      <p class="pause-note">Mid-wave — Continue rolls back to the start of wave 2.</p>
+      <div class="pause-speeds" role="group" aria-label="Speed">
+        <button type="button" class="btn secondary equipped" data-act="speed:1">1×</button>
+        <button type="button" class="btn secondary " data-act="speed:2">2×</button>
+        <button type="button" class="btn secondary " data-act="speed:3">3×</button>
+      </div>
+      <p class="pause-hint">Hold Deploy for 5× · seed 42</p>
+      <button type="button" class="btn title-cta" data-act="resume">Resume</button>
+      <button type="button" class="btn secondary" data-act="quit-run">Endless Menu</button>
+    </div></div></div>

@@ -138,7 +138,7 @@ function forgePartBtnHtml(state, kind, id, slot) {
   return `<button class="${cls}" data-act="buy:${kind}:${id}" title="${tip} — unlock for ${cost} Parts"><span class="part-btn-inner">${ico}<span class="part-btn-label">${partLabel(id)}${extra}<br/><span class="part-btn-cost">${cost} Parts</span></span></span></button>`;
 }
 
-function forgePartGridHtml(state, slot) {
+export function forgePartGridHtml(state, slot) {
   const col = (title, kind, ids) =>
     `<div><h4>${title}</h4>${ids.map((id) => forgePartBtnHtml(state, kind, id, slot)).join("")}</div>`;
   return `
@@ -170,7 +170,7 @@ function techGroupProgress(meta, group) {
   return { ranks, max, count: nodes.length };
 }
 
-function techTreeHtml(state, tree) {
+export function techTreeHtml(state, tree) {
   if (!tree) return "";
   const currency = tree.id === "arsenal" ? "Parts" : "Aether";
   const branches = (tree.children || [])

@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 /**
- * Chrome parity — ui/next/chrome.js vs the oracle gameChrome/pauseSettings,
- * from identical sim state, comparing the FULL mounted+synced DOM
- * byte-identically. Frozen time + seeded RNG, game CSS loaded (layout
- * values like the tower overlay position come from real computed sizes).
+ * Chrome (HUD) regression — ui/next/chrome.js output vs committed goldens
+ * (--capture to refresh). Frozen time + seeded RNG, game CSS loaded.
  *
- *   node tools/corpus/chromeParity.mjs
+ *   node tools/corpus/chromeParity.mjs [--capture]
  */
 import { chromium } from "playwright";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const OUT = join(HERE, "out", "chrome");
+const CAPTURE = process.argv.includes("--capture");
+mkdirSync(OUT, { recursive: true });
 
 const STUBS = `
   (() => {
@@ -26,19 +32,29 @@ const variants = ["plain", "busy", "paused", "compose"];
 let failures = 0;
 for (const v of variants) {
   const r = await page.evaluate((name) => window.__renderChrome(name), v);
-  if (!r.match) {
+  if (CAPTURE) {
+    writeFileSync(join(OUT, `${v}.html`), r.next);
+    console.log(`CAPTURED ${v} (${r.next.length}b)`);
+    continue;
+  }
+  const golden = join(OUT, `${v}.html`);
+  if (!existsSync(golden)) {
+    failures++;
+    console.log(`FAIL ${v}: no golden — re-run with --capture`);
+    continue;
+  }
+  const snap = readFileSync(golden, "utf8");
+  if (r.next === snap) {
+    console.log(`PASS ${v} (${r.next.length}b)`);
+  } else {
     failures++;
     let i = 0;
-    const a = r.oracle;
-    const b = r.next;
-    while (i < Math.max(a.length, b.length) && a[i] === b[i]) i++;
+    while (i < Math.max(r.next.length, snap.length) && r.next[i] === snap[i]) i++;
     console.log(
-      `FAIL ${v}: lengths ${a.length} vs ${b.length} — first diff at ${i}:\n  oracle: ${JSON.stringify(a.slice(Math.max(0, i - 60), i + 100))}\n  next:   ${JSON.stringify(b.slice(Math.max(0, i - 60), i + 100))}`
+      `FAIL ${v}: first diff at ${i}:\n  now: ${JSON.stringify(r.next.slice(Math.max(0, i - 60), i + 100))}\n  gold: ${JSON.stringify(snap.slice(Math.max(0, i - 60), i + 100))}`
     );
-  } else {
-    console.log(`PASS ${v} (${r.oracle.length}b)`);
   }
 }
 console.log(failures === 0 ? "CHROME PARITY OK" : `${failures} variant(s) diverge`);
 await browser.close();
-process.exit(failures === 0 ? 0 : 1);
+process.exit(CAPTURE || failures === 0 ? 0 : 1);

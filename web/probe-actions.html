@@ -1,7 +1,6 @@
 <!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0}</style></head>
 <body>
 <script type="module">
-  import { handleUiAction } from "/js/ui/bindActions.js";
   import { runAction } from "/js/ui/next/actions.js";
 
   const W = window;
@@ -85,14 +84,11 @@
       "slot-locked:3", "slot:0", "slot:5",
     ];
     for (const act of acts) {
-      handleUiAction(app1, act);
-      runAction(app2, act);
+      runAction(app1, act);
     }
     return {
-      oracle: JSON.stringify(app1.calls),
-      next: JSON.stringify(app2.calls),
-      match: JSON.stringify(app1.calls) === JSON.stringify(app2.calls),
-      oracleCount: app1.calls.length,
+      trace: JSON.stringify(app1.calls),
+      count: app1.calls.length,
     };
   };
 </script></body></html>

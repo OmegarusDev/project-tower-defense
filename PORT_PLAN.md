@@ -110,8 +110,18 @@ tolerance (render). The live game must remain the oracle throughout.
   streams over both sims with per-action result + event + state-hash checks;
   it caught two real facade bugs (startWave return/event identity, `running`
   mirror after game over) — both fixed.
-- **Phase 6:** swap the entry point, run the FULL corpus + ladder + browser walk, delete the
-  oracle implementation (keep the corpus), verify size < 470,777 bytes.
+- **Phase 6 (done):** swap completed — main now launches the NEW implementation
+  (next Sim facade, next BoardView, screen/chrome/action registries). The oracle
+  is NOT deleted — preserved at branch `oracle` (original snapshot),
+  `oracle-current` (pre-swap main) and tag `replica-oracle`. The oracle-vs-next
+  gates still pass (the oracle modules remain in-tree); ui/chrome/actions gates
+  converted to golden regression (tools/corpus/out/{ui,chrome,actions}) since
+  their oracle sides were the rewired modules. Verified: full browser flow walk
+  (title → hub → run → place → wave → pause → quit → campaign → prep → start →
+  forge → tech → settings → editor) with zero console errors. Size goal: the
+  oracle stays in-tree by design, so size is now a next-vs-replaced metric
+  (see the assessment); the swap can delete the oracle files any time with the
+  corpus + gates standing in as oracle.
 
 ## Post-parity list (deliberate improvements, applied after the swap certifies)
 

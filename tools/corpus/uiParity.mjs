@@ -1,21 +1,21 @@
 #!/usr/bin/env node
 /**
- * DOM parity — the pure screen renderers (ui/next/screens.js) vs the oracle
- * screen modules, from identical state. Frozen time + seeded randomness,
- * fresh meta (localStorage cleared), like the corpus capture.
+ * UI (meta screens) regression — the pure screen renderers vs committed
+ * golden HTML (the corpus becomes the oracle post-swap; re-capture with
+ * --capture when screens deliberately change). Frozen time + seeded RNG,
+ * fresh meta.
  *
- * Also reports whether the committed corpus snapshots are still current
- * (stale = re-capture with capture.mjs).
- *
- *   node tools/corpus/uiParity.mjs
+ *   node tools/corpus/uiParity.mjs [--capture]
  */
 import { chromium } from "playwright";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SNAPSHOT_DIR = join(HERE, "out", "screens");
+const OUT = join(HERE, "out", "ui");
+const CAPTURE = process.argv.includes("--capture");
+mkdirSync(OUT, { recursive: true });
 
 const STUBS = `
   (() => {
@@ -42,48 +42,37 @@ const cases = [
   ["gameover", { endless: true, endBestBonus: { parts: 9, aether: 4 } }],
   ["gameover", {}],
 ];
+const nodeId = await page.evaluate(() => window.__firstNodeId("foundations"));
+if (nodeId) cases.push(["tech", { techSelectedId: nodeId, status: "test status" }]);
+
 let failures = 0;
 for (const [name, opts] of cases) {
+  const key = `${name}_${JSON.stringify(opts).replace(/[^a-zA-Z0-9]/g, "_")}`.slice(0, 80);
   const r = await page.evaluate(([n, o]) => window.__renderScreen(n, o), [name, opts]);
-  if (!r.match) {
+  if (CAPTURE) {
+    writeFileSync(join(OUT, `${key}.html`), r.next);
+    console.log(`CAPTURED ${key} (${r.next.length}b)`);
+    continue;
+  }
+  const golden = join(OUT, `${key}.html`);
+  if (!existsSync(golden)) {
     failures++;
-    // find the first difference
-    let i = 0;
-    const a = r.oracle;
-    const b = r.next;
-    while (i < Math.max(a.length, b.length) && a[i] === b[i]) i++;
-    console.log(
-      `FAIL ${name}: lengths ${a.length} vs ${b.length} — first diff at ${i}:\n  oracle: ${JSON.stringify(a.slice(Math.max(0, i - 40), i + 80))}\n  next:   ${JSON.stringify(b.slice(Math.max(0, i - 40), i + 80))}`
-    );
+    console.log(`FAIL ${key}: no golden — re-run with --capture`);
+    continue;
+  }
+  const snap = readFileSync(golden, "utf8");
+  if (r.next === snap) {
+    console.log(`PASS ${key} (${r.next.length}b)`);
   } else {
-    console.log(`PASS ${name} (${r.oracle.length}b)`);
+    failures++;
+    let i = 0;
+    while (i < Math.max(r.next.length, snap.length) && r.next[i] === snap[i]) i++;
+    console.log(
+      `FAIL ${key}: first diff at ${i}:\n  now: ${JSON.stringify(r.next.slice(Math.max(0, i - 40), i + 80))}\n  gold: ${JSON.stringify(snap.slice(Math.max(0, i - 40), i + 80))}`
+    );
   }
 }
 
-// Tech overlay variants: selected node + a status line
-const nodeId = await page.evaluate(() => window.__firstNodeId("foundations"));
-if (nodeId) {
-  const r = await page.evaluate(
-    ([n, o]) => window.__renderScreen(n, o),
-    ["tech", { techSelectedId: nodeId, status: "test status" }]
-  );
-  if (!r.match) {
-    failures++;
-    let i = 0;
-    while (i < Math.max(r.oracle.length, r.next.length) && r.oracle[i] === r.next[i]) i++;
-    console.log(
-      `FAIL tech-overlay: lengths ${r.oracle.length} vs ${r.next.length} — first diff at ${i}:\n  oracle: ${JSON.stringify(r.oracle.slice(Math.max(0, i - 40), i + 80))}\n  next:   ${JSON.stringify(r.next.slice(Math.max(0, i - 40), i + 80))}`
-    );
-  } else {
-    console.log(`PASS tech-overlay (${r.oracle.length}b)`);
-  }
-}
-
-// Corpus snapshots (tools/corpus/out/screens/*.html) are captured through the
-// REAL app flow (capture.mjs) — checkpoint state, post-mount paints and
-// transition state included — so refresh them with `capture.mjs screens`,
-// not against the pure renderers.
-
-console.log(failures === 0 ? "\nUI PARITY OK" : `\n${failures} screen(s) diverge`);
+console.log(failures === 0 ? "UI PARITY OK" : `${failures} screen(s) diverge`);
 await browser.close();
-process.exit(failures === 0 ? 0 : 1);
+process.exit(CAPTURE || failures === 0 ? 0 : 1);
