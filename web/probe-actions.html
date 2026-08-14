@@ -1,0 +1,98 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0}</style></head>
+<body>
+<script type="module">
+  import { handleUiAction } from "/js/ui/bindActions.js";
+  import { runAction } from "/js/ui/next/actions.js";
+
+  const W = window;
+
+  /** Spy app: records every method call; queried fields are settable. */
+  function mkSpy(initial) {
+    const calls = [];
+    const app = {
+      calls,
+      ...initial,
+    };
+    const record = (name, args) => calls.push([name, args]);
+    const handler = {
+      get(target, prop) {
+        if (prop === "calls") return calls;
+        if (prop in target) return target[prop];
+        return (...args) => record(prop, args);
+      },
+      set(target, prop, value) {
+        target[prop] = value;
+        return true;
+      },
+    };
+    return new Proxy(app, handler);
+  }
+
+  const BASE = {
+    screen: "main",
+    meta: { slotCount: 3 },
+    sim: null,
+    prepLevelId: 1,
+    prepSlot: 0,
+    forgeReturn: "",
+    upgradeReturn: "",
+    slot: 0,
+    status: "",
+    tool: "tower",
+    liveCompose: false,
+    selectedTowerId: -1,
+    selectedWallId: -1,
+    ui: { querySelector: () => null },
+    editor: {
+      resize() {},
+      randomize() {},
+      saveNamed() {},
+      toggle() { return true; },
+      toLevelDef() { return null; },
+      name: "",
+      wavesToWin: 5,
+      waveScript: "",
+    },
+  };
+
+  W.__runVariant = (variantName) => {
+    window.confirm = () => false;
+    const variants = {
+      v1: { ...BASE, screen: "main" },
+      v2: { ...BASE, screen: "forge", meta: { slotCount: 6 } },
+      v3: { ...BASE, screen: "prep", prepLevelId: 2 },
+      v4: { ...BASE, screen: "hub", meta: { slotCount: 6 }, sim: { roster: [] } },
+      v5: { ...BASE, screen: "campaign", forgeReturn: "campaign" },
+    };
+    const app1 = mkSpy(variants[variantName]);
+    const app2 = mkSpy(variants[variantName]);
+    const acts = [
+      "endless", "hub", "main", "campaign", "settings", "editor",
+      "prep:1", "prep:2", "prep-slot:0", "prep-slot:2", "start-level:1",
+      "reset-meta",
+      "ed-apply-size", "ed-random", "ed-save", "ed-playtest", "ed-load:0", "ed-cell:2:3",
+      "compose-toggle", "compose-close", "compose-part:base:sentry",
+      "ghost-replay", "newrun", "continue",
+      "forge", "forge-from-hub", "forge-from-main", "forge-from-campaign", "forge-from-prep",
+      "upgrade", "upgrade-from-prep",
+      "tech-close", "tech-tab:arsenal", "tech-tab:foundations", "tech-select:foundations.1",
+      "tech-unlock-part:base:sentry", "tech-buy:foundations.1",
+      "pause", "resume", "quit-run", "sell", "level-branch:damage", "level-branch:rof", "undo",
+      "speed:1", "speed:2", "speed:3",
+      "tool:wall",
+      "forge-clear", "forge-unlock-slot", "forge-slot:1", "forge-part:base:sentry",
+      "buy:barrel:single",
+      "slot-locked:3", "slot:0", "slot:5",
+    ];
+    for (const act of acts) {
+      handleUiAction(app1, act);
+      runAction(app2, act);
+    }
+    return {
+      oracle: JSON.stringify(app1.calls),
+      next: JSON.stringify(app2.calls),
+      match: JSON.stringify(app1.calls) === JSON.stringify(app2.calls),
+      oracleCount: app1.calls.length,
+    };
+  };
+</script></body></html>

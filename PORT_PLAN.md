@@ -99,7 +99,11 @@ tolerance (render). The live game must remain the oracle throughout.
   composeSheetHtml + pauseSheetHtml + statChipsHtml + slotLineHtml +
   callButtonState + syncHud/syncBuildDock/syncTowerOverlay incl. positioning),
   gated by `tools/corpus/chromeParity.mjs` (4 variants: plain/busy/paused/
-  compose, byte-identical). Remaining: bind/actions split, app.js decomposition.
+  compose, byte-identical). Action dispatch done: `ui/next/actions.js`
+  (data-act → handler table, exact order), gated by
+  `tools/corpus/actionsParity.mjs` (60-act vocabulary × 5 state variants,
+  spy call traces identical). The app.js class-shell decomposition lands in
+  Phase 6 (the oracle runtime stays untouched until the swap).
 - **Phase 5:** CI (GitHub Action: verify + parity + render gates on every push) + sim fuzz.
 - **Phase 6:** swap the entry point, run the FULL corpus + ladder + browser walk, delete the
   oracle implementation (keep the corpus), verify size < 470,777 bytes.
