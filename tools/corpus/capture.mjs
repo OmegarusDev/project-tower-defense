@@ -83,7 +83,7 @@ await page.goto(BASE, { waitUntil: "networkidle", timeout: 30000 });
 await page.waitForTimeout(1200);
 
 if (want("gallery")) {
-  await page.goto(BASE + "tools/gallery.html", { waitUntil: "networkidle", timeout: 30000 });
+  await page.goto(BASE + "dev/gallery.html", { waitUntil: "networkidle", timeout: 30000 });
   await page.waitForTimeout(800);
   for (const pitch of [24, 58]) {
     await page.evaluate((v) => {

@@ -26,7 +26,7 @@ const STUBS = `
 const browser = await chromium.launch();
 const page = await browser.newPage();
 await page.addInitScript(STUBS);
-await page.goto("http://127.0.0.1:8123/probe-chrome.html", { waitUntil: "networkidle", timeout: 60000 });
+await page.goto("http://127.0.0.1:8123/dev/probe-chrome.html", { waitUntil: "networkidle", timeout: 60000 });
 
 const variants = ["plain", "busy", "paused", "compose"];
 let failures = 0;

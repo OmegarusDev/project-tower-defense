@@ -29,7 +29,7 @@ const STUBS = `
 const browser = await chromium.launch();
 const page = await browser.newPage();
 await page.addInitScript(STUBS);
-await page.goto("http://127.0.0.1:8123/probe-board.html", { waitUntil: "networkidle", timeout: 60000 });
+await page.goto("http://127.0.0.1:8123/dev/probe-board.html", { waitUntil: "networkidle", timeout: 60000 });
 
 const cases = [
   ["scene", "window.__drawBoardNext"],

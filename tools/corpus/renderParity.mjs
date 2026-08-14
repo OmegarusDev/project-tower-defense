@@ -58,7 +58,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage();
 await page.addInitScript(STUBS);
 await page.setContent(HTML);
-await page.goto("http://127.0.0.1:8123/probe.html", { waitUntil: "networkidle" }).catch(() => {});
+await page.goto("http://127.0.0.1:8123/dev/probe.html", { waitUntil: "networkidle" }).catch(() => {});
 
 const ANG = [0, -Math.PI / 2, Math.PI, Math.PI / 2];
 const BASES = ["sentry", "bulwark", "spire", "aerie", "warden", "talon"];

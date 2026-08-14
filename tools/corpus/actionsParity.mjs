@@ -18,7 +18,7 @@ mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
-await page.goto("http://127.0.0.1:8123/probe-actions.html", { waitUntil: "networkidle", timeout: 60000 });
+await page.goto("http://127.0.0.1:8123/dev/probe-actions.html", { waitUntil: "networkidle", timeout: 60000 });
 
 let failures = 0;
 for (const v of ["v1", "v2", "v3", "v4", "v5"]) {
