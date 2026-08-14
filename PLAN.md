@@ -1,6 +1,19 @@
 # PLAN — Enemy pathing tiers, endless pacing, boot polish + the backlog
 
-Status: plan only. Nothing below is implemented yet.
+Status: the Oracle is FROZEN as a design document — it is no longer the gold
+standard. The corpus (committed traces/baselines/goldens) is a re-baseline
+tool, not a standard: every deliberate change re-baselines after review. The
+new gold standard = ultra efficient, robust, beautiful architecture; the
+verification gates enforce it.
+
+Strategic take-stock (where we stand vs the Oracle):
+- Sim (pure state + systems + facade, deterministic, fuzz-tested): better.
+- Rendering (data-driven visuals, one two-factor projection): better.
+- Board scene (pure renderers): better. UI shell (registry + pure fns): better.
+- Pathing (single source of truth): better. Verification (10 gates): better.
+- ONE GAP: the app's behavioral logic modules (forge/tech/end/undo/input/
+  simBridge/metaSync/runLifecycle) are still old-style and app-coupled.
+  Completing them IS the final step of the new gold standard (Phase C).
 
 ---
 
@@ -163,20 +176,35 @@ same `"none"` mode for the preview).
 
 ---
 
-## 4. Sequencing
+## 4. Sequencing (priority order — the most important work first)
 
-- **Phase A — pathing tiers** (this session's next work):
-  1. `groundOptions` avoid modes (`none`/`soft`/`hard`) + `canonicalGround`
-     passing `"none"` (preview unchanged).
-  2. `pathing` attribute on all enemy defs; remove `ignoreTowerAvoid`;
-     `PATHING` table in movement.
-  3. The **skulk**: def + silhouette data + wave-4 unlock + ramp.
-  4. Tests: pool membership per mode, hard-avoid monotonicity (never stalls,
-     reaches exit), preview unchanged for `"none"`.
-  5. Re-run all gates; re-baseline ladder (deliberate capture + review).
-- **Phase B — UI boot fix** (synchronous first paint + canvas bg + optional
-  static-layer cache).
-- **Phase C — backlog**: music tempo → portal rule → twin barrels → the rest.
+- **Phase A — pathing tiers + the skulk** (IN PROGRESS — the requested
+  feature, extends the cleanest layer):
+  1. `groundOptions` avoid modes (`none`/`soft`/`hard`) — all modes stay
+     strictly-equal-length (never lengthen a path ⇒ the never-stall
+     invariant is untouched by construction).
+  2. `pathing` attribute on every enemy def; remove `ignoreTowerAvoid`;
+     the `PATHING` table in movement is the only behavior mapping.
+  3. The **skulk**: def + silhouette data + wave-4 unlock + weight ramp +
+     theme kinds + cost + threat label.
+  4. Tests: pool membership per mode, hard-avoid monotonicity + exit
+     reachability, skulk-vs-basic lane split around a tower.
+  5. Re-baseline the corpus (traces + ladder) — a DELIBERATE, reviewed
+     re-capture; the oracle standard no longer applies.
+- **Phase B — UI boot polish** (synchronous first paint + canvas bg +
+  static-layer cache) — small, quick win.
+- **Phase C — app-logic gold-standard completion**: port the remaining
+  app-coupled modules (forge/tech/end/undo/input/simBridge/metaSync/
+  runLifecycle/gameChrome logic) to the new style — pure-ish logic over
+  explicit state, no `app` reach-ins. The one remaining floor between
+  "better foundation" and "new gold standard". Gated by the smoke walk +
+  interaction checks at every step.
+- **Phase D — gameplay backlog**: music tempo → portal spawn rule → twin
+  barrels → ghost-replay UX → fresh-ladder kill zone → growSouth pacing →
+  editor polish → a11y → HUD micro-perf.
+- **Phase E — UI style pass** (LAST, per the user): a design review of the
+  general UI — typography, spacing, motion, plate language — deliberately
+  deferred until the architecture is settled.
 
 ## Verification for everything
 
