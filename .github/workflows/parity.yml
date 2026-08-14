@@ -1,0 +1,57 @@
+name: parity
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dev deps (playwright)
+        run: npm ci
+
+      - name: Install chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Serve web/
+        run: cd web && python3 -m http.server 8123 &
+
+      - name: Unit tests + parse gates
+        run: node verify.mjs
+
+      - name: Sim parity (bot ladder traces)
+        run: node tools/corpus/simParity.mjs
+
+      - name: Ladder parity (metrics)
+        run: node tools/corpus/ladderParity.mjs
+
+      - name: Sim fuzz (random actions)
+        run: node tools/corpus/simFuzz.mjs
+
+      - name: Render parity (tower + enemy goldens)
+        run: node tools/corpus/renderParity.mjs
+
+      - name: Board scene parity
+        run: node tools/corpus/boardParity.mjs
+
+      - name: UI (meta screens) parity
+        run: node tools/corpus/uiParity.mjs
+
+      - name: Chrome (HUD) parity
+        run: node tools/corpus/chromeParity.mjs
+
+      - name: Actions dispatch parity
+        run: node tools/corpus/actionsParity.mjs
+
+      - name: Enemy goldens vs oracle
+        run: node tools/corpus/oracleEnemyCheck.mjs all

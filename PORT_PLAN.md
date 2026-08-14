@@ -104,7 +104,12 @@ tolerance (render). The live game must remain the oracle throughout.
   `tools/corpus/actionsParity.mjs` (60-act vocabulary × 5 state variants,
   spy call traces identical). The app.js class-shell decomposition lands in
   Phase 6 (the oracle runtime stays untouched until the swap).
-- **Phase 5:** CI (GitHub Action: verify + parity + render gates on every push) + sim fuzz.
+- **Phase 5 (done):** CI — `.github/workflows/parity.yml` runs verify + every
+  parity gate (sim/ladder/fuzz/render/board/ui/chrome/actions/oracle-enemies)
+  on push+PR. Sim fuzz: `tools/corpus/simFuzz.mjs` — seeded random-action
+  streams over both sims with per-action result + event + state-hash checks;
+  it caught two real facade bugs (startWave return/event identity, `running`
+  mirror after game over) — both fixed.
 - **Phase 6:** swap the entry point, run the FULL corpus + ladder + browser walk, delete the
   oracle implementation (keep the corpus), verify size < 470,777 bytes.
 
