@@ -9,6 +9,7 @@ import { buildAttackPlan, Pattern, planOptsFromParts } from "../../attackPlan.js
 import { INF } from "../../boardGrid.js";
 import { allocId, emit, logAction } from "../state.js";
 import { applyStatus as applyStatusRegistry, tickStatus as tickStatusRegistry } from "../combat/status.js";
+import { SYNERGIES, heatBlockActive } from "../combat/synergy.js";
 
 export function invalidatePlans(state) {
   state.plans.clear();
@@ -369,8 +370,10 @@ function doChain(state, fromEnemy, damage, plan, tower, hit, jumps) {
   let dmg = damage;
   let from = { ...fromEnemy.pos };
   let left = jumps;
-  // Frost x shock: chains leap further from a slowed enemy (frozen lightning)
-  const maxChain = (plan.chainRange || 2.5) * ((fromEnemy.slowT || 0) > 0 ? 1.4 : 1);
+  // Frost x shock (synergy table): chains leap further from a slowed enemy
+  const maxChain =
+    (plan.chainRange || 2.5) *
+    (SYNERGIES.frostShock.when(fromEnemy) ? SYNERGIES.frostShock.chainRangeMult : 1);
   while (left-- > 0) {
     dmg *= plan.chainFalloff;
     let best = null;
@@ -441,8 +444,7 @@ function applyHit(state, e, damage, plan, tower, opts = {}) {
   // Shred synergy: a fully stripped target loses the plate's heat resistance.
   const heatBlock =
     dtype === "fire" && (armorKind === "plate" || armorKind === "insulated") &&
-    (e.shred || 0) <
-      Math.max(1, (e.armorFlat || 0) + (e.auraArmor || 0) - (plan.armorPierce || 0));
+    heatBlockActive(e, plan.armorPierce || 0);
   if (heatBlock) {
     raw *= 0.55;
   }
@@ -450,8 +452,8 @@ function applyHit(state, e, damage, plan, tower, opts = {}) {
   if (dtype === "shock" && armorKind === "insulated" && !plan.emp) {
     raw *= 0.35;
   }
-  // Frost x shock: slowed enemies surge — shock deals bonus damage into them
-  if (dtype === "shock" && (e.slowT || 0) > 0) raw *= 1.15;
+  // Frost x shock (synergy table): slowed enemies surge — shock bonus
+  if (dtype === "shock" && SYNERGIES.frostShock.when(e)) raw *= SYNERGIES.frostShock.shockDamageMult;
 
   if (tower) {
     const ox = tower.cell.x + 0.5;

@@ -6,6 +6,7 @@
  * so the state hash and parity are unaffected.
  */
 import { emit } from "../state.js";
+import { SYNERGIES, burnTickDamped } from "./synergy.js";
 
 export const STATUSES = {
   burn: {
@@ -16,10 +17,7 @@ export const STATUSES = {
     tickMult(e, tick) {
       const kind = e.armorKind || "none";
       if (kind === "none") return tick * 1.35;
-      if (
-        (kind === "plate" || kind === "insulated") &&
-        (e.shred || 0) < (e.armorFlat || 0) + (e.auraArmor || 0)
-      ) {
+      if ((kind === "plate" || kind === "insulated") && burnTickDamped(e)) {
         return tick * 0.55;
       }
       return tick;
@@ -29,9 +27,9 @@ export const STATUSES = {
     kind: "dot",
     fxType: "poison",
     fxEvery: 0.16,
-    /** Burn x poison: flames cook the toxin — +50% on burning targets. */
+    /** Burn x poison (synergy table): flames cook the toxin — +50%. */
     tickMult(e, tick) {
-      return (e.burnT || 0) > 0 ? tick * 1.5 : tick;
+      return SYNERGIES.burnPoison.when(e) ? tick * SYNERGIES.burnPoison.poisonTickMult : tick;
     },
   },
   slow: {
