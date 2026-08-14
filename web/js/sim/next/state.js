@@ -39,6 +39,9 @@ export function createState(opts = {}) {
     globalMods: { damage: 1, range: 1, rof: 1 },
     runLevelCap: 1,
     earlyBonusWave: 0,
+    // checkpointPhase intentionally undefined until set — the oracle's
+    // checkpoint() treats missing as "inWave" (runSync sets it explicitly).
+    metaAppliedGains: { parts: 0, aether: 0 },
     _nextId: 1,
 
     // run budget

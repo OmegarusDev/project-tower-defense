@@ -12,7 +12,6 @@ export function tickEnemies(state) {
   for (let i = 0; i < enemies.length; ) {
     const e = enemies[i];
     if (e.hp <= 0) {
-      state.killCount = (state.killCount | 0) + 1;
       state.economy.battle += e.battleDrop || 1;
       if ((e.splitsInto | 0) > 0) {
         const childKind = e.splitKind || "mite";
@@ -29,6 +28,7 @@ export function tickEnemies(state) {
           enemies.push(child);
         }
       }
+      state.killCount = (state.killCount | 0) + 1;
       emit(state, "enemy_killed", { enemy: e, drop: e.battleDrop || 1 });
       enemies.splice(i, 1);
       continue;
@@ -58,8 +58,8 @@ export function tickEnemies(state) {
     }
     advance(state, e);
     if (e.reachedExit) {
-      state.leakCount = (state.leakCount | 0) + 1;
       state.lives = Math.max(0, state.lives - (e.leakDamage || 1));
+      state.leakCount = (state.leakCount | 0) + 1;
       emit(state, "leak", { enemy: e, lives: state.lives });
       enemies.splice(i, 1);
       if (state.lives <= 0) {

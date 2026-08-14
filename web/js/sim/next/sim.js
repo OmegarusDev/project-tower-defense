@@ -4,6 +4,8 @@
  * stays plain data; systems do the work; this object only adapts.
  */
 import { createState, on, emit, logAction } from "./state.js";
+import { BASE_START_LIVES } from "../../data/techTree.js";
+import { defaultSlots, makeSlot, migratePartId } from "../../data/parts.js";
 import { startNextWave, tickWaves } from "./systems/waves.js";
 import { tickCombat, invalidatePlans } from "./systems/combat.js";
 import { tickEnemies } from "./systems/movement.js";
@@ -30,17 +32,22 @@ import {
 
 export class Sim {
   constructor() {
+    const self = this;
     this._s = null;
     this.dt = 1 / 60;
     this.grid = null;
-    this.portal = null;
     this.enemies = [];
     this.towers = [];
     this.walls = [];
     this.projectiles = [];
     this.roster = [];
     this.economy = null;
-    this.waves = { get waveActive() { return this._s ? this._s.waves.active : false; }, get toSpawn() { return this._s ? this._s.waves.toSpawn : 0; } };
+    // NOTE: arrow getters — `this` inside an object-literal getter would be
+    // the literal itself, not the Sim (a real bug: waveActive read false).
+    this.waves = {
+      get waveActive() { return self._s ? self._s.waves.active : false; },
+      get toSpawn() { return self._s ? self._s.waves.toSpawn : 0; },
+    };
     this.waveIndex = 0;
     this.running = false;
     this.modeEndless = true;
@@ -51,6 +58,9 @@ export class Sim {
     this.startLives = 3;
     this.tickIndex = 0;
     this.runLevelCap = 1;
+    this.campaignWaves = null;
+    this.wavesToWin = 0;
+    this.campaignLevelId = 0;
     this.actionLog = [];
   }
 
@@ -58,11 +68,6 @@ export class Sim {
     const s = createState({ cols, rows, seed, endless });
     this._s = s;
     this.grid = s.grid;
-    this.portal = s.portal;
-    this.enemies = s.enemies;
-    this.towers = s.towers;
-    this.walls = s.walls;
-    this.projectiles = s.projectiles;
     this.roster = s.roster;
     this.runSeed = s.runSeed;
     this.modeEndless = s.modeEndless;
@@ -94,6 +99,55 @@ export class Sim {
       applyRunMods: (m) => applyRunMods(s.economy, m),
       injectMeta: (f, a) => injectMeta(s.economy, f, a),
     };
+  }
+
+  get portal() {
+    return this._s ? this._s.portal : null;
+  }
+  set portal(v) {
+    if (this._s) this._s.portal = v;
+  }
+  get enemies() {
+    return this._s ? this._s.enemies : [];
+  }
+  set enemies(v) {
+    if (this._s) this._s.enemies = v;
+  }
+  get towers() {
+    return this._s ? this._s.towers : [];
+  }
+  set towers(v) {
+    if (this._s) this._s.towers = v;
+  }
+  get walls() {
+    return this._s ? this._s.walls : [];
+  }
+  set walls(v) {
+    if (this._s) this._s.walls = v;
+  }
+  get projectiles() {
+    return this._s ? this._s.projectiles : [];
+  }
+  set projectiles(v) {
+    if (this._s) this._s.projectiles = v;
+  }
+  get campaignWaves() {
+    return this._s ? this._s.campaignWaves : null;
+  }
+  set campaignWaves(v) {
+    if (this._s) this._s.campaignWaves = v;
+  }
+  get wavesToWin() {
+    return this._s ? this._s.wavesToWin : 0;
+  }
+  set wavesToWin(v) {
+    if (this._s) this._s.wavesToWin = v;
+  }
+  get campaignLevelId() {
+    return this._s ? this._s.campaignLevelId : 0;
+  }
+  set campaignLevelId(v) {
+    if (this._s) this._s.campaignLevelId = v;
   }
 
   on(type, fn) {
@@ -130,7 +184,9 @@ export class Sim {
     tickWaves(s);
     tickCombat(s);
     tickEnemies(s);
-    this.running = s.running;
+    // NOTE: `running` is NOT re-synced here — handlers (wave_cleared,
+    // game_over, victory) own it, exactly like the oracle. Re-syncing would
+    // clobber their false.
     this.lives = s.lives;
     this.leakCount = s.leakCount;
     this.killCount = s.killCount;
@@ -139,7 +195,7 @@ export class Sim {
 
   setStartLives(n, { resetCurrent = true } = {}) {
     const s = this._s;
-    s.startLives = Math.max(1, n | 0 || 3);
+    s.startLives = Math.max(1, n | 0 || BASE_START_LIVES);
     if (resetCurrent) s.lives = s.startLives;
     this.startLives = s.startLives;
     this.lives = s.lives;
@@ -209,5 +265,102 @@ export class Sim {
 
   stallsAt(cx, cy) {
     return stallsAtFn(this._s, cx, cy);
+  }
+
+  checkpoint() {
+    const s = this._s;
+    return {
+      wave: s.waves.index,
+      phase: s.checkpointPhase || "inWave",
+      earlyBonusWave: s.earlyBonusWave | 0,
+      lives: s.lives,
+      battle: s.economy.battle,
+      forge: s.economy.forge,
+      aether: s.economy.aether,
+      runWaveGains: structuredClone(s.economy.runWaveGains),
+      metaAppliedGains: structuredClone(s.metaAppliedGains || { parts: 0, aether: 0 }),
+      towers: structuredClone(s.towers),
+      walls: structuredClone(s.walls),
+      roster: structuredClone(s.roster),
+      seed: s.seed,
+      runSeed: s.runSeed,
+      actionLog: structuredClone(s.actionLog || []),
+      cols: s.grid.cols,
+      rows: s.grid.rows,
+      blocked: s.grid.exportBlocked(),
+    };
+  }
+
+  loadCheckpoint(blob) {
+    this.setup(blob.cols || 11, blob.rows || 14, blob.runSeed || blob.seed || 1, true);
+    const s = this._s;
+    s.runSeed = (blob.runSeed || blob.seed || 1) >>> 0;
+    s.actionLog = Array.isArray(blob.actionLog) ? structuredClone(blob.actionLog) : [];
+    s.economy.battle = blob.battle ?? 100;
+    s.economy.forge = blob.forge ?? 0;
+    s.economy.aether = blob.aether ?? 0;
+    s.economy.runWaveGains = {
+      coin: blob.runWaveGains?.coin | 0,
+      parts: blob.runWaveGains?.parts | 0,
+      aether: blob.runWaveGains?.aether | 0,
+    };
+    const applied = blob.metaAppliedGains;
+    s.metaAppliedGains = {
+      parts: applied ? applied.parts | 0 : s.economy.runWaveGains.parts | 0,
+      aether: applied ? applied.aether | 0 : s.economy.runWaveGains.aether | 0,
+    };
+    s.lives = blob.lives ?? 3;
+    s.waves.index = blob.wave ?? 0;
+    s.checkpointPhase = blob.phase === "betweenWaves" ? "betweenWaves" : "inWave";
+    s.earlyBonusWave = blob.earlyBonusWave | 0;
+    if (blob.earlyBonusClaimed && !s.earlyBonusWave && s.waves.index > 0) {
+      s.earlyBonusWave = s.waves.index;
+    }
+    s.roster = (blob.roster || defaultSlots()).map((x) =>
+      makeSlot(x.base, x.barrel, x.payload, x.levelCap || 1)
+    );
+    if (blob.blocked?.length === s.grid.cols * s.grid.rows) {
+      s.grid.blocked = Uint8Array.from(blob.blocked);
+    }
+    s.towers = blob.towers || [];
+    s.walls = blob.walls || [];
+    if (s.grid.towerMask?.length === s.grid.cols * s.grid.rows) {
+      s.grid.towerMask.fill(0);
+    }
+    for (const t of s.towers) {
+      t.base = migratePartId("base", t.base) || "sentry";
+      t.barrel = migratePartId("barrel", t.barrel) || "single";
+      t.payload = migratePartId("payload", t.payload) || "kinetic";
+      if (!Number.isFinite(t.aimAngle)) t.aimAngle = -Math.PI / 2;
+      if (!t.branch) t.branch = { damage: 0, rof: 0, range: 0 };
+      t.branch.damage = t.branch.damage | 0;
+      t.branch.rof = t.branch.rof | 0;
+      t.branch.range = t.branch.range | 0;
+      t.pendingPicks = t.pendingPicks | 0;
+      let pts = t.levelPoints | 0;
+      if (pts > 0) {
+        const cap = Math.max(1, t.levelCap | 0, this.runLevelCap | 0);
+        while (pts > 0 && (t.level | 0) < cap) {
+          pts -= 1;
+          t.level = (t.level | 0) + 1;
+          t.pendingPicks = (t.pendingPicks | 0) + 1;
+        }
+        t.levelPoints = 0;
+      }
+      s.grid.setBlocked(t.cell.x, t.cell.y, true);
+      s.grid.setTower(t.cell.x, t.cell.y, true);
+    }
+    for (const w of s.walls) s.grid.setBlocked(w.cell.x, w.cell.y, true);
+    s.grid.recompute();
+    s.running = false;
+    s.waves.active = false;
+    s.waves.toSpawn = 0;
+    emit(s, "checkpoint_loaded", { wave: s.waves.index, phase: s.checkpointPhase });
+    this.running = false;
+    this.waveIndex = s.waves.index;
+    this.lives = s.lives;
+    this.roster = s.roster;
+    this.campaignWaves = s.campaignWaves;
+    this.actionLog = s.actionLog;
   }
 }

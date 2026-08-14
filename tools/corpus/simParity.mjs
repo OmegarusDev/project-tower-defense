@@ -46,7 +46,10 @@ function runTrace(sim, base, maxTicks) {
   sim.on("leak", (e) => rec(tk(), "leak", e.enemy?.kind, e.lives));
   sim.on("enemy_killed", (e) => rec(tk(), "kill", e.enemy?.kind));
   sim.on("wave_composition", (e) => rec(tk(), "compose", e.count, e.theme, e.event));
-  sim.on("wave_cleared", (e) => rec(tk(), "clear", e.wave));
+  sim.on("wave_cleared", (e) => {
+    rec(tk(), "clear", e.wave);
+    sim.running = false;
+  });
   sim.on("game_over", () => rec(tk(), "game_over"));
   sim.on("victory", (e) => rec(tk(), "victory", e.wave));
   sim.on("tower_placed", (e) => rec(tk(), "tplace", e.tower?.id, e.tower?.cell?.x, e.tower?.cell?.y, e.surcharge));
@@ -57,6 +60,9 @@ function runTrace(sim, base, maxTicks) {
   sim.on("level_branch", (e) => rec(tk(), "branch", e.tower?.id, e.branch, e.ranks?.damage, e.ranks?.rof, e.ranks?.range));
   sim.on("tower_fired", (e) => rec(tk(), "fire", e.towerId, e.pattern, round(e.angle)));
   sim.on("hit", (e) => rec(tk(), "hit", e.enemyId, round(e.damage), e.type));
+  sim.on("chain_arc", (e) => rec(tk(), "chain", round(e.x0), round(e.y0), round(e.x1), round(e.y1)));
+  sim.on("hit_immune", (e) => rec(tk(), "immune", e.enemyId, e.reason || ""));
+  sim.on("status_fx", (e) => rec(tk(), "sfx", e.type, round(e.x), round(e.y)));
 
   let gameOver = false;
   sim.on("game_over", () => (gameOver = true));
@@ -88,9 +94,20 @@ function stateHash(sim) {
     tick: sim.tickIndex,
     leaks: sim.leakCount,
     kills: sim.killCount,
-    towers: sim.towers.map((t) => [t.id, t.cell.x, t.cell.y, t.base, t.barrel, t.payload, t.level, t.branch]),
+    towers: sim.towers.map((t) => [
+      t.id, t.cell.x, t.cell.y, t.base, t.barrel, t.payload, t.level, t.branch,
+      t.xp | 0, t.pendingPicks | 0, round(t.cooldown), round(t.aimAngle), t.targetId,
+    ]),
     walls: sim.walls.map((w) => [w.id, w.cell.x, w.cell.y, w.preplaced ? 1 : 0]),
-    enemies: sim.enemies.map((e) => [e.id, e.kind, round(e.pos.x), round(e.pos.y), round(e.hp)]),
+    enemies: sim.enemies.map((e) => [
+      e.id, e.kind, round(e.pos.x), round(e.pos.y), round(e.hp), round(e.shieldHp),
+      e.burnT | 0, round(e.burnAcc), e.poisonT | 0, round(e.poisonAcc),
+      e.slowT | 0, round(e.slowAmount), e.shred | 0, e.shredT | 0,
+      round(e._regenAcc), e._spawnAcc | 0, e.spawnedTotal | 0, e.auraArmor | 0,
+    ]),
+    projectiles: sim.projectiles.map((pr) => [
+      pr.id, round(pr.pos.x), round(pr.pos.y), round(pr.traveled), pr.pierce | 0,
+    ]),
     log: sim.actionLog,
   });
 }
