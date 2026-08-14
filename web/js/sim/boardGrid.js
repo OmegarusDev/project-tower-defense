@@ -211,6 +211,67 @@ export class BoardGrid {
   }
 
   /**
+   * All equally-optimal downhill neighbors at the minimum distance — THE
+   * single source of truth for both live enemy picks (pickNextGround) and
+   * the flow preview (pathPoints). Any rule change here (blocking, tower
+   * avoidance, distance) changes both at once — the preview and the real
+   * pathing are structurally linked and can never disagree on the option
+   * set. Optional `dist` for the BFS-time canonical arrays.
+   */
+  groundOptions(x, y, { avoidTowers = true, flying = false, dist = null } = {}) {
+    const d = dist || (flying ? this.airDist : this.groundDist);
+    const cur = d[this.idx(x, y)];
+    let bestD = INF;
+    const cands = [];
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!this.inBounds(nx, ny)) continue;
+      if (!flying && this.isBlocked(nx, ny)) continue;
+      const nd = d[this.idx(nx, ny)];
+      if (nd >= INF) continue;
+      if (nd > bestD) continue;
+      if (nd < bestD) {
+        bestD = nd;
+        cands.length = 0;
+      }
+      cands.push({ x: nx, y: ny });
+    }
+    if (!cands.length || bestD >= cur) return [];
+    let pool = cands;
+    if (avoidTowers && this.towerProx) {
+      let bestProx = INF;
+      const filtered = [];
+      for (const c of cands) {
+        const p = this.towerProx[this.idx(c.x, c.y)] | 0;
+        if (p > bestProx) continue;
+        if (p < bestProx) {
+          bestProx = p;
+          filtered.length = 0;
+        }
+        filtered.push(c);
+      }
+      if (filtered.length) pool = filtered;
+    }
+    return pool;
+  }
+
+  /**
+   * Non-mutating deterministic pick over groundOptions — the preview's
+   * trunk choice (id 0, tick 0). Same pool, same hash the canonical
+   * viz path always used; never touches the live fork round-robin.
+   */
+  canonicalGround(x, y, { avoidTowers = true } = {}) {
+    if (!this.inBounds(x, y)) return { x, y };
+    if (this.isExit(x, y)) return { x, y };
+    const pool = this.groundOptions(x, y, { avoidTowers, flying: false });
+    if (!pool.length) return { x, y };
+    if (pool.length === 1) return pool[0];
+    const h = BoardGrid.pathTieHash(0, x, y, 0);
+    return pool[h % pool.length];
+  }
+
+  /**
    * Deterministic fair pick among equal-cost options.
    * Hash mixes enemy id + cell + tick so traffic forks evenly over time.
    */
@@ -229,40 +290,8 @@ export class BoardGrid {
    * canonical viz path (_bfs) keeps DIR-order first via the static hash.
    */
   _pickAmong(x, y, dist, flying, { avoidTowers = true, id = 0, tick = 0, live = false, entity = null } = {}) {
-    const cur = dist[this.idx(x, y)];
-    let bestD = INF;
-    const cands = [];
-    for (const [dx, dy] of DIRS) {
-      const nx = x + dx;
-      const ny = y + dy;
-      if (!this.inBounds(nx, ny)) continue;
-      if (!flying && this.isBlocked(nx, ny)) continue;
-      const nd = dist[this.idx(nx, ny)];
-      if (nd >= INF) continue;
-      if (nd > bestD) continue;
-      if (nd < bestD) {
-        bestD = nd;
-        cands.length = 0;
-      }
-      cands.push({ x: nx, y: ny });
-    }
-    if (!cands.length || bestD >= cur) return { x, y };
-
-    let pool = cands;
-    if (avoidTowers && this.towerProx) {
-      let bestProx = INF;
-      const filtered = [];
-      for (const c of cands) {
-        const p = this.towerProx[this.idx(c.x, c.y)] | 0;
-        if (p > bestProx) continue;
-        if (p < bestProx) {
-          bestProx = p;
-          filtered.length = 0;
-        }
-        filtered.push(c);
-      }
-      if (filtered.length) pool = filtered;
-    }
+    const pool = this.groundOptions(x, y, { avoidTowers, flying, dist });
+    if (!pool.length) return { x, y };
 
     if (pool.length === 1) return pool[0];
     if (live) {

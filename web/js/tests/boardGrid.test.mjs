@@ -154,3 +154,35 @@ assert(g2.airDist[g2.idx(g2.spawn.x, g2.spawn.y)] < INF, "air ok");
 }
 
 console.log("ALL boardGrid tests passed");
+
+{
+  // STRUCTURAL LINK: preview options === live pick pool, by construction.
+  const g5 = new BoardGrid();
+  g5.setup(5, 7);
+  g5.setBlocked(g5.spawn.x, 1, true);
+  g5.recompute();
+  assert(g5.hasGroundPath(), "detour open");
+
+  const opts = g5.groundOptions(g5.spawn.x, g5.spawn.y);
+  assert(opts.length === 2, `fork exposes both options (got ${opts.length})`);
+
+  // The canonical preview pick is one of the options; live picks (many
+  // enemies, both avoid modes) can only ever return pool members.
+  const canon = g5.canonicalGround(g5.spawn.x, g5.spawn.y);
+  assert(opts.some((o) => o.x === canon.x && o.y === canon.y), "canonical pick is in the pool");
+  for (let i = 0; i < 40; i++) {
+    const p = g5.pickNextGround(g5.spawn.x, g5.spawn.y, { entity: {}, avoidTowers: true });
+    assert(opts.some((o) => o.x === p.x && o.y === p.y), `live pick in pool (got ${p.x},${p.y})`);
+  }
+
+  // The preview (stub camera) returns the trunk + the alternative branch,
+  // and both lanes reach the exit.
+  const { pathPoints } = await import("../view/next/boardScene.js");
+  const cam = { projectCell: (x, y) => ({ x, y, s: 1 }) };
+  const { trunk, branches } = pathPoints(cam, g5, g5.spawn.x);
+  const allPts = [...trunk, ...branches.flat()];
+  const laneX = new Set(allPts.map((p) => Math.round(p.x)));
+  assert(branches.length >= 1, `alternative branch drawn (got ${branches.length})`);
+  const exitReached = allPts.some((p) => p.y === g5.rows - 1);
+  assert(exitReached, "preview paths reach the exit row");
+}

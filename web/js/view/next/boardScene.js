@@ -583,21 +583,64 @@ export function drawStains(ctx, cam, palette, stains, cell) {
 }
 
 /**
- * Flow preview path points — starts at the live seam (portal cell), walks
- * the ground chain. Pure; the class keeps its own revision cache.
+ * Flow preview paths — starts at the live seam (portal cell), walks the
+ * ground chain through the SAME option pool the live enemies pick from
+ * (grid.groundOptions). Returns { trunk, branches }: the canonical trunk
+ * plus every equally-optimal alternative branch, so the preview shows the
+ * full option set the sim actually distributes over. Pure; the class keeps
+ * its own revision cache.
  */
-export function pathPoints(cam, grid, portalX) {
+export function pathPoints(cam, grid, portalX, opts = {}) {
+  const maxPaths = opts.maxPaths || 8;
+  const maxSteps = 120;
   const start = { x: portalX, y: 0 };
-  const pts = [cam.projectCell(start.x, start.y)];
+  const proj = (c) => cam.projectCell(c.x, c.y);
+  const trunkCells = [];
+  const drawn = new Set();
   let cell = { x: start.x, y: start.y };
-  for (let i = 0; i < 120; i++) {
-    const next = grid.nextGround(cell.x, cell.y);
+  for (let i = 0; i < maxSteps; i++) {
+    const key = `${cell.x},${cell.y}`;
+    if (drawn.has(key)) break;
+    drawn.add(key);
+    trunkCells.push(cell);
+    const next = grid.canonicalGround(cell.x, cell.y);
     if (next.x === cell.x && next.y === cell.y) break;
-    pts.push(cam.projectCell(next.x, next.y));
-    if (grid.isExit(next.x, next.y)) break;
     cell = next;
+    if (grid.isExit(cell.x, cell.y)) {
+      drawn.add(`${cell.x},${cell.y}`);
+      trunkCells.push(cell);
+      break;
+    }
   }
-  return pts;
+  const trunk = trunkCells.map(proj);
+
+  const branches = [];
+  const forkQueue = trunkCells.slice(0);
+  for (let fi = 0; fi < forkQueue.length && branches.length < maxPaths; fi++) {
+    const fc = forkQueue[fi];
+    const pool = grid.groundOptions(fc.x, fc.y);
+    if (pool.length < 2) continue;
+    const trunkChoice = grid.canonicalGround(fc.x, fc.y);
+    for (const opt of pool) {
+      if (branches.length >= maxPaths) break;
+      if (opt.x === trunkChoice.x && opt.y === trunkChoice.y) continue;
+      const cells = [fc, opt];
+      let cur = opt;
+      let guard = 0;
+      while (guard++ < maxSteps) {
+        const key = `${cur.x},${cur.y}`;
+        if (drawn.has(key)) break;
+        drawn.add(key);
+        const next = grid.canonicalGround(cur.x, cur.y);
+        if (next.x === cur.x && next.y === cur.y) break;
+        cur = next;
+        cells.push(cur);
+        if (grid.isExit(cur.x, cur.y)) break;
+      }
+      if (cells.length > 1) branches.push(cells.map(proj));
+    }
+  }
+  return { trunk, branches };
 }
 
 export function strokePts(ctx, pts) {
@@ -607,22 +650,8 @@ export function strokePts(ctx, pts) {
   ctx.stroke();
 }
 
-export function drawPath(ctx, cam, grid, portalX, cell, t, enemyCount) {
-  void cam;
-  const pts = pathPoints(cam, grid, portalX);
-  if (pts.length < 2) return;
-
-  const pressure = Math.min(1, enemyCount / 14);
+function strokePathLayers(ctx, pts, { w, travel, pressure, warm, cell }) {
   const c = cell;
-  const midS = pts[Math.floor(pts.length / 2)]?.s || 1;
-  const w = Math.max(5, c * (0.38 + pressure * 0.12) * midS);
-  const travel = -t * c * (1.15 + pressure * 0.8);
-  const warm = 0.06 + pressure * 0.14;
-
-  ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-
   ctx.strokeStyle = `rgba(120, 190, 220, ${0.06 + pressure * 0.08})`;
   ctx.lineWidth = w * 1.85;
   strokePts(ctx, pts);
@@ -652,6 +681,31 @@ export function drawPath(ctx, cam, grid, portalX, cell, t, enemyCount) {
   ctx.setLineDash([c * 0.12, c * 1.1]);
   ctx.lineDashOffset = travel - c * 0.28;
   strokePts(ctx, pts);
+}
+
+export function drawPath(ctx, cam, grid, portalX, cell, t, enemyCount) {
+  void cam;
+  const { trunk, branches } = pathPoints(cam, grid, portalX);
+  if (trunk.length < 2) return;
+
+  const pressure = Math.min(1, enemyCount / 14);
+  const c = cell;
+  const midS = trunk[Math.floor(trunk.length / 2)]?.s || 1;
+  const w = Math.max(5, c * (0.38 + pressure * 0.12) * midS);
+  const travel = -t * c * (1.15 + pressure * 0.8);
+  const warm = 0.06 + pressure * 0.14;
+
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // Trunk exactly as before; branches share the same stroke layers so the
+  // preview and the real pathing are the same visual language.
+  strokePathLayers(ctx, trunk, { w, travel, pressure, warm, cell: c });
+  for (const br of branches) {
+    if (br.length < 2) continue;
+    strokePathLayers(ctx, br, { w, travel, pressure, warm, cell: c });
+  }
 
   ctx.setLineDash([]);
   ctx.restore();
