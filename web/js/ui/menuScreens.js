@@ -105,6 +105,10 @@ export function renderSettings(app) {
             <h3>Tech</h3>
             <p class="end-note" style="margin:0">Ranks are permanent — pick Foundations and Arsenal upgrades with care.</p>
           </div>
+        <div class="set-block" style="border-top:1px solid rgba(200,130,60,0.25);padding-top:10px">
+          <h3>Testing</h3>
+          <button class="btn danger" data-act="reset-meta" style="width:100%">Reset Meta (wipe save)</button>
+        </div>
       </div>
     </div>`;
 }

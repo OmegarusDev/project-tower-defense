@@ -25,6 +25,8 @@ export class SimWorld {
     this.partUpgrades = {};
     this.globalMods = { damage: 1, range: 1, rof: 1 };
     this.tickIndex = 0;
+    this.leakCount = 0;
+    this.killCount = 0;
     this.lives = BASE_START_LIVES;
     this.waveIndex = 0;
     this.running = false;
@@ -80,6 +82,8 @@ export class SimWorld {
     this.enemies = [];
     this.projectiles = [];
     this.tickIndex = 0;
+    this.leakCount = 0;
+    this.killCount = 0;
     this.lives = BASE_START_LIVES;
     this.startLives = BASE_START_LIVES;
     this.sellRefundMult = 0.5;
@@ -459,6 +463,7 @@ export class SimWorld {
             this.enemies.push(child);
           }
         }
+        this.killCount = (this.killCount | 0) + 1;
         this.emit("enemy_killed", { enemy: e, drop: e.battleDrop || 1 });
         this.enemies.splice(i, 1);
         continue;
@@ -489,6 +494,7 @@ export class SimWorld {
       this._advance(e);
       if (e.reachedExit) {
         this.lives = Math.max(0, this.lives - (e.leakDamage || 1));
+        this.leakCount = (this.leakCount | 0) + 1;
         this.emit("leak", { enemy: e, lives: this.lives });
         this.enemies.splice(i, 1);
         if (this.lives <= 0) {

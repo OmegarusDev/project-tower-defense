@@ -12,6 +12,15 @@ export function handleUiAction(app, act, _ev) {
     if (app.screen === "prep" && app.prepLevelId) app.showPrep(app.prepLevelId);
   } else if (act?.startsWith("start-level:")) app.startCampaignLevel(+act.slice(12));
   else if (act === "editor") app.showEditor();
+  else if (act === "reset-meta") {
+    if (confirm("Reset all progress? This wipes your save and cannot be undone.")) {
+      try {
+        localStorage.removeItem("ptd_meta_v1");
+        localStorage.removeItem("ptd_endless_v1");
+      } catch (_) {}
+      location.reload();
+    }
+  }
   else if (act === "ed-apply-size") {
     const c = +(app.ui.querySelector("#edCols")?.value || 8);
     const r = +(app.ui.querySelector("#edRows")?.value || 8);

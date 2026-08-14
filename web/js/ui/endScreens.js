@@ -158,8 +158,7 @@ export function showGameOver(app) {
         <button class="btn" data-act="forge-from-hub">Forge</button>
         <button class="btn secondary" data-act="${backAct}">${backLabel}</button>
         <button class="btn secondary" data-act="main">Main Menu</button>
-      </div>
-      <p class="end-note">Seed ${seed || "—"}</p>`
+      </div>`
     : `<div class="end-actions">
         ${
           lv
@@ -196,6 +195,9 @@ export function showGameOver(app) {
           ${gainLine(gains.parts, "Parts", "parts")}
           ${gainLine(gains.aether, "Aether", "aether")}
         </div>
+        <p class="end-note run-stats">Leaks ${app.sim?.leakCount || 0} · Kills ${
+          app.sim?.killCount || 0
+        } · Seed ${seed || "—"}</p>
       </div>
       <div class="end-card end-card-totals">
         <h3>Vault</h3>
