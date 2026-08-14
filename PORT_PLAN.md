@@ -91,13 +91,15 @@ tolerance (render). The live game must remain the oracle throughout.
   hover/atmosphere) — byte-identical vs the oracle BoardView methods on shared
   cameras (`tools/corpus/boardParity.mjs`). Badge + selection ring added to
   renderTower (untested by the tile goldens — showBadge:false there).
-- **Phase 4 (in progress):** UI registry — `ui/next/screens.js` with the meta screens
-  as pure render fns over an explicit state (main/settings/campaign/prep/hub/forge/
-  tech/editor + forgePlanSummary + rosterSlotButtonsHtml), `ui/next/registry.js`
-  (SCREENS + mountScreen). DOM parity gate: `tools/corpus/uiParity.mjs` — oracle
-  screen modules vs next renderers from identical state, byte-identical (7 cases,
-  incl. tech overlay). Remaining: game chrome (HUD), bind/actions split, app.js
-  decomposition.
+- **Phase 4 (in progress):** UI registry — `ui/next/screens.js` meta screens as
+  pure render fns over explicit state (main/settings/campaign/prep/hub/forge/tech/
+  editor + forgePlanSummary + rosterSlotButtonsHtml) + `ui/next/registry.js`
+  (SCREENS + mountScreen), gated by `tools/corpus/uiParity.mjs` (7 cases,
+  byte-identical). Game chrome done: `ui/next/chrome.js` (chromeHtml +
+  composeSheetHtml + pauseSheetHtml + statChipsHtml + slotLineHtml +
+  callButtonState + syncHud/syncBuildDock/syncTowerOverlay incl. positioning),
+  gated by `tools/corpus/chromeParity.mjs` (4 variants: plain/busy/paused/
+  compose, byte-identical). Remaining: bind/actions split, app.js decomposition.
 - **Phase 5:** CI (GitHub Action: verify + parity + render gates on every push) + sim fuzz.
 - **Phase 6:** swap the entry point, run the FULL corpus + ladder + browser walk, delete the
   oracle implementation (keep the corpus), verify size < 470,777 bytes.
@@ -106,6 +108,13 @@ tolerance (render). The live game must remain the oracle throughout.
 
 - Twin-barrel proportions polish.
 - Any aesthetic tweaks found during eyeballing (user's eyes are the final arbiter).
+- Music tempo: the score starts slightly too fast and accelerates too quickly —
+  slow the initial tempo and the ramp (tune in scoreEngine).
+- Portal spawn rule (from the user): the seam row should be BUILDABLE; the portal
+  must not spawn in a column occupied by a tower or wall — it picks an unblocked
+  column (optionally the player can force it to a spot). Needs a fallback rule
+  for the all-blocked case (never a softlock) — design decision to make at
+  implementation time.
 
 ## Dev tooling
 

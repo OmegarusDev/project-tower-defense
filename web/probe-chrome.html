@@ -1,0 +1,203 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="./css/tokens.css" />
+<link rel="stylesheet" href="./css/shell.css" />
+<link rel="stylesheet" href="./css/game-hud.css" />
+<style>
+  body { margin: 0; }
+  #hostO, #hostN { width: 960px; height: 540px; }
+  #uiO, #uiN { width: 960px; height: 540px; }
+</style>
+</head>
+<body>
+<div id="hostO"></div><div id="hostN"></div>
+<script type="module">
+  import { ProcPalette } from "/js/view/palette.js";
+  import { BoardView } from "/js/view/boardView.js";
+  import { SimWorld } from "/js/sim/simWorld.js";
+  import { ENDLESS_GRID } from "/js/data/endlessGrid.js";
+  import { loadMeta } from "/js/saveStore.js";
+  import * as chrome from "/js/app/gameChrome.js";
+  import * as pause from "/js/app/pauseSettings.js";
+  import * as N from "/js/ui/next/chrome.js";
+
+  const W = window;
+  const SEED = 42;
+
+  function buildSim() {
+    const sim = new SimWorld();
+    sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, SEED, true);
+    sim.runSeed = SEED;
+    sim.modeEndless = true;
+    sim.roster = [
+      { base: "sentry", barrel: "single", payload: "kinetic", placeCost: 6, complete: true },
+      { base: "bulwark", barrel: "scatter", payload: "fire", placeCost: 14, complete: true },
+      { base: "spire", barrel: "pulse", payload: "frost", placeCost: 22, complete: true },
+    ];
+    sim.lives = 19;
+    sim.economy.battle = 42;
+    sim.economy.forge = 7;
+    sim.economy.aether = 3;
+    sim.waveIndex = 2;
+    sim.towers.push({
+      id: 1, cell: { x: 3, y: 4 }, base: "sentry", barrel: "single", payload: "kinetic",
+      paid: 6, level: 2, xp: 35, xpToPoint: 100, pendingPicks: 1, levelCap: 5, aimAngle: -Math.PI / 2,
+    });
+    sim.towers.push({
+      id: 2, cell: { x: 6, y: 5 }, base: "bulwark", barrel: "scatter", payload: "fire",
+      paid: 14, level: 1, xp: 0, xpToPoint: 100, pendingPicks: 0, levelCap: 5, aimAngle: 0,
+    });
+    sim.walls.push({ id: 5, cell: { x: 2, y: 3 }, paid: 12 });
+    sim.enemies.push({ id: 9, pos: { x: 4, y: 0.6 }, hp: 40, maxHp: 40, kind: "mite" });
+    sim.enemies.push({ id: 10, pos: { x: 4.3, y: 1.2 }, hp: 90, maxHp: 90, kind: "hauler" });
+    sim.sellRefundMult = 0.5;
+    return sim;
+  }
+
+  function buildBoard() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 960;
+    canvas.height = 540;
+    document.getElementById("hostO").appendChild(canvas);
+    const board = new BoardView(canvas, new ProcPalette());
+    return board;
+  }
+
+  function mkApp(sim, board) {
+    const ui = document.createElement("div");
+    ui.setAttribute("id", "ui");
+    document.getElementById("hostO").appendChild(ui);
+    const app = {
+      ui,
+      meta: loadMeta(),
+      palette: new ProcPalette(),
+      sim,
+      board,
+      screen: "game",
+      tool: "tower",
+      slot: 0,
+      status: "",
+      paused: false,
+      speed: 1,
+      _ffHeld: false,
+      selectedTowerId: -1,
+      selectedWallId: -1,
+      liveCompose: false,
+      _previewTick: 0,
+      slotPreviewAim: -Math.PI / 2,
+      playtestFromEditor: false,
+      synth: { play() {}, setVolume() {} },
+      score: { setPaused() {} },
+      waveBusy: () => chrome.waveBusy(app),
+      bindUi() {},
+      _bindCallButton() {},
+      _endFastForward() { app._ffHeld = false; },
+      clearPlaceConfirm() {},
+      applyPitch() {},
+      paintSlotPreviews() {},
+      refreshHud() { chrome.refreshHud(app); },
+      _renderPauseSheet() { pause.renderPauseSheet(app); },
+    };
+    return app;
+  }
+
+  function quoteProvider(sim) {
+    return (i) => {
+      const s = sim.roster?.[i];
+      if (!s?.complete) {
+        return {
+          complete: false,
+          costLabel: "—",
+          tip: "incomplete — set in Forge",
+          total: 0,
+          surcharge: 0,
+          loadout: s || null,
+        };
+      }
+      const q = sim.economy.quoteTowerPlace(s.placeCost, sim.towers.length);
+      return {
+        complete: true,
+        costLabel: `${q.total}`,
+        tip: `${s.base}/${s.barrel}/${s.payload}${q.surcharge ? ` (+${q.surcharge} tax)` : ""}`,
+        total: q.total,
+        surcharge: q.surcharge,
+        loadout: s,
+      };
+    };
+  }
+
+  function nextState(sim, board, opts) {
+    return {
+      meta: loadMeta(),
+      sim,
+      board: { cell: board.cell, cellScreenCenter: (x, y) => board.cellScreenCenter(x, y) },
+      roster: sim.roster,
+      quote: quoteProvider(sim),
+      tool: opts.tool || "tower",
+      slot: 0,
+      status: opts.status || "",
+      ffHeld: !!opts.ffHeld,
+      speed: opts.speed || 1,
+      paused: !!opts.paused,
+      liveCompose: !!opts.liveCompose,
+      playtestFromEditor: false,
+      selectedTowerId: opts.selectedTowerId ?? -1,
+      selectedWallId: opts.selectedWallId ?? -1,
+      waveBusy: () => !!(sim.waves.waveActive || sim.enemies.length),
+      pitchDeg: 24,
+      uiWidth: 960,
+      uiHeight: 540,
+    };
+  }
+
+  W.__renderChrome = (variant) => {
+    const sim = buildSim();
+    const board = buildBoard();
+    board.setSim(sim);
+    board._fit(true);
+    const app = mkApp(sim, board);
+    app._ffHeld = variant === "busy";
+    if (variant === "plain") app.selectedTowerId = 1;
+    if (variant === "busy") {
+      app.tool = "wall";
+      app.selectedWallId = 5;
+      app.status = "Wave 2 — hold";
+      sim.waves.waveActive = true;
+    }
+    if (variant === "compose") app.liveCompose = true;
+    chrome.renderGameChrome(app);
+    chrome.refreshHud(app);
+    if (variant === "paused") pause.renderPauseSheet(app);
+    const oracleHtml = app.ui.outerHTML;
+
+    const simN = buildSim();
+    const boardN = buildBoard();
+    boardN.setSim(simN);
+    boardN._fit(true);
+    if (variant === "plain") simN.waves.waveActive = false;
+    if (variant === "busy") simN.waves.waveActive = true;
+    const st = nextState(simN, boardN, {
+      tool: variant === "busy" ? "wall" : "tower",
+      status: variant === "busy" ? "Wave 2 — hold" : "",
+      ffHeld: variant === "busy",
+      selectedTowerId: variant === "plain" ? 1 : -1,
+      selectedWallId: variant === "busy" ? 5 : -1,
+      liveCompose: variant === "compose",
+      paused: variant === "paused",
+    });
+    const hostN = document.getElementById("hostN");
+    const uiN = document.createElement("div");
+    uiN.setAttribute("id", "ui");
+    hostN.appendChild(uiN);
+    uiN.innerHTML = N.chromeHtml(st);
+    N.syncHud(uiN, st);
+    if (variant === "paused") {
+      const sheet = document.createElement("div");
+      sheet.id = "pauseSheet";
+      sheet.className = "pause-sheet";
+      sheet.innerHTML = N.pauseSheetHtml(st);
+      uiN.appendChild(sheet);
+    }
+    const nextHtml = uiN.outerHTML;
+    return { oracle: oracleHtml, next: nextHtml, match: oracleHtml === nextHtml };
+  };
+</script></body></html>
