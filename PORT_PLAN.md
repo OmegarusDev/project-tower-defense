@@ -91,7 +91,13 @@ tolerance (render). The live game must remain the oracle throughout.
   hover/atmosphere) — byte-identical vs the oracle BoardView methods on shared
   cameras (`tools/corpus/boardParity.mjs`). Badge + selection ring added to
   renderTower (untested by the tile goldens — showBadge:false there).
-- **Phase 4:** UI registry + component refresh (screens as pure render fns; `app.js` god-object dies).
+- **Phase 4 (in progress):** UI registry — `ui/next/screens.js` with the meta screens
+  as pure render fns over an explicit state (main/settings/campaign/prep/hub/forge/
+  tech/editor + forgePlanSummary + rosterSlotButtonsHtml), `ui/next/registry.js`
+  (SCREENS + mountScreen). DOM parity gate: `tools/corpus/uiParity.mjs` — oracle
+  screen modules vs next renderers from identical state, byte-identical (7 cases,
+  incl. tech overlay). Remaining: game chrome (HUD), bind/actions split, app.js
+  decomposition.
 - **Phase 5:** CI (GitHub Action: verify + parity + render gates on every push) + sim fuzz.
 - **Phase 6:** swap the entry point, run the FULL corpus + ladder + browser walk, delete the
   oracle implementation (keep the corpus), verify size < 470,777 bytes.

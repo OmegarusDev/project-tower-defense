@@ -1,0 +1,128 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0}</style></head>
+<body>
+<script type="module">
+  import { ProcPalette } from "/js/view/palette.js";
+  import { loadMeta } from "/js/saveStore.js";
+  import * as menus from "/js/ui/menuScreens.js";
+  import * as ends from "/js/ui/endScreens.js";
+  import * as forge from "/js/ui/forgeScreen.js";
+  import * as tech from "/js/ui/techScreen.js";
+  import * as N from "/js/ui/next/screens.js";
+  import { TECH_TREES } from "/js/data/techTree.js";
+
+  const W = window;
+
+  function mkApp() {
+    const ui = document.createElement("div");
+    ui.setAttribute("id", "ui");
+    document.body.appendChild(ui);
+    const app = {
+      ui,
+      meta: loadMeta(),
+      screen: "",
+      status: "",
+      forgeSlot: 0,
+      forgeReturn: "",
+      prepLevelId: 1,
+      prepSlot: 0,
+      upgradeReturn: "",
+      techTreeTab: "foundations",
+      techSelectedId: null,
+      palette: new ProcPalette(),
+      synth: { play() {}, resume() {}, setVolume() {}, setMusicVolume() {} },
+      score: {
+        stop() {},
+        setEnabled() {},
+        setMusicVolume() {},
+        tick() {},
+        start() {},
+        setDensity() {},
+        setPhase() {},
+      },
+      bindUi() {},
+      toast() {},
+      persistMeta() {},
+      applyPitch() {},
+    };
+    app.paintForgePreview = () => forge.paintForgePreview(app);
+    return app;
+  }
+
+  const ORACLE = {
+    main: (app) => menus.renderMain(app),
+    hub: (app) => ends.showEndlessHub(app),
+    campaign: (app) => menus.renderCampaign(app),
+    forge: (app) => forge.showForge(app),
+    tech: (app) => tech.showUpgrade(app),
+    settings: (app) => menus.renderSettings(app),
+  };
+
+  const NEXT = {
+    main: (s) => N.renderMain(s),
+    hub: (s) => N.renderHub(s),
+    campaign: (s) => N.renderCampaign(s),
+    forge: (s) => N.renderForge(s),
+    tech: (s) => N.renderTech(s),
+    settings: (s) => N.renderSettings(s),
+  };
+
+  W.__renderScreen = (name, opts = {}) => {
+    const app = mkApp();
+    app.techTreeTab = opts.techTreeTab || "foundations";
+    app.techSelectedId = opts.techSelectedId ?? null;
+    app.status = opts.status ?? "";
+    app.forgeSlot = opts.forgeSlot ?? 0;
+    app.forgeReturn = opts.forgeReturn ?? "";
+    app.prepLevelId = opts.prepLevelId ?? 1;
+    app.prepSlot = opts.prepSlot ?? 0;
+    app.upgradeReturn = opts.upgradeReturn ?? "";
+    ORACLE[name](app);
+    const state = {
+      meta: app.meta,
+      status: app.status,
+      forgeSlot: app.forgeSlot,
+      forgeReturn: app.forgeReturn || "main",
+      prepLevelId: app.prepLevelId,
+      prepSlot: app.prepSlot,
+      upgradeReturn: app.upgradeReturn,
+      techTreeTab: app.techTreeTab,
+      techSelectedId: app.techSelectedId,
+      checkpoint: null,
+    };
+    const nextHtml = NEXT[name](state);
+    const oracleHtml = app.ui.innerHTML;
+    const nextBox = document.createElement("div");
+    nextBox.innerHTML = nextHtml;
+    if (name === "forge") {
+      // Mirror the oracle's post-mount paintForgePreview resize (css 112, dpr 1)
+      const cv = nextBox.querySelector("#forgePreview");
+      if (cv) {
+        cv.width = 112;
+        cv.height = 112;
+      }
+    }
+    const nextNorm = nextBox.innerHTML;
+    return {
+      oracle: oracleHtml,
+      next: nextNorm,
+      match: oracleHtml === nextNorm,
+      screenHtml: app.ui.querySelector(".screen")?.outerHTML || "",
+    };
+  };
+
+  /** First purchasable node id in a tree (for overlay tests). */
+  function firstNodeId(treeId) {
+    const tree = TECH_TREES.find((t) => t.id === treeId) || TECH_TREES[0];
+    const walk = (node) => {
+      if (!node) return null;
+      if (node.kind !== "group" && node.kind !== "root") return node.id;
+      for (const c of node.children || []) {
+        const r = walk(c);
+        if (r) return r;
+      }
+      return null;
+    };
+    return walk(tree);
+  }
+  W.__firstNodeId = firstNodeId;
+</script></body></html>
