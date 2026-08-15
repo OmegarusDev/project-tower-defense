@@ -171,6 +171,24 @@ export class FxSystem {
     });
   }
 
+  portalMoteBurst(x, y, { count = 8, inward = true, colors = ["#c9a0e8", "#a0d4e8"] } = {}) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 0.35 + Math.random() * 0.75;
+      this.items.push({
+        kind: "spark",
+        x: x + Math.cos(a) * (inward ? 0.22 : 0.04),
+        y: y + Math.sin(a) * (inward ? 0.18 : 0.03),
+        vx: Math.cos(a) * sp * (inward ? -1 : 1),
+        vy: Math.sin(a) * sp * 0.6 * (inward ? -1 : 1),
+        life: 0.35 + Math.random() * 0.25,
+        max: 0.65,
+        type: Math.random() > 0.5 ? colors[0] : colors[1],
+        size: 1.8 + Math.random() * 2.5,
+      });
+    }
+  }
+
   _kineticScrap(x, y) {
     for (let i = 0; i < 6; i++) {
       const a = Math.random() * Math.PI * 2;

@@ -7,6 +7,7 @@
 import { buildAttackPlan, planOptsFromParts } from "../../sim/attackPlan.js";
 import { XP_TO_POINT } from "../../data/parts.js";
 import * as S from "./boardScene.js";
+import { PortalAnimator } from "./boardScene.js";
 import { VIEW25, setPitch, BoardCamera } from "../view25.js";
 
 /** Draw towers/enemies a bit larger than the cell footprint. */
@@ -68,6 +69,7 @@ export class BoardView {
       ph: Math.random() * Math.PI * 2,
       warm: Math.random() > 0.4,
     }));
+    this.portalAnimator = null;
 
     canvas.addEventListener("pointerdown", (e) => this._onPointerDown(e));
     canvas.addEventListener("pointermove", (e) => this._onPointerMove(e));
@@ -443,7 +445,7 @@ export class BoardView {
     }
   }
 
-  draw(dt = 0.016) {
+  draw(dt = 0.016, portalAnimator = null) {
     if (!this.sim) return;
     this._stepCamera(dt);
     this._fit(false);
@@ -491,7 +493,7 @@ export class BoardView {
     this._drawStains();
     this._drawBastion(g);
     this._drawPath(g);
-    this._drawPortal(g);
+    this._drawPortal(g, this.portalAnimator);
     this._emitPortalFx(g);
 
     const towers = [...this.sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);

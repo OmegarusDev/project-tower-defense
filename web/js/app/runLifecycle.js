@@ -149,6 +149,8 @@ function bootLevel(app, lv) {
     }
   }
   app.sim.portal = pc;
+  // Pass portal behavior to sim for clump spawning
+  app.sim.campaignPortalBehavior = lv.portalBehavior || "static";
   app.fx.clear();
   app._ghost = null;
   app.clearUndoStack();

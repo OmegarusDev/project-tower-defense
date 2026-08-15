@@ -6,6 +6,7 @@
 import { buildAttackPlan, planOptsFromParts } from "./sim/attackPlan.js";
 import { TICK_HZ } from "./sim/next/sim.js";
 import { BoardView } from "./view/next/boardView.js";
+import { PortalAnimator } from "./view/next/boardScene.js";
 import { ProcPalette } from "./view/palette.js";
 import { TitleView } from "./view/titleView.js";
 import { setPitch } from "./view/view25.js";
@@ -43,6 +44,7 @@ export class App {
     this.title = new TitleView(this.canvas, this.palette);
     this.fx = new FxSystem();
     this.board.fx = this.fx;
+    this.portalAnimator = new PortalAnimator();
     this.meta = loadMeta();
     this.palette.setColorblind(!!this.meta.settings?.colorblind);
     setPitch(this.meta.settings?.cameraPitch ?? 24);
@@ -141,7 +143,13 @@ export class App {
       this.board.tool = this.tool;
       this.board.selectedTowerId = this.selectedTowerId;
       this._syncGhostPlan();
-      this.board.draw(dt);
+      // Update portal animator with dt
+      if (this.portalAnimator) {
+        this.portalAnimator.update(dt);
+      }
+      // Pass portal animator to board for portal animation
+      this.board.portalAnimator = this.portalAnimator;
+      this.board.draw(dt, this.portalAnimator);
       this.refreshHud();
       this.slotPreviewAim = (this.slotPreviewAim || 0) + dt * 0.55;
       this.paintSlotPreviews();
@@ -198,6 +206,10 @@ export class App {
   wireSim() {
     this.sim.on("*", (e) => this.onSimEvent(e));
     this.board.setSim(this.sim);
+    // Hook up portal animator events
+    this.sim.on("portal_clump_start", (e) => this.portalAnimator.onClumpStart(e));
+    this.sim.on("portal_clump_end", (e) => this.portalAnimator.onClumpEnd(e));
+    this.sim.on("portal_move", (e) => this.portalAnimator.onMove(e));
   }
 
   bindUi() {

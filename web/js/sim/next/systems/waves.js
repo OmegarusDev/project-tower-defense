@@ -12,6 +12,12 @@ import { INF } from "../../boardGrid.js";
 import { allocId, emit } from "../state.js";
 import { applyWaveClear } from "./economy.js";
 
+/** Clump spawning constants. */
+const CLUMP_GAP = 0.08;              // within-clump spawn interval
+const INTER_CLUMP_DWELL_BASE = 2.5;  // base time between clumps
+const STRETCH_OUT_TIME = 0.3;        // portal stretch-out duration
+const STRETCH_IN_TIME = 0.25;        // portal stretch-in duration
+
 export function startNextWave(state) {
   state.waves.index = (state.waves.index | 0) + 1;
   const w = state.waves.index;
@@ -28,44 +34,64 @@ export function startNextWave(state) {
   state.waves.speedMult = plan.speedMult != null ? plan.speedMult : 1;
   state.waves.theme = plan.theme || "";
   state.waves.event = plan.event || "";
+  // Clump parameters from wave plan (endless) or campaign portal behavior (campaign)
+  if (state.modeEndless) {
+    state.waves.clumps = plan.clumps || 1;
+    state.waves.clumpSize = plan.clumpSize || 4;
+    state.waves.clumpGap = plan.clumpGap || CLUMP_GAP;
+    state.waves.interClumpDwell = plan.interClumpDwell || INTER_CLUMP_DWELL_BASE;
+  } else {
+    // Campaign: use portal behavior from level data
+    const behavior = state.campaignPortalBehavior || "static";
+    if (behavior === "static") {
+      state.waves.clumps = 1;
+      state.waves.clumpSize = state.waves.queue.length; // entire wave as one clump
+      state.waves.clumpGap = CLUMP_GAP;
+      state.waves.interClumpDwell = 0; // no inter-clump dwell for static
+    } else {
+      // Roaming: 2-3 clumps for Act 2, 3-4 for Act 3
+      const levelId = state.campaignLevelId || 0;
+      let clumps = 2;
+      if (levelId >= 9) clumps = 3; // Act 3 (levels 9-12)
+      else if (levelId >= 5) clumps = 2; // Act 2 (levels 5-8)
+      state.waves.clumps = clumps;
+      state.waves.clumpSize = Math.max(2, Math.ceil(state.waves.queue.length / clumps));
+      state.waves.clumpGap = CLUMP_GAP;
+      state.waves.interClumpDwell = INTER_CLUMP_DWELL_BASE;
+    }
+  }
+  
   state.waves.toSpawn = state.waves.queue.length;
-  state.waves.spawnTimer = Math.min(0.2, state.waves.spawnGap);
   state.waves.active = true;
   buildPortal(state, w);
+  initClumpState(state.waves, state.modeEndless);
   emit(state, "wave_checkpoint", { wave: w });
   emit(state, "wave_composition", {
     count: state.waves.toSpawn,
     wave: w,
     theme: state.waves.theme,
     event: state.waves.event,
+    clumps: state.waves.clumps,
   });
 }
 
 export function tickWaves(state) {
   const wv = state.waves;
   if (!wv.active) return;
-  if (wv.toSpawn > 0) {
-    // Endless: the seam re-opens elsewhere after each dwell stretch
-    if (state.modeEndless) {
-      wv.portalTimer -= state.dt;
-      if (wv.portalTimer <= 0) {
-        wv.portalTimer = dwellFor(state, wv.index);
-        wv.portalIdx += 1;
-        relocatePortal(state);
-      }
-    }
-    wv.spawnTimer -= state.dt;
-    if (wv.spawnTimer <= 0) {
-      spawnOne(state);
-      wv.toSpawn -= 1;
-      const jitter = state.modeEndless && wv.rand ? 0.85 + wv.rand() * 0.35 : 1;
-      wv.spawnTimer = wv.spawnGap * jitter;
-    }
-  } else if (state.enemies.length === 0) {
+
+  // Clump-based spawning (new system)
+  if (!wv.clumpState) {
+    initClumpState(wv, state.modeEndless);
+  }
+  tickClumpState(state, wv);
+
+  // Wave completion: when all enemies are dead and all have spawned
+  if (wv.toSpawn === 0 && state.enemies.length === 0) {
     wv.active = false;
     const wave = state.waves.index;
     const rewards = applyWaveClear(state.economy, wave);
     emit(state, "wave_cleared", { wave, ...rewards });
+    
     if (
       !state.modeEndless &&
       state.wavesToWin > 0 &&
@@ -75,6 +101,7 @@ export function tickWaves(state) {
       emit(state, "victory", { wave, levelId: state.campaignLevelId });
       return;
     }
+    
     if (
       state.modeEndless &&
       wave > 0 &&
@@ -186,27 +213,31 @@ export function makeEnemy(state, kind, wave, opts = {}) {
  */
 function buildPortal(state, w) {
   if (!state.modeEndless) return;
-  state.waves.portalRand = mulberry32(
-    ((state.runSeed || 1) ^ (w * 0x9e3779b9) ^ 0x51ab3d) >>> 0
-  );
-  const cols = state.grid.cols;
-  const cycle = [];
-  for (let x = 0; x < cols; x++) cycle.push(x);
-  for (let i = cycle.length - 1; i > 0; i--) {
-    const j = (state.waves.portalRand() * (i + 1)) | 0;
-    const tmp = cycle[i];
-    cycle[i] = cycle[j];
-    cycle[j] = tmp;
+  // Initialize portal cycle only on wave 1; persist across waves for clump movement
+  if (w <= 1) {
+    state.waves.portalRand = mulberry32(
+      ((state.runSeed || 1) ^ 0x51ab3d) >>> 0
+    );
+    const cols = state.grid.cols;
+    const cycle = [];
+    for (let x = 0; x < cols; x++) cycle.push(x);
+    for (let i = cycle.length - 1; i > 0; i--) {
+      const j = (state.waves.portalRand() * (i + 1)) | 0;
+      const tmp = cycle[i];
+      cycle[i] = cycle[j];
+      cycle[j] = tmp;
+    }
+    state.waves.portalCycle = cycle;
+    state.waves.portalIdx = 0;
+    state.waves.lastPortalX = -1;
   }
-  state.waves.portalCycle = cycle;
-  state.waves.portalIdx = 0;
   state.waves.portalTimer = dwellFor(state, w);
   state.waves.lastPortalX = state.portal ? state.portal.x : -1;
   if (w <= 1) {
     const centerX = state.grid.spawn.x;
     state.portal = { x: centerX, y: 0 };
     if (state.grid.isBlocked(centerX, 0)) {
-      const { x } = pickPortalX(state, cycle, 0, state.waves.lastPortalX);
+      const { x } = pickPortalX(state, state.waves.portalCycle, 0, state.waves.lastPortalX);
       state.portal = { x, y: 0 };
     }
   } else {
@@ -266,4 +297,128 @@ function relocatePortal(state) {
 
 export function dwellFor(state, w) {
   return Math.max(2.5, Math.min(8, 8 - 0.15 * (w - 1)));
+}
+
+/**
+ * Clump-based spawning state machine.
+ * Waves are divided into clumps - small bursts of enemies with pauses between.
+ * Portal stretches out, moves to new column, stretches in, then spawns next clump.
+ */
+
+function initClumpState(wv, isEndless) {
+  // Determine clump count based on wave size and progression
+  let clumps = 1;
+  if (isEndless) {
+    const w = wv.index;
+    // Wave 1-2: 1 clump (static)
+    // Wave 3-7: 2-3 clumps
+    // Wave 8-15: 3-5 clumps  
+    // Wave 16+: 4-7 clumps (high variance)
+    if (w >= 3) {
+      // Wave 3: 2 clumps, Wave 4-5: 2-3, Wave 6-10: 3-4, Wave 11-15: 4-5, Wave 16+: 5-7
+      const baseClumps = 2 + Math.floor((w - 3) / 4);
+      const variance = Math.max(0, Math.floor((w - 2) / 6));
+      clumps = baseClumps + ((wv.rand ? wv.rand() : Math.random()) * variance) | 0;
+      clumps = Math.min(clumps, 7);
+    }
+  } else {
+    // Campaign: derived from act (set via clumps in wave plan)
+    clumps = wv.clumps || 1;
+  }
+  
+  const queueLen = wv.queue.length;
+  const clumpSize = Math.max(2, Math.ceil(queueLen / clumps));
+  
+  wv.clumpState = {
+    phase: 'spawning',        // spawning | stretching_out | moving | stretching_in | idle
+    clumpIdx: 0,
+    totalClumps: clumps,
+    clumpSize: clumpSize,
+    enemiesInClump: 0,
+    timer: 0,
+    targetX: null,
+  };
+  
+  // Initialize spawn timer for first clump
+  wv.spawnTimer = CLUMP_GAP;
+  wv.toSpawn = wv.queue.length;
+}
+
+function tickClumpState(state, wv) {
+  const cs = wv.clumpState;
+  if (!cs) return;
+  
+  cs.timer -= state.dt;
+  
+  switch (cs.phase) {
+    case 'spawning': {
+      // Spawn enemies at clumpGap intervals
+      if (wv.toSpawn > 0 && cs.timer <= 0) {
+        spawnOne(state);
+        wv.toSpawn -= 1;
+        cs.enemiesInClump++;
+        
+        // Check if clump is complete
+        if (cs.enemiesInClump >= cs.clumpSize || wv.toSpawn === 0) {
+          // Clump done, start stretch out
+          cs.phase = 'stretching_out';
+          cs.timer = STRETCH_OUT_TIME;
+          emit(state, "portal_clump_end", { clumpIdx: cs.clumpIdx });
+        } else {
+          cs.timer = CLUMP_GAP;
+        }
+      }
+      break;
+    }
+    
+    case 'stretching_out': {
+      if (cs.timer <= 0) {
+        // Move to next portal position ONLY if there are more clumps
+        const isLastClump = cs.clumpIdx >= cs.totalClumps - 1 || wv.toSpawn === 0;
+        if (!isLastClump) {
+          if (state.modeEndless) {
+            relocatePortal(state);
+          } else if (cs.clumpIdx < cs.totalClumps - 1) {
+            relocatePortal(state);
+          }
+          cs.phase = 'moving';
+          cs.timer = 0;
+          emit(state, "portal_move", { clumpIdx: cs.clumpIdx, x: state.portal.x });
+        } else {
+          // Last clump done - go directly to idle
+          cs.phase = 'idle';
+        }
+      }
+      break;
+    }
+    
+    case 'moving': {
+      // Instant teleport - immediately start stretching in
+      cs.phase = 'stretching_in';
+      cs.timer = STRETCH_IN_TIME;
+      cs.clumpIdx++;
+      cs.enemiesInClump = 0;
+      emit(state, "portal_clump_start", { clumpIdx: cs.clumpIdx });
+      break;
+    }
+    
+    case 'stretching_in': {
+      if (cs.timer <= 0) {
+        if (cs.clumpIdx >= cs.totalClumps || wv.toSpawn === 0) {
+          // All clumps done - wave will end when enemies clear
+          cs.phase = 'idle';
+        } else {
+          // Next clump
+          cs.phase = 'spawning';
+          cs.timer = CLUMP_GAP;
+        }
+      }
+      break;
+    }
+    
+    case 'idle':
+    default:
+      // Wave ending handled by existing logic (enemies.length === 0)
+      break;
+  }
 }

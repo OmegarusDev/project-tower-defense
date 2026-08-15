@@ -712,81 +712,199 @@ export function drawPath(ctx, cam, grid, portalX, cell, t, enemyCount) {
 }
 
 /** Animated wormhole at the live portal cell. */
-export function drawPortal(ctx, cam, palette, portal, cell, t) {
+export function drawPortal(ctx, cam, palette, portal, cell, t, animator = null) {
+  if (!ctx || !cam || !palette || !portal || !cell) return;
   const c = cam.projectCell(portal.x, portal.y);
   const rx = cell * 0.42 * c.s;
   const ry = deckRy(rx);
+  
+  // Get animation state
+  let stretch = 1.0;
+  let alpha = 1.0;
+  let bloomIntensity = 0;
   const pulse = 0.5 + 0.5 * Math.sin(t * 3.2);
+  
+  if (animator) {
+    stretch = animator.stretch ?? 1.0;
+    alpha = animator.alpha ?? 1.0;
+    bloomIntensity = animator.bloomIntensity ?? 0;
+  }
+  
+  // Clamp values
+  stretch = Math.max(0.1, Math.min(5, stretch));
+  alpha = Math.max(0, Math.min(1, alpha));
+  bloomIntensity = Math.max(0, Math.min(1, bloomIntensity));
+
+  // Apply alpha to all drawing - robust version without deprecated RegExp.$n
+  const applyAlpha = (color, a) => {
+    if (a <= 0) return "rgba(0,0,0,0)";
+    if (color.startsWith('rgba')) {
+      const m = color.match(/rgba\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
+      if (m) {
+        return `rgba(${m[1]},${m[2]},${m[3]},${a * parseFloat(m[4])})`;
+      }
+      return "rgba(0,0,0,0)";
+    }
+    if (color.startsWith('#') || color.startsWith('rgb(')) {
+      return withAlpha(color, a);
+    }
+    return withAlpha(color, a);
+  };
 
   // Ground scorch / stone ring
-  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  ctx.fillStyle = applyAlpha("rgba(0,0,0,0.4)", alpha);
   ctx.beginPath();
-  ctx.ellipse(c.x + 1.5, c.y + 4, rx * 1.22, ry * 1.22, 0, 0, Math.PI * 2);
+  ctx.ellipse(c.x + 1.5, c.y + 4, rx * 1.22 * stretch, ry * 1.22 * stretch, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = shade(palette.accent, -0.15);
+  ctx.strokeStyle = applyAlpha(shade(palette.accent, -0.15), alpha);
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.ellipse(c.x, c.y, rx * 1.08, ry * 1.08, 0, 0, Math.PI * 2);
+  ctx.ellipse(c.x, c.y, rx * 1.08 * stretch, ry * 1.08 * stretch, 0, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.strokeStyle = withAlpha("#ebe6d8", 0.2);
+  ctx.strokeStyle = applyAlpha(withAlpha("#ebe6d8", 0.2), alpha);
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.ellipse(c.x, c.y, rx * 1.18, ry * 1.18, 0, 0, Math.PI * 2);
+  ctx.ellipse(c.x, c.y, rx * 1.18 * stretch, ry * 1.18 * stretch, 0, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Outer halo
-  const halo = ctx.createRadialGradient(c.x, c.y, rx * 0.2, c.x, c.y, rx * 1.55);
-  halo.addColorStop(0, withAlpha("#6b3fa0", 0.18 + 0.12 * pulse));
-  halo.addColorStop(0.45, withAlpha("#3d6a8a", 0.14));
-  halo.addColorStop(0.75, withAlpha("#7ec8a0", 0.05));
+  // Outer halo with bloom
+  const halo = ctx.createRadialGradient(c.x, c.y, rx * 0.2, c.x, c.y, rx * 1.55 * stretch);
+  const baseHaloAlpha = 0.18 + 0.12 * pulse;
+  const bloomBoost = bloomIntensity * 0.3;
+  halo.addColorStop(0, withAlpha("#6b3fa0", (baseHaloAlpha + bloomBoost) * alpha));
+  halo.addColorStop(0.45, withAlpha("#3d6a8a", 0.14 * alpha));
+  halo.addColorStop(0.75, withAlpha("#7ec8a0", 0.05 * alpha));
   halo.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = halo;
   ctx.beginPath();
-  ctx.ellipse(c.x, c.y, rx * 1.55, ry * 1.55, 0, 0, Math.PI * 2);
+  ctx.ellipse(c.x, c.y, rx * 1.55 * stretch, ry * 1.55 * stretch, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Breathing energy ring
-  ctx.strokeStyle = withAlpha("#c9a0e8", 0.22 + 0.18 * pulse);
+  ctx.strokeStyle = applyAlpha(withAlpha("#c9a0e8", 0.22 + 0.18 * pulse), alpha);
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.ellipse(c.x, c.y, rx * (1.22 + 0.06 * pulse), ry * (1.22 + 0.06 * pulse), 0, 0, Math.PI * 2);
+  ctx.ellipse(c.x, c.y, rx * (1.22 + 0.06 * pulse) * stretch, ry * (1.22 + 0.06 * pulse) * stretch, 0, 0, Math.PI * 2);
   ctx.stroke();
 
   // Inner void
-  const voidGrad = ctx.createRadialGradient(c.x, c.y - ry * 0.15, 0, c.x, c.y, rx);
-  voidGrad.addColorStop(0, "rgba(12, 8, 28, 0.98)");
-  voidGrad.addColorStop(0.35, "rgba(55, 28, 95, 0.88)");
-  voidGrad.addColorStop(0.7, "rgba(40, 70, 90, 0.55)");
-  voidGrad.addColorStop(1, "rgba(20, 30, 40, 0.15)");
+  const voidGrad = ctx.createRadialGradient(c.x, c.y - ry * 0.15 * stretch, 0, c.x, c.y, rx * stretch);
+  voidGrad.addColorStop(0, applyAlpha("rgba(12, 8, 28, 0.98)", alpha));
+  voidGrad.addColorStop(0.35, applyAlpha("rgba(55, 28, 95, 0.88)", alpha));
+  voidGrad.addColorStop(0.7, applyAlpha("rgba(40, 70, 90, 0.55)", alpha));
+  voidGrad.addColorStop(1, applyAlpha("rgba(20, 30, 40, 0.15)", alpha));
   ctx.fillStyle = voidGrad;
   ctx.beginPath();
-  ctx.ellipse(c.x, c.y, rx * 0.95, ry * 0.95, 0, 0, Math.PI * 2);
+  ctx.ellipse(c.x, c.y, rx * 0.95 * stretch, ry * 0.95 * stretch, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Spinning arcs + event horizon
   ctx.save();
   ctx.translate(c.x, c.y);
-  ctx.scale(1, VIEW25.deckRatio);
+  ctx.scale(stretch, VIEW25.deckRatio * stretch);
   for (let i = 0; i < 5; i++) {
     const a0 = t * (1.4 + i * 0.4) * (i % 2 ? -1 : 1) + i * 1.7;
-    ctx.strokeStyle = withAlpha(i % 2 ? "#b08ad4" : "#7ec8a0", 0.66 - i * 0.08);
+    ctx.strokeStyle = applyAlpha(withAlpha(i % 2 ? "#b08ad4" : "#7ec8a0", 0.66 - i * 0.08), alpha);
     ctx.lineWidth = 2.2 - i * 0.28;
     ctx.beginPath();
     ctx.arc(0, 0, rx * (0.38 + i * 0.12), a0, a0 + 1.35 + i * 0.12);
     ctx.stroke();
   }
-  ctx.strokeStyle = withAlpha("#e8d5ff", 0.4 + 0.25 * pulse);
+  ctx.strokeStyle = applyAlpha(withAlpha("#e8d5ff", 0.4 + 0.25 * pulse), alpha);
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.arc(0, 0, rx * 0.28, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.fillStyle = withAlpha("#f2e8ff", 0.45 + 0.28 * pulse);
+  ctx.fillStyle = applyAlpha(withAlpha("#f2e8ff", 0.45 + 0.28 * pulse), alpha);
   ctx.beginPath();
   ctx.arc(0, 0, rx * (0.1 + 0.035 * pulse), 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
   ctx.lineWidth = 1;
+}
+
+/** Portal animation state machine for clump spawning. */
+export class PortalAnimator {
+  constructor() {
+    this.phase = 'idle';        // idle | stretching_out | moving | stretching_in | spawning
+    this.timer = 0;
+    this.stretch = 1.0;         // 1.0 = normal, up to 2.5 = fully stretched
+    this.alpha = 1.0;
+    this.bloomIntensity = 0;
+    this.targetPortal = { x: 0, y: 0 };
+    this.lastPortal = { x: 0, y: 0 };
+  }
+
+  onClumpStart(portal) {
+    this.lastPortal = { ...this.targetPortal };
+    this.targetPortal = { ...portal };
+    this.phase = 'stretching_in';
+    this.timer = 0.25;
+    this.alpha = 0;
+    this.stretch = 2.5;
+    this.bloomIntensity = 0.3;
+  }
+
+  onClumpEnd() {
+    this.phase = 'stretching_out';
+    this.timer = 0.3;
+    this.bloomIntensity = 0.5;
+  }
+
+  onMove() {
+    this.phase = 'moving';
+    this.timer = 0;
+  }
+
+  update(dt) {
+    if (this.timer <= 0 && this.phase !== 'idle') {
+      if (this.phase === 'stretching_out') {
+        // Stretch out complete - instant move
+        this.phase = 'moving';
+        this.timer = 0;
+      } else if (this.phase === 'moving') {
+        // Instant - start stretch in
+        this.phase = 'stretching_in';
+        this.timer = 0.25;
+        this.alpha = 0;
+        this.stretch = 2.5;
+        this.bloomIntensity = 0.2;
+      } else if (this.phase === 'stretching_in') {
+        // Stretch in complete - start spawning
+        this.phase = 'spawning';
+        this.timer = 0;
+      } else if (this.phase === 'spawning') {
+        // Spawning phase - transition to idle until next clump
+        this.phase = 'idle';
+        this.timer = 0;
+      }
+    }
+    this.timer = Math.max(0, this.timer - dt);
+
+    // Interpolate visual properties based on phase
+    const t = this.timer / (this.phase === 'stretching_out' ? 0.3 : 0.25);
+    if (this.phase === 'stretching_out') {
+      this.stretch = 1.0 + (2.5 - 1.0) * (1 - t);
+      this.alpha = 1.0 - t;
+      this.bloomIntensity = 0.5 * (1 - t);
+    } else if (this.phase === 'stretching_in') {
+      this.stretch = 2.5 - 1.5 * (1 - t);
+      this.alpha = 1.0 - t;
+      this.bloomIntensity = 0.2 * t;
+    } else if (this.phase === 'moving') {
+      this.stretch = 2.5;
+      this.alpha = 0;
+    } else if (this.phase === 'spawning') {
+      this.stretch = Math.max(1.0, this.stretch - dt * 6);
+      this.alpha = Math.min(1.0, this.alpha + dt * 4);
+    } else {
+      // idle
+      this.stretch = 1.0;
+      this.alpha = 1.0;
+      this.bloomIntensity = 0;
+    }
+  }
 }
 
 export function drawEnemyFrame(ctx, cam, palette, e, cell, t) {

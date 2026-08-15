@@ -51,6 +51,7 @@ const LEVEL_DEFS = [
     seed: 1001,
     wallCount: 6,
     atmosphere: "campaign_1",
+    portalBehavior: "static",
     waves: [
       { pack: "mite_line", spawnGap: 0.52, speedMult: 0.85 },
       { pack: "mite_line", spawnGap: 0.46, speedMult: 0.9 },
@@ -81,6 +82,7 @@ const LEVEL_DEFS = [
     seed: 2048,
     wallCount: 8,
     atmosphere: "campaign_2",
+    portalBehavior: "static",
     waves: [
       { pack: "couriers", spawnGap: 0.36, speedMult: 1.05 },
       {
@@ -112,6 +114,7 @@ const LEVEL_DEFS = [
     seed: 3333,
     wallCount: 10,
     atmosphere: "campaign_3",
+    portalBehavior: "static",
     waves: [
       { pack: "mixed_mid", spawnGap: 0.34, speedMult: 1 },
       { pack: "air_cut", spawnGap: 0.3, speedMult: 1.05 },
@@ -136,6 +139,7 @@ const LEVEL_DEFS = [
     seed: 4400,
     wallCount: 12,
     atmosphere: "campaign_4",
+    portalBehavior: "static",
     waves: [
       { pack: "heat", spawnGap: 0.34, speedMult: 0.9 },
       { pack: "ward_wall", spawnGap: 0.32, speedMult: 0.92 },
@@ -161,6 +165,7 @@ const LEVEL_DEFS = [
     seed: 5555,
     wallCount: 14,
     atmosphere: "campaign_5",
+    portalBehavior: "roaming",
     waves: [
       { pack: "ward_wall", spawnGap: 0.32, speedMult: 0.92 },
       { pack: "cask_burst", spawnGap: 0.28, speedMult: 1 },
@@ -186,6 +191,7 @@ const LEVEL_DEFS = [
     seed: 6060,
     wallCount: 12,
     atmosphere: "campaign_6",
+    portalBehavior: "roaming",
     waves: [
       { pack: "air_cut", spawnGap: 0.28, speedMult: 1.08 },
       {
@@ -219,6 +225,7 @@ const LEVEL_DEFS = [
     seed: 7070,
     wallCount: 15,
     atmosphere: "campaign_7",
+    portalBehavior: "roaming",
     waves: [
       { pack: "heat", spawnGap: 0.32, speedMult: 0.9 },
       { pack: "siphon_pack", spawnGap: 0.3, speedMult: 0.95 },
@@ -249,6 +256,7 @@ const LEVEL_DEFS = [
     seed: 8080,
     wallCount: 12,
     atmosphere: "volt",
+    portalBehavior: "roaming",
     waves: [
       { pack: "volt_wall", spawnGap: 0.32, speedMult: 0.9 },
       { pack: "air_cut", spawnGap: 0.26, speedMult: 1.05 },
@@ -272,6 +280,7 @@ const LEVEL_DEFS = [
     seed: 9090,
     wallCount: 14,
     atmosphere: "ceramite",
+    portalBehavior: "roaming",
     waves: [
       { pack: "ceramite_line", spawnGap: 0.32, speedMult: 0.85 },
       { pack: "haulers", spawnGap: 0.34, speedMult: 0.88 },
@@ -292,6 +301,7 @@ const LEVEL_DEFS = [
     wallCount: 14,
     atmosphere: "foundry_night",
     spawnCells: [{ x: 2, y: 0 }],
+    portalBehavior: "roaming",
     waves: [
       { pack: "mixed_mid", spawnGap: 0.3, speedMult: 1 },
       { pack: "cask_burst", spawnGap: 0.28, speedMult: 1 },
@@ -312,6 +322,7 @@ const LEVEL_DEFS = [
     wallCount: 15,
     atmosphere: "foundry",
     spawnCells: [{ x: 8, y: 0 }],
+    portalBehavior: "roaming",
     waves: [
       { pack: "heat", spawnGap: 0.3, speedMult: 0.9 },
       { pack: "ceramite_line", spawnGap: 0.3, speedMult: 0.88 },
@@ -337,6 +348,7 @@ const LEVEL_DEFS = [
     wallCount: 15,
     atmosphere: "chaos",
     spawnCells: [{ x: 4, y: 1 }],
+    portalBehavior: "roaming",
     waves: [
       { pack: "finale_a", spawnGap: 0.3, speedMult: 0.9 },
       { pack: "heat", spawnGap: 0.28, speedMult: 0.92 },

@@ -16,7 +16,7 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   return w;
 }
 
-// Wave 1 always opens at the default centre; roaming starts wave 2
+// Wave 1 always opens at the default centre; roaming starts wave 3
 {
   const w = newWorld(9, 8, 7, true);
   w.startWave();
@@ -26,11 +26,11 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   s.waves.queue = Array(30).fill("mite");
   s.waves.toSpawn = 30;
   w.setStartLives(5000, { resetCurrent: true });
-  for (let i = 0; i < 2000; i++) w.tick(); // long wave: dwell relocation fires
+  for (let i = 0; i < 2000; i++) w.tick(); // wave 1: static (1 clump)
   const endWave1 = w.portal.x;
-  assert(endWave1 !== center, "wave 1 can relocate after its dwell stretch");
-  w.startWave();
-  assert(w.portal.x !== endWave1, "wave 2 opens on a fresh seam cell");
+  assert(endWave1 === center, "wave 1 is static - portal stays at centre");
+  w.startWave(); // wave 2 starts, relocatePortal moves portal
+  assert(w.portal.x !== center, "wave 2 opens on a fresh seam cell (relocated at wave start)");
 }
 
 // Determinism: same seed, same waves, same portal sequence
@@ -38,7 +38,7 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   const seq = (seed) => {
     const w = newWorld(9, 8, seed, true);
     const out = [];
-    for (let wave = 0; wave < 2; wave++) {
+    for (let wave = 0; wave < 3; wave++) {
       w.startWave();
       w._s.waves.queue = Array(40).fill("mite");
       w._s.waves.toSpawn = 40;
@@ -50,7 +50,8 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   const a = seq(42);
   const b = seq(42);
   assert(JSON.stringify(a) === JSON.stringify(b), "portal movement is seed-deterministic");
-  assert(a[0].idx > 0, "portal cycle advanced");
+  // Wave 1-2: static (idx 0), Wave 3: clumps start, portalIdx advances
+  assert(a[2].idx > 0, "portal cycle advances by wave 3");
 }
 
 // Dwell: portal does not relocate before the dwell stretch elapses
@@ -62,16 +63,22 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   assert(w.portal.x === start, "portal sits still inside its dwell window");
 }
 
-// Dwell: portal relocates after the stretch, and never sits twice on the same cell
+// Clump-based relocation: portal moves between clumps (wave 3 has 2+ clumps)
 {
   const w = newWorld(9, 8, 11, true);
   w.setStartLives(5000, { resetCurrent: true });
-  w.startWave();
+  w.startWave(); // wave 1
+  w._s.waves.queue = Array(120).fill("mite");
+  w._s.waves.toSpawn = 120;
+  for (let i = 0; i < 3000; i++) w.tick(); // complete wave 1 (static)
+  w.startWave(); // wave 2
+  for (let i = 0; i < 3000; i++) w.tick(); // complete wave 2 (static)
+  w.startWave(); // wave 3 - has 2+ clumps
   w._s.waves.queue = Array(120).fill("mite");
   w._s.waves.toSpawn = 120;
   let prev = w.portal.x;
   let moved = 0;
-  for (let i = 0; i < 2400; i++) {
+  for (let i = 0; i < 5000; i++) {
     w.tick();
     if (w.portal.x !== prev) {
       assert(w.portal.x !== prev, "portal moves to a different seam cell");
@@ -79,7 +86,7 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
       moved++;
     }
   }
-  assert(moved >= 2, "portal relocates over time");
+  assert(moved >= 1, "portal relocates between clumps in wave 3+");
 }
 
 // Spawn fallback: sealed portal column spawns from nearest reachable back cell

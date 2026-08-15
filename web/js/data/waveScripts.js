@@ -142,7 +142,23 @@ export function composeEndlessWave(wave, rand) {
   if (rand() < 0.55) fisherYates(queue, rand);
 
   const spawnGap = Math.max(0.16, 0.52 * Math.pow(0.965, w - 1) * (0.75 + rand() * 0.5));
-  return { queue, spawnGap, theme: theme.id, event };
+  
+  // Clump parameters: variable clumps based on wave progression
+  // Wave 1-2: 1 clump (static)
+  // Wave 3-7: 2-3 clumps
+  // Wave 8-15: 3-5 clumps  
+  // Wave 16+: 4-7 clumps (high variance)
+  let clumps = 1;
+  if (w >= 3) {
+    const baseClumps = 1 + Math.floor((w - 1) / 5);
+    const variance = Math.max(0, Math.floor(w / 8));
+    clumps = baseClumps + (rand() * variance) | 0;
+    clumps = Math.min(clumps, 7);
+  }
+  const clumpSize = Math.max(2, Math.ceil(queue.length / clumps));
+  const interClumpDwell = Math.max(1.5, 2.5 - w * 0.05);
+  
+  return { queue, spawnGap, theme: theme.id, event, clumps, clumpSize, clumpGap: 0.08, interClumpDwell };
 }
 
 function pickKind(table, wave, rand) {

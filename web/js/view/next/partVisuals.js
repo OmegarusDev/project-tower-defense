@@ -79,7 +79,15 @@ export const BASE_VISUALS = {
 
 export const BARREL_VISUALS = {
   single: { tubes: [{ len: 0.46, th: 0.11 }], extras: [] },
-  twin: { tubes: [{ len: 0.44, th: 0.1, off: 0.085 }, { len: 0.44, th: 0.1, off: -0.085 }], extras: [] },
+  twin: { 
+    tubes: [
+      { len: 0.43, th: 0.095, off: 0.0575 }, 
+      { len: 0.43, th: 0.095, off: -0.0575 }
+    ], 
+    extras: [
+      ["housing", { t0: 0, t1: 0.22, w: 0.14, shade: -0.2, dy: 0 }],
+    ]
+  },
   scatter: {
     tubes: [{ len: 0.34, th: 0.095, sub: -0.34 }, { len: 0.34, th: 0.095 }, { len: 0.34, th: 0.095, sub: 0.34 }],
     extras: [],

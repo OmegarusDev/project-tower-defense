@@ -396,6 +396,20 @@ function tubeBody(ctx, metal, tip, length, th, payload, b, ox, oy) {
   ctx.ellipse(far.x, far.y, fcap.rx, fcap.ry, fcap.rot, 0, Math.PI * 2);
   ctx.fill();
 
+  // Fake-3D muzzle dome - visible at head-on pitch (b.depth ≈ 0), vanishes at high pitch
+  const domeHeight = r * (1 - b.depth) * 0.35;
+  if (domeHeight > 0.3) {
+    ctx.fillStyle = withAlpha(shade(tip, 0.15), 0.9);
+    ctx.beginPath();
+    ctx.ellipse(far.x, far.y - domeHeight * 0.3, fcap.rx * 0.9, fcap.ry * 0.9, fcap.rot, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = withAlpha(shade(tip, 0.35), 0.4);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(far.x, far.y - domeHeight * 0.2, fcap.rx * 0.7, fcap.ry * 0.7, fcap.rot, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
   ctx.fillStyle = shade(metal, -0.4);
   for (const t of [0.28, 0.55]) {
     const rx = ox + (ex - ox) * t;
