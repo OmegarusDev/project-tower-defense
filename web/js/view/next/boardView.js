@@ -323,6 +323,8 @@ export class BoardView {
     const mid = this._pointerMid();
     const dist = this._pointerDist();
     if (!mid || dist < 8) return;
+    // Store the board point under the initial midpoint for stable zoom anchoring
+    const anchorBoard = this.cam.unproject(mid.x, mid.y);
     this._pinch = {
       dist0: dist,
       zoom0: this.zoom,
@@ -331,6 +333,7 @@ export class BoardView {
       panY0: this.panY,
       pitch0: VIEW25.pitchDeg,
       pitchLocked: false,
+      anchorBoard,
     };
     this._drag = null;
   }
@@ -377,19 +380,12 @@ export class BoardView {
       const midDx = mid.x - this._pinch.mid0.x;
       const midDy = mid.y - this._pinch.mid0.y;
 
-      // Zoom anchored at initial midpoint — keeps board point fixed
-      if (this._pinch.mid0) {
-        const b = this.cam.unproject(this._pinch.mid0.x, this._pinch.mid0.y);
-        this._zoomT = z;
-        this._fit(true);
-        const p = this.cam.project(b.x, b.y);
-        this._panXT = this._pinch.panX0 + (this._pinch.mid0.x - p.x);
-        this._panYT = this._pinch.panY0 + (this._pinch.mid0.y - p.y);
-      } else {
-        this._zoomT = z;
-        this._panXT = this._pinch.panX0;
-        this._panYT = this._pinch.panY0;
-      }
+      // Zoom anchored at stored board point — keeps that board point fixed under initial midpoint
+      this._zoomT = z;
+      this._fit(true);
+      const p = this.cam.project(this._pinch.anchorBoard.x, this._pinch.anchorBoard.y);
+      this._panXT = this._pinch.panX0 + (this._pinch.mid0.x - p.x);
+      this._panYT = this._pinch.panY0 + (this._pinch.mid0.y - p.y);
 
       // Additional pan from midpoint movement (two-finger drag while pinching)
       this._panXT = Math.max(this.panMinX, Math.min(this.panMaxX, this._panXT + midDx));

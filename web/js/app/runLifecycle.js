@@ -41,9 +41,9 @@ function startNewRun(app, seed) {
   app.fx.clear();
   app._ghost = null;
   app.clearUndoStack();
-  app.wireSim();
+app.wireSim();
   app.tool = "tower";
-  app.slot = 0;
+  app.slot = -1;
   app.selectedTowerId = -1;
   app.selectedWallId = -1;
   app.paused = false;
