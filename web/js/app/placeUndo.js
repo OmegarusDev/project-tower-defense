@@ -53,9 +53,37 @@ export function chooseLevelBranchSelected(app, branch) {
 
 export function onCellTap(app, cell) {
   if (!app.sim) return;
+  // If tower in hand, place it
+  if (app._handSlot != null) {
+    const loadout = app.sim.roster?.[app._handSlot];
+    if (loadout?.complete && app.sim.grid.isBuildable(cell.x, cell.y)) {
+      // Check path
+      app.sim.grid.setBlocked(cell.x, cell.y, true);
+      const pathOk = app.sim.grid.hasGroundPath();
+      app.sim.grid.setBlocked(cell.x, cell.y, false);
+      app.sim.grid.recompute();
+      if (!pathOk) return app.toast("Can't seal the path");
+      // Check cost
+      const quote = app.sim.economy.quoteTowerPlace(loadout.placeCost, app.sim.towers.length);
+      if (app.sim.economy.battle < quote.total) return app.toast(`Need ${quote.total} Coin`);
+      // Place it
+      const res = app.sim.tryPlaceTower(cell.x, cell.y, app._handSlot);
+      if (res.ok) {
+        app.synth.play("place");
+        const extra = res.surcharge > 0 ? ` (+${res.surcharge} board tax)` : "";
+        app.toast(`Tower placed${extra}`);
+        app.clearHand();
+        app.slot = app._handSlot; // Keep the slot selected
+        app.renderGameChrome();
+      }
+      return;
+    }
+    return;
+  }
   const tower = app.sim.towers.find((t) => t.cell.x === cell.x && t.cell.y === cell.y);
   if (tower) {
     app.clearPlaceConfirm();
+    app.clearHand();
     app.selectedTowerId = tower.id;
     app.selectedWallId = -1;
     app.renderGameChrome();
@@ -66,6 +94,7 @@ export function onCellTap(app, cell) {
   );
   if (wall) {
     app.clearPlaceConfirm();
+    app.clearHand();
     app.selectedTowerId = -1;
     app.selectedWallId = wall.id;
     app.renderGameChrome();

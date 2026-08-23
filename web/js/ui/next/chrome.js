@@ -150,6 +150,7 @@ export function pauseSheetHtml(state) {
       <p class="pause-note">${note}</p>
       <p class="pause-hint">Hold Deploy for ${state.meta?.ffSpeed || 2}× · seed ${sim.runSeed >>> 0}</p>
       <button type="button" class="btn title-cta" data-act="resume">Resume</button>
+      <button type="button" class="btn secondary" data-act="settings">Settings</button>
       <button type="button" class="btn secondary" data-act="quit-run">${
         state.playtestFromEditor ? "Editor" : quitLabel
       }</button>

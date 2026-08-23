@@ -96,7 +96,7 @@ const ENDLESS_EVENTS = [
 export function composeEndlessWave(wave, rand) {
   const w = Math.max(1, wave | 0);
   // Fewer enemies, each one matters — towers feel like a real commitment.
-  let budget = 2.5 + w * 0.75 + Math.floor(w / 3) * 0.5 + rand() * (1.0 + w * 0.08);
+  let budget = 2.5 + w * 0.7 + Math.floor(w / 3) * 0.5 + rand() * (1.0 + w * 0.07); // slightly lower budget growth
   const unlocked = ENDLESS_THEMES.filter((t) => w >= t.unlock);
   const theme = weightedPick(unlocked, rand);
   let event = "";

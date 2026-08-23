@@ -74,6 +74,7 @@ export class App {
     this._ghostEndSim = null;
     this._raf = 0;
     this._last = 0;
+    this._handSlot = null; // slot index in hand, null = nothing in hand
 
     this.synth.setVolume(this.meta.settings?.sfxVolume ?? 0.35);
     this.synth.setMusicVolume(this.meta.settings?.musicVolume ?? 0.4);
@@ -98,6 +99,13 @@ export class App {
         this.score.stop();
       } else if (this.screen === "game" && this.sim && !this.paused) {
         this.unlockAudio();
+      }
+    });
+    // Right-click anywhere clears hand
+    document.addEventListener("contextmenu", (e) => {
+      if (this.screen === "game" && this._handSlot != null) {
+        e.preventDefault();
+        this.clearHand();
       }
     });
   }
@@ -149,6 +157,7 @@ export class App {
       this.board.tool = this.tool;
       this.board.selectedTowerId = this.selectedTowerId;
       this._syncGhostPlan();
+      this._updateHandGhost();
       // Update portal animator with dt
       if (this.portalAnimator) {
         this.portalAnimator.update(dt);
@@ -162,8 +171,27 @@ export class App {
     }
   }
 
+  _updateHandGhost() {
+    if (this._handSlot != null && this.board && this.sim) {
+      const loadout = this.sim.roster?.[this._handSlot];
+      if (loadout?.complete) {
+        // Get cursor position from board's last known hover or center
+        const hover = this.board.hover;
+        if (hover) {
+          const p = this.board.cellScreenCenter(hover.x, hover.y);
+          this.board.setHandGhost(loadout, p.x, p.y);
+        }
+      }
+    }
+  }
+
   _syncGhostPlan() {
     if (!this.sim) {
+      this.board.setGhostPlan(null);
+      return;
+    }
+    // Don't show regular ghost when hand has a tower
+    if (this._handSlot != null) {
       this.board.setGhostPlan(null);
       return;
     }
@@ -190,6 +218,14 @@ export class App {
       planOptsFromParts(up, g, slot)
     );
     this.board.setGhostPlan(plan, cell);
+  }
+
+  clearHand() {
+    if (this._handSlot != null) {
+      this._handSlot = null;
+      this.board.setHandGhost(null);
+      this.renderGameChrome();
+    }
   }
 
   async unlockAudio() {

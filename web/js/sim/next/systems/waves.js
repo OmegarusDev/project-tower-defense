@@ -146,16 +146,16 @@ export function makeEnemy(state, kind, wave, opts = {}) {
   const def = enemyDef(id);
   const w = Math.max(1, wave || 1);
   let scale =
-    Math.pow(1.05, w - 1) *
-    Math.pow(1.02, Math.max(0, w - 15)) *
+    Math.pow(1.065, w - 1) *       // was 1.05
+    Math.pow(1.03, Math.max(0, w - 15)) *  // was 1.02
     (opts.scale || 1);
   if (state.modeEndless) {
-    scale *= Math.pow(1.08, Math.min(2, Math.max(0, w - 1)));
-    scale *= Math.pow(1.025, Math.min(9, Math.max(0, w - 7)));
+    scale *= Math.pow(1.1, Math.min(2, Math.max(0, w - 1)));   // was 1.08
+    scale *= Math.pow(1.035, Math.min(9, Math.max(0, w - 7))); // was 1.025
   }
   let speedMult = opts.speedMult != null ? opts.speedMult : state.waves.speedMult || 1;
   if (state.modeEndless) {
-    const ramp = Math.min(0.45, (w - 1) * 0.015);
+    const ramp = Math.min(0.55, (w - 1) * 0.018);  // was 0.45 / 0.015
     const ballast = def.ballast || "mid";
     const share = ballast === "high" ? 0.45 : ballast === "low" ? 1.15 : 1;
     speedMult = 1 + ramp * share;

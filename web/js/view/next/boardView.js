@@ -9,6 +9,7 @@ import { XP_TO_POINT } from "../../data/parts.js";
 import * as S from "./boardScene.js";
 import { PortalAnimator } from "./boardScene.js";
 import { VIEW25, setPitch, BoardCamera } from "../view25.js";
+import { renderTowerNext } from "./renderTower.js";
 
 /** Draw towers/enemies a bit larger than the cell footprint. */
 const UNIT_SCALE = 1.22;
@@ -56,6 +57,7 @@ export class BoardView {
     this._bastionFlinch = 0;
     this._stains = [];
     this._ghostPlan = null;
+    this._handGhost = null;
     this.recoil = new Map();
     this.atmosphereId = "default";
     this._handOffT = 0;
@@ -169,6 +171,14 @@ export class BoardView {
     this._ghostPlan = plan && cell ? { plan, cell } : null;
   }
 
+  setHandGhost(loadout, screenX, screenY) {
+    if (loadout && screenX != null && screenY != null) {
+      this._handGhost = { loadout, x: screenX, y: screenY };
+    } else {
+      this._handGhost = null;
+    }
+  }
+
   noteRecoil(towerId) {
     this.recoil.set(towerId, 0.12);
   }
@@ -219,7 +229,8 @@ export class BoardView {
     const g = this.sim.grid;
     const cssW = this.canvas.clientWidth || 360;
     const cssH = this.canvas.clientHeight || 640;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+    const dpr = Math.min(isMobile ? 1.5 : 2, window.devicePixelRatio || 1);
     const key = [
       cssW | 0,
       cssH | 0,
@@ -360,35 +371,39 @@ export class BoardView {
       const mid = this._pointerMid();
       const dist = this._pointerDist();
       if (!mid || dist < 8) return;
-      const midDy = mid.y - this._pinch.mid0.y;
+
+      const scale = dist / this._pinch.dist0;
+      const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._pinch.zoom0 * scale));
       const midDx = mid.x - this._pinch.mid0.x;
-      // Pitch lock: if vertical drag exceeds threshold, disable zoom for this gesture
-      if (!this._pinch.pitchLocked && Math.abs(midDy) > 12) {
-        this._pinch.pitchLocked = true;
+      const midDy = mid.y - this._pinch.mid0.y;
+
+      // Zoom (distance) takes priority — always active during pinch
+      if (this._pinch.mid0) {
+        const b = this.cam.unproject(this._pinch.mid0.x, this._pinch.mid0.y);
+        this._zoomT = z;
+        this._fit(true);
+        const p = this.cam.project(b.x, b.y);
+        this._panXT = this.panX = this.panX + (this._pinch.mid0.x - p.x);
+      } else {
+        this._zoomT = z;
       }
-      // Pitch (inverted: drag up → increase pitch)
-      if (this.onPitchChange) {
-        this.onPitchChange(this._pinch.pitch0 - midDy * 0.25);
-      }
-      // Horizontal midpoint movement → pan X
+
+      // Pan in ALL directions during zoom (midpoint movement)
       this._panXT = this.panX = Math.max(
         this.panMinX,
         Math.min(this.panMaxX, this._pinch.panX0 + midDx)
       );
-      // Zoom only if not pitch-locked
-      if (!this._pinch.pitchLocked) {
-        const scale = dist / this._pinch.dist0;
-        const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._pinch.zoom0 * scale));
-        if (this._pinch.mid0) {
-          const b = this.cam.unproject(this._pinch.mid0.x, this._pinch.mid0.y);
-          this._zoomT = z;
-          this._fit(true);
-          const p = this.cam.project(b.x, b.y);
-          this._panXT = this.panX = this.panX + (this._pinch.mid0.x - p.x);
-        } else {
-          this._zoomT = z;
-        }
+      this._panYT = this.panY = Math.max(
+        this.panMin,
+        Math.min(this.panMax, this._pinch.panY0 + midDy)
+      );
+
+      // Pitch only when zoom is stable (small distance change) — deadzone on scale
+      const scaleDelta = Math.abs(scale - 1);
+      if (scaleDelta < 0.03 && this.onPitchChange) {
+        this.onPitchChange(this._pinch.pitch0 - midDy * 0.25);
       }
+
       this._fit(true);
       return;
     }
@@ -488,7 +503,8 @@ export class BoardView {
     const g = this.sim.grid;
     const cssW = this.canvas.clientWidth;
     const cssH = this.canvas.clientHeight;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+    const dpr = Math.min(isMobile ? 1.5 : 2, window.devicePixelRatio || 1);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssW, cssH);
 
@@ -536,6 +552,7 @@ export class BoardView {
     } else if (this.hover && g.inBounds(this.hover.x, this.hover.y) && this.selectedTowerId < 0) {
       this._drawHover(this.hover.x, this.hover.y, g.isBuildable(this.hover.x, this.hover.y));
     }
+    if (this._handGhost) this._drawHandGhost(this._handGhost);
 
     ctx.restore();
     this._drawAtmosphere(cssW, cssH);
@@ -685,6 +702,55 @@ export class BoardView {
   _drawPendingPlace(pending) {
     const t = performance.now() / 1000;
     S.drawPendingPlace(this.ctx, this.cam, this.palette, pending, this.cell, t, this.cell);
+  }
+
+  _drawHandGhost(ghost) {
+    const { loadout, x, y } = ghost;
+    if (!loadout?.complete) return;
+    const s = this.cell * UNIT_SCALE;
+    const px = x - s / 2;
+    const py = y - s / 2;
+    // Create a mock tower object for rendering
+    const mockTower = {
+      base: loadout.base,
+      barrel: loadout.barrel,
+      payload: loadout.payload,
+      level: loadout.level || 1,
+      aimAngle: -Math.PI / 2,
+      xp: 0,
+      xpToPoint: 1,
+      levelCap: loadout.levelCap || 1,
+    };
+    renderTowerNext(this.ctx, this.palette, mockTower, px, py, s, { selected: false });
+    // Range ring
+    const up = this.sim?.partUpgrades || {};
+    const g = this.sim?.globalMods || {};
+    const plan = buildAttackPlan(
+      loadout.base,
+      loadout.barrel,
+      loadout.payload,
+      loadout.level || 1,
+      planOptsFromParts(up, g, loadout)
+    );
+    if (plan && plan.rangeCells) {
+      const cx = x;
+      const cy = y;
+      const r = plan.rangeCells * this.cell;
+      const steps = 48;
+      this.ctx.strokeStyle = "rgba(232,197,106,0.35)";
+      this.ctx.lineWidth = 1.5;
+      this.ctx.setLineDash([5, 4]);
+      this.ctx.beginPath();
+      for (let i = 0; i <= steps; i++) {
+        const a = (i / steps) * Math.PI * 2;
+        const sp = this.cam.project(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        if (i === 0) this.ctx.moveTo(sp.x, sp.y);
+        else this.ctx.lineTo(sp.x, sp.y);
+      }
+      this.ctx.stroke();
+      this.ctx.setLineDash([]);
+      this.ctx.lineWidth = 1;
+    }
   }
 
   _drawAtmosphere(cssW, cssH) {
