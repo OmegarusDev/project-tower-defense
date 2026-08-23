@@ -36,6 +36,9 @@ import { threatTagsForLevel, rosterPeekHtml, endlessThemeBlurb } from "../metaUi
 import { xClose } from "../xClose.js";
 import { partIconHtml, techCategoryIcon, techNodeIconHtml } from "../partIcons.js";
 
+export const VERSION = "0.5.0";
+export const VERSION_NAME = "Tempered";
+
 /** Mirror of menuScreens.forgePlanSummary — pure (same formulas). */
 export function forgePlanSummary(slot) {
   if (!slot?.complete) return "Base · Barrel · Payload";
@@ -353,7 +356,7 @@ export function renderSplash() {
         <p class="splash-tag">Shape the path. Hold the Yard.</p>
       </div>
       <button class="btn splash-cta" data-act="splash-start">Tap to Begin</button>
-      <p class="splash-foot">Bastion vs the Cinder</p>
+      <p class="splash-foot">Bastion vs the Cinder · v${VERSION} ${VERSION_NAME}</p>
     </div>`;
 }
 
@@ -386,7 +389,7 @@ export function renderMain(state) {
           <span><i>Parts</i>${meta.forge}</span>
           <span><i>Best</i>W${meta.bestWave}</span>
         </div>
-        <p class="title-credit">Bastion vs the Cinder</p>
+        <p class="title-credit">Bastion vs the Cinder · v${VERSION} ${VERSION_NAME}</p>
       </footer>
     </div>`;
 }
