@@ -51,7 +51,7 @@ export class App {
     this.sim = null;
     this.screen = "main";
     this.tool = "tower";
-    this.slot = 0;
+    this.slot = -1;
     this.forgeSlot = 0;
     this.forgeReturn = "main";
     this.forgeAim = -Math.PI / 2;
@@ -190,13 +190,22 @@ export class App {
       this.board.setGhostPlan(null);
       return;
     }
-    // Don't show regular ghost when hand has a tower
-    if (this._handSlot != null) {
+    // Only show ghost when there's a tower in hand OR a tower is selected
+    if (this._handSlot == null && this.selectedTowerId < 0) {
       this.board.setGhostPlan(null);
       return;
     }
     let cell = this.placeConfirm || this.board.hover;
-    let slot = this.sim.roster?.[this.slot];
+    let slot;
+    if (this._handSlot != null) {
+      slot = this.sim.roster?.[this._handSlot];
+    } else if (this.selectedTowerId >= 0) {
+      const t = this.sim.towers.find((x) => x.id === this.selectedTowerId);
+      if (t) {
+        cell = t.cell;
+        slot = t;
+      }
+    }
     if (this.selectedTowerId >= 0) {
       const t = this.sim.towers.find((x) => x.id === this.selectedTowerId);
       if (t) {
