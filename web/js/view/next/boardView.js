@@ -82,10 +82,11 @@ export class BoardView {
       (e) => {
         if (!this.sim) return;
         e.preventDefault();
+        const { x, y } = this._toCanvas(e.clientX, e.clientY);
         // ⌘ / Ctrl + wheel → zoom about the cursor
         if (e.ctrlKey || e.metaKey) {
           const factor = Math.exp(-e.deltaY * 0.0018);
-          this.zoomAbout(this._zoomT * factor, e.clientX, e.clientY);
+          this.zoomAbout(this._zoomT * factor, x, y);
           return;
         }
         // Shift + wheel → pan (horizontal + vertical)
@@ -338,9 +339,16 @@ export class BoardView {
     this._drag = null;
   }
 
+  /** Convert page coordinates to canvas-relative coordinates. */
+  _toCanvas(x, y) {
+    const rect = this.canvas.getBoundingClientRect();
+    return { x: x - rect.left, y: y - rect.top };
+  }
+
   _onPointerDown(e) {
     if (!this.sim) return;
-    this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const { x, y } = this._toCanvas(e.clientX, e.clientY);
+    this._pointers.set(e.pointerId, { x, y });
     try {
       this.canvas.setPointerCapture(e.pointerId);
     } catch (_) {
@@ -355,19 +363,20 @@ export class BoardView {
 
     this._drag = {
       id: e.pointerId,
-      x0: e.clientX,
-      y0: e.clientY,
+      x0: x,
+      y0: y,
       panX0: this.panX,
       panY0: this.panY,
       moved: false,
     };
-    this.hover = this._cellAt(e.clientX, e.clientY);
+    this.hover = this._cellAt(x, y);
   }
 
   _onPointerMove(e) {
     if (!this.sim) return;
+    const { x, y } = this._toCanvas(e.clientX, e.clientY);
     if (this._pointers.has(e.pointerId)) {
-      this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      this._pointers.set(e.pointerId, { x, y });
     }
 
     if (this._pinch && this._pointers.size >= 2) {
@@ -403,11 +412,11 @@ export class BoardView {
       return;
     }
 
-    this.hover = this._cellAt(e.clientX, e.clientY);
+    this.hover = this._cellAt(x, y);
     const d = this._drag;
     if (!d || e.pointerId !== d.id) return;
-    const dy = e.clientY - d.y0;
-    const dx = e.clientX - d.x0;
+    const dy = y - d.y0;
+    const dx = x - d.x0;
     if (!d.moved && Math.hypot(dx, dy) > 8) {
       d.moved = true;
       // A drag means "look around" — drop any tower currently in hand.
@@ -444,7 +453,8 @@ export class BoardView {
     if (!d || e.pointerId !== d.id) return;
     this._drag = null;
     if (d.moved) return;
-    const c = this._cellAt(e.clientX, e.clientY);
+    const { x, y } = this._toCanvas(e.clientX, e.clientY);
+    const c = this._cellAt(x, y);
     if (this.sim.grid.inBounds(c.x, c.y) && this.onTap) this.onTap(c);
   }
 
