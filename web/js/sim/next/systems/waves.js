@@ -404,15 +404,30 @@ function tickClumpState(state, wv) {
         const isLastClump = cs.clumpIdx >= cs.totalClumps - 1 || wv.toSpawn === 0;
         if (!isLastClump) {
           if (state.modeEndless && cs.portalShiftsUsed < cs.shiftsBudget) {
-            relocatePortal(state);
-            cs.portalShiftsUsed++;
+            // Warning before portal shifts
+            emit(state, "portal_unstable", { clumpIdx: cs.clumpIdx });
+            cs.timer = 1.0; // 1 second warning
+            cs.phase = 'portal_shifting';
+          } else {
+            cs.phase = 'moving';
+            cs.timer = 0;
           }
-          cs.phase = 'moving';
-          cs.timer = 0;
-          emit(state, "portal_move", { clumpIdx: cs.clumpIdx, x: state.portal.x });
         } else {
           cs.phase = 'idle';
         }
+      }
+      break;
+    }
+    
+    case 'portal_shifting': {
+      if (cs.timer <= 0) {
+        if (cs.portalShiftsUsed < cs.shiftsBudget) {
+          relocatePortal(state);
+          cs.portalShiftsUsed++;
+        }
+        cs.phase = 'moving';
+        cs.timer = 0;
+        emit(state, "portal_move", { clumpIdx: cs.clumpIdx, x: state.portal.x });
       }
       break;
     }

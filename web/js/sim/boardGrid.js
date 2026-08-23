@@ -365,6 +365,19 @@ export class BoardGrid {
     return this.airNext[this.idx(x, y)];
   }
 
+  /** Per-enemy air step: shortest exit distance, no tower avoid, ignores walls. */
+  pickNextAir(x, y, opts = {}) {
+    if (!this.inBounds(x, y)) return { x, y };
+    if (this.isExit(x, y)) return { x, y };
+    return this._pickAmong(x, y, this.airDist, true, {
+      avoid: opts.avoid || "none",
+      id: opts.id | 0,
+      tick: opts.tick | 0,
+      live: true,
+      entity: opts.entity || null,
+    });
+  }
+
   /**
    * Per-enemy ground step: shortest exit distance, soft tower avoid, fair ties.
    * @param {{ id?: number, tick?: number, avoidTowers?: boolean }} [opts]

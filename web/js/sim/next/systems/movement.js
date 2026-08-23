@@ -93,7 +93,7 @@ function advance(state, e) {
       return;
     }
     const next = e.flying
-      ? g.pickNextGround(cx, cy, {
+      ? g.pickNextAir(cx, cy, {
           id: e.id,
           tick: state.tickIndex | 0,
           avoid: "none",
