@@ -738,9 +738,10 @@ export class BoardView {
       this.ctx.beginPath();
       for (let i = 0; i <= steps; i++) {
         const a = (i / steps) * Math.PI * 2;
-        const sp = this.cam.project(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-        if (i === 0) this.ctx.moveTo(sp.x, sp.y);
-        else this.ctx.lineTo(sp.x, sp.y);
+        const spx = cx + Math.cos(a) * r;
+        const spy = cy + Math.sin(a) * r;
+        if (i === 0) this.ctx.moveTo(spx, spy);
+        else this.ctx.lineTo(spx, spy);
       }
       this.ctx.stroke();
       this.ctx.setLineDash([]);
