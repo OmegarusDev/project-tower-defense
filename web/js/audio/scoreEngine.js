@@ -151,12 +151,13 @@ export class ScoreEngine {
     this.synth?.setMusicVolume?.(v);
   }
 
-  /** Kick interval from wave — slow start, gentle ramp. Kick itself is gated by phase. */
+  /** Kick interval — steady 4/4 at 120 BPM = 0.5s per beat; kick on every beat (four-on-the-floor). */
   _interval() {
-    const effectiveWave = this.wave + this.waveOffset;
-    const base = Math.max(0.35, 1.8 - (effectiveWave - 1) * 0.025);
-    const between = this.phase === "betweenWaves" ? 1.15 : 1;
-    return Math.max(0.28, (base * between) / this.speed);
+    const bpm = 120;
+    const beat = 60 / bpm; // 0.5s
+    // During betweenWaves, half-time feel (kick on 1 and 3)
+    const mult = this.phase === "betweenWaves" ? 2 : 1;
+    return beat * mult / this.speed;
   }
 
   tick(dt) {

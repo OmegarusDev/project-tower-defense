@@ -319,6 +319,7 @@ export class BoardView {
       panX0: this.panX,
       panY0: this.panY,
       pitch0: VIEW25.pitchDeg,
+      pitchLocked: false,
     };
     this._drag = null;
   }
@@ -359,26 +360,34 @@ export class BoardView {
       const mid = this._pointerMid();
       const dist = this._pointerDist();
       if (!mid || dist < 8) return;
-      const scale = dist / this._pinch.dist0;
-      const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._pinch.zoom0 * scale));
+      const midDy = mid.y - this._pinch.mid0.y;
+      const midDx = mid.x - this._pinch.mid0.x;
+      // Pitch lock: if vertical drag exceeds threshold, disable zoom for this gesture
+      if (!this._pinch.pitchLocked && Math.abs(midDy) > 12) {
+        this._pinch.pitchLocked = true;
+      }
+      // Pitch (inverted: drag up → increase pitch)
+      if (this.onPitchChange) {
+        this.onPitchChange(this._pinch.pitch0 - midDy * 0.25);
+      }
       // Horizontal midpoint movement → pan X
       this._panXT = this.panX = Math.max(
         this.panMinX,
-        Math.min(this.panMaxX, this._pinch.panX0 + (mid.x - this._pinch.mid0.x))
+        Math.min(this.panMaxX, this._pinch.panX0 + midDx)
       );
-      // Vertical midpoint movement → pitch (two-finger tilt), not pan
-      if (this.onPitchChange) {
-        this.onPitchChange(this._pinch.pitch0 + (mid.y - this._pinch.mid0.y) * 0.25);
-      }
-      // Zoom anchored horizontally at the touch midpoint
-      if (this._pinch.mid0) {
-        const b = this.cam.unproject(this._pinch.mid0.x, this._pinch.mid0.y);
-        this._zoomT = z;
-        this._fit(true);
-        const p = this.cam.project(b.x, b.y);
-        this._panXT = this.panX = this.panX + (this._pinch.mid0.x - p.x);
-      } else {
-        this._zoomT = z;
+      // Zoom only if not pitch-locked
+      if (!this._pinch.pitchLocked) {
+        const scale = dist / this._pinch.dist0;
+        const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._pinch.zoom0 * scale));
+        if (this._pinch.mid0) {
+          const b = this.cam.unproject(this._pinch.mid0.x, this._pinch.mid0.y);
+          this._zoomT = z;
+          this._fit(true);
+          const p = this.cam.project(b.x, b.y);
+          this._panXT = this.panX = this.panX + (this._pinch.mid0.x - p.x);
+        } else {
+          this._zoomT = z;
+        }
       }
       this._fit(true);
       return;
