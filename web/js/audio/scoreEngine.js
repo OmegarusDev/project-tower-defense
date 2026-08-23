@@ -9,11 +9,14 @@
  */
 
 const PAD_NOTES = [
-  [110, 164.81, 220], // A2 · E3 · A3
-  [130.81, 196, 261.63], // C3 · G3 · C4
-  [98, 146.83, 196], // G2 · D3 · G3
-  [82.41, 123.47, 164.81], // E2 · B2 · E3
+  [110, 164.81, 220], // A2 · E3 · A3 (Am)
+  [130.81, 196, 261.63], // C3 · G3 · C4 (C)
+  [98, 146.83, 196], // G2 · D3 · G3 (G)
+  [82.41, 123.47, 164.81], // E2 · B2 · E3 (Em)
 ];
+
+/* A minor pentatonic — the lead wanders this scale; it fits every chord above */
+const LEAD_SCALE = [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25, 783.99];
 
 export class ScoreEngine {
   constructor(synthBank) {
@@ -27,6 +30,8 @@ export class ScoreEngine {
     this._enabled = true;
     this._acc = 0;
     this._nextKick = 0;
+    this._nextLead = 0;
+    this._leadIdx = 4;
     this._padNodes = [];
     this._lfo = null;
     this._filter = null;
@@ -50,6 +55,7 @@ export class ScoreEngine {
       this.running = true;
       this._acc = 0;
       this._nextKick = 0;
+      this._nextLead = 0;
       if (this._bedGain && this.synth?.ctx) {
         const t = this.synth.ctx.currentTime;
         this._bedGain.gain.setValueAtTime(0.0001, t);
@@ -145,9 +151,8 @@ export class ScoreEngine {
     this.synth?.setMusicVolume?.(v);
   }
 
-  /** Kick interval from wave — slow start, gentle ramp. No kick in menu. */
+  /** Kick interval from wave — slow start, gentle ramp. Kick itself is gated by phase. */
   _interval() {
-    if (this.phase === "menu") return 999; // effectively no kick
     const effectiveWave = this.wave + this.waveOffset;
     const base = Math.max(0.35, 1.8 - (effectiveWave - 1) * 0.025);
     const between = this.phase === "betweenWaves" ? 1.15 : 1;
@@ -166,8 +171,8 @@ export class ScoreEngine {
       const chordSpeed = 18;
       if (this._chordT > chordSpeed / Math.max(0.5, this.speed)) {
         this._chordT = 0;
-        // Alternate between chord 1 and chord 2 during waves
-        this._chord = this._chord === 1 ? 2 : 1;
+        // Rotate 1 → 2 → 3 → 1 (C, G, Em) during waves
+        this._chord = (this._chord % 3) + 1;
         this._retunePads();
       }
     } else {
@@ -187,6 +192,12 @@ export class ScoreEngine {
       if (this._nextKick < now - 0.02) this._nextKick = now;
       this._kick(this._nextKick);
       this._nextKick += iv;
+    }
+    // Sparse generative lead
+    while (this._nextLead <= now + 0.05) {
+      if (this._nextLead < now - 0.02) this._nextLead = now;
+      this._lead(this._nextLead);
+      this._nextLead += this._leadInterval();
     }
   }
 
@@ -251,14 +262,19 @@ export class ScoreEngine {
     const ctx = this.synth?.ctx;
     if (!ctx || !this._filter) return;
     const freqs = PAD_NOTES[this._chord] || PAD_NOTES[0];
-    for (let i = 0; i < freqs.length; i++) {
+    const voices = [
+      { f: freqs[0] / 2, type: "sine", gain: 0.2, detune: 0 }, // sub-bass root
+      { f: freqs[0], type: "triangle", gain: 0.2, detune: 0 },
+      { f: freqs[1], type: "sawtooth", gain: 0.08, detune: -7 },
+      { f: freqs[2], type: "sine", gain: 0.13, detune: 5 },
+    ];
+    for (const v of voices) {
       const osc = ctx.createOscillator();
-      osc.type = i === 0 ? "triangle" : i === 1 ? "sawtooth" : "sine";
-      osc.frequency.value = freqs[i];
+      osc.type = v.type;
+      osc.frequency.value = v.f;
+      osc.detune.value = v.detune;
       const g = ctx.createGain();
-      g.gain.value = i === 0 ? 0.22 : i === 1 ? 0.09 : 0.14;
-      // Detune upper voices slightly for width
-      if (i > 0) osc.detune.value = i === 1 ? -7 : 5;
+      g.gain.value = v.gain;
       osc.connect(g);
       g.connect(this._filter);
       osc.start();
@@ -309,9 +325,10 @@ export class ScoreEngine {
       if (this._built) this._spawnPads();
       return;
     }
+    const targets = [freqs[0] / 2, freqs[0], freqs[1], freqs[2]];
     const t = ctx.currentTime;
     for (let i = 0; i < this._padNodes.length; i++) {
-      const f = freqs[i] || freqs[0];
+      const f = targets[i] || freqs[0];
       try {
         this._padNodes[i].osc.frequency.setTargetAtTime(f, t, 1.8);
       } catch (_) {
@@ -386,5 +403,43 @@ export class ScoreEngine {
       clearTimeout(this._fadeTimer);
       this._fadeTimer = null;
     }
+  }
+
+  /** Interval between lead notes — sparse; denser during waves, none in menu. */
+  _leadInterval() {
+    const base = this.phase === "inWave" ? 2.0 : 3.6;
+    return base + Math.random() * 2.2;
+  }
+
+  /** Random-walk on the pentatonic scale — prefer small steps, occasional leap. */
+  _pickLeadNote() {
+    const n = LEAD_SCALE.length;
+    const r = Math.random();
+    let step;
+    if (r < 0.5) step = Math.random() < 0.5 ? 1 : -1;
+    else if (r < 0.8) step = Math.random() < 0.5 ? 2 : -2;
+    else step = Math.random() < 0.5 ? 3 : -3;
+    this._leadIdx = Math.max(0, Math.min(n - 1, this._leadIdx + step));
+    return LEAD_SCALE[this._leadIdx];
+  }
+
+  _lead(when) {
+    const ctx = this.synth?.ctx;
+    if (!ctx || !this._filter) return;
+    if (!this._enabled || this._paused) return;
+    if (this.phase === "menu") return;
+    const t0 = when ?? ctx.currentTime;
+    const freq = this._pickLeadNote();
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(0.13, t0 + 0.28);
+    g.gain.setValueAtTime(0.13, t0 + 1.4);
+    g.gain.linearRampToValueAtTime(0.0001, t0 + 3.2);
+    osc.connect(g).connect(this._filter);
+    osc.start(t0);
+    osc.stop(t0 + 3.4);
   }
 }
