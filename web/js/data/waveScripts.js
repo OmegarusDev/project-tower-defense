@@ -95,9 +95,8 @@ const ENDLESS_EVENTS = [
 
 export function composeEndlessWave(wave, rand) {
   const w = Math.max(1, wave | 0);
-  // Tight opening: small packs early (fewer enemies, tighter margins), then a
-  // steady rise — the mid-game wall comes from the HP curve, not swarm size.
-  let budget = 6.5 + w * 1.45 + Math.floor(w / 3) * 0.9 + rand() * (2.2 + w * 0.16);
+  // Fewer enemies, each one matters — towers feel like a real commitment.
+  let budget = 2.5 + w * 0.75 + Math.floor(w / 3) * 0.5 + rand() * (1.0 + w * 0.08);
   const unlocked = ENDLESS_THEMES.filter((t) => w >= t.unlock);
   const theme = weightedPick(unlocked, rand);
   let event = "";
@@ -124,7 +123,7 @@ export function composeEndlessWave(wave, rand) {
     const kind = pickKind(kinds, w, rand);
     const cost = ENEMY_COST[kind] || 1;
     if (spent + cost > budget + 1.5 && queue.length > 3) break;
-    if (rand() < 0.24 && kind !== "claim") {
+    if (rand() < 0.18 && kind !== "claim") {
       const n = 2 + ((rand() * 3) | 0);
       for (let i = 0; i < n && spent < budget + 2; i++) {
         queue.push(kind);
@@ -143,22 +142,18 @@ export function composeEndlessWave(wave, rand) {
 
   const spawnGap = Math.max(0.16, 0.52 * Math.pow(0.965, w - 1) * (0.75 + rand() * 0.5));
   
-  // Clump parameters: variable clumps based on wave progression
-  // Wave 1-2: 1 clump (static)
-  // Wave 3-7: 2-3 clumps
-  // Wave 8-15: 3-5 clumps  
-  // Wave 16+: 4-7 clumps (high variance)
+  // Clump count: loose/unsteady early, denser later.
+  // The actual clump SIZES are randomly partitioned in initClumpState.
   let clumps = 1;
-  if (w >= 3) {
-    const baseClumps = 1 + Math.floor((w - 1) / 5);
-    const variance = Math.max(0, Math.floor(w / 8));
-    clumps = baseClumps + (rand() * variance) | 0;
-    clumps = Math.min(clumps, 7);
-  }
-  const clumpSize = Math.max(2, Math.ceil(queue.length / clumps));
-  const interClumpDwell = Math.max(1.5, 2.5 - w * 0.05);
-  
-  return { queue, spawnGap, theme: theme.id, event, clumps, clumpSize, clumpGap: 0.08, interClumpDwell };
+  if (w <= 2)       clumps = 2 + (rand() < 0.3 ? 1 : 0);       // 2-3
+  else if (w <= 5)  clumps = 2 + ((rand() * 2) | 0);            // 2-3
+  else if (w <= 10) clumps = 3 + ((rand() * 2) | 0);            // 3-4
+  else if (w <= 20) clumps = 4 + ((rand() * 2) | 0);            // 4-5
+  else              clumps = Math.min(7, 5 + ((rand() * 2) | 0)); // 5-7
+
+  const interClumpDwell = Math.max(1.0, 2.5 - w * 0.08);
+
+  return { queue, spawnGap, theme: theme.id, event, clumps, clumpGap: 0.08, interClumpDwell };
 }
 
 function pickKind(table, wave, rand) {

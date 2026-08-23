@@ -30,6 +30,12 @@ export function onKeyDown(app, e) {
       app.closeTechOverlay();
       return;
     }
+    // Meta screens: Esc = same as the X/back button.
+    if (app.screen !== "game" && app.screen !== "splash" && app.screen !== "main") {
+      e.preventDefault();
+      app.backScreen();
+      return;
+    }
   }
   if (app.screen !== "game" || !app.sim) return;
   if (e.code === "Escape" || e.key === "Escape") {
@@ -60,7 +66,12 @@ export function onKeyDown(app, e) {
   if (code === "Space" || key === " ") {
     e.preventDefault();
     if (e.repeat) return;
-    app.unlockAudio().then(() => app.callEarly());
+    if (app.screen === "game" && app.waveBusy()) {
+      beginFastForward(app);
+      app._spaceFf = true;
+    } else {
+      app.unlockAudio().then(() => app.callEarly());
+    }
     return;
   }
 
@@ -139,8 +150,9 @@ export function beginFastForward(app) {
   if (app._ffHeld) return;
   app._ffHeld = true;
   app._speedBeforeFf = app.speed || 1;
-  app.speed = 5;
-  app.score.setSpeed(5);
+  const ffSpeed = app.meta?.ffSpeed || 2;
+  app.speed = ffSpeed;
+  app.score.setSpeed(ffSpeed);
   app.refreshHud();
   
 }
@@ -192,5 +204,11 @@ export function bindCallButton(app, btn) {
     e.preventDefault();
     app.unlockAudio().then(() => app.callEarly());
   });
-  
+}
+
+export function onKeyUp(app, e) {
+  if ((e.code === "Space" || e.key === " ") && app._spaceFf) {
+    app._spaceFf = false;
+    endFastForward(app);
+  }
 }

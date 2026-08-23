@@ -1,4 +1,139 @@
-/* title.css — split from style.css (pure move, no restyle) */
+/* ——— Splash screen ——— */
+.splash-screen {
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+  padding: 0 28px;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 25%, rgba(220, 100, 40, 0.18), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 75%, rgba(120, 60, 20, 0.1), transparent 50%),
+    var(--tex-grime),
+    var(--tex-rust),
+    linear-gradient(180deg, #1a1612 0%, #120e0c 50%, #0e0c0a 100%);
+  text-align: center;
+}
+
+.splash-top {
+  text-align: center;
+}
+
+.splash-crest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: min(100%, 260px);
+  margin: 0 auto 28px;
+}
+
+.splash-crest span {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #6a625a 30%, #8a827a 50%, #6a625a 70%, transparent);
+}
+
+.splash-crest i {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border: 1px solid #7a726a;
+  background: linear-gradient(165deg, #5a524a, #1a1612);
+  transform: rotate(45deg);
+  box-shadow: 0 0 12px rgba(200, 100, 40, 0.2);
+}
+
+.splash-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.6rem, 13vw, 3.8rem);
+  line-height: 0.92;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.6),
+    0 4px 20px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(200, 100, 40, 0.1);
+}
+
+.splash-rule {
+  width: min(100%, 200px);
+  height: 2px;
+  margin: 20px auto;
+  background: linear-gradient(90deg, transparent, #5a524a 20%, #8a827a 50%, #5a524a 80%, transparent);
+  opacity: 0.7;
+}
+
+.splash-tag {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.splash-cta {
+  width: min(80%, 320px);
+  margin: 36px 0 0;
+  padding: 18px 40px;
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: var(--font-btn);
+  font-weight: 700;
+  background:
+    linear-gradient(180deg, rgba(220, 120, 70, 0.18) 0%, transparent 38%),
+    var(--tex-grime),
+    var(--tex-scratches),
+    var(--tex-noise),
+    linear-gradient(180deg, #a05028 0%, #7a3a1c 45%, #5a2814 100%);
+  background-size: auto, auto, auto, 64px 64px, auto;
+  border: 2px solid #c47848;
+  border-radius: 0;
+  color: #f2e8dc;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+  box-shadow:
+    var(--rim-brass),
+    0 1px 0 rgba(255, 200, 160, 0.18) inset,
+    0 -2px 0 rgba(40, 16, 8, 0.35) inset;
+  filter: var(--drop-btn-gold);
+  clip-path: var(--rough-clip, var(--plate-clip));
+  transition: filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+.splash-cta:hover {
+  border-color: #d48858;
+  color: #fff4ec;
+  filter: brightness(1.1) var(--drop-btn-gold);
+}
+
+.splash-cta:active {
+  filter: brightness(0.92) var(--drop-btn-gold);
+  box-shadow:
+    var(--rim-brass),
+    0 1px 0 rgba(255, 200, 160, 0.12) inset,
+    0 -2px 0 rgba(40, 16, 8, 0.45) inset;
+}
+
+.splash-foot {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0));
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(154, 163, 174, 0.35);
+}
+
+@media (max-height: 600px) {
+  .splash-crest { display: none; }
+  .splash-rule { margin: 14px auto; }
+}
 
 /* ——— Title / main menu ——— */
 .title-screen {
@@ -8,6 +143,8 @@
   min-height: 0;
   background:
     radial-gradient(ellipse 90% 55% at 50% 18%, rgba(220, 100, 40, 0.2), transparent 60%),
+    var(--tex-grime),
+    var(--tex-rust),
     linear-gradient(180deg, rgba(28, 18, 12, 0.2) 0%, rgba(22, 14, 10, 0.35) 38%, rgba(18, 12, 10, 0.78) 62%, rgba(16, 12, 10, 0.95) 100%);
   overflow: hidden;
 }
@@ -38,15 +175,15 @@
 .title-crest span {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #6a727c 40%, #8a9098 50%, #6a727c 60%, transparent);
+  background: linear-gradient(90deg, transparent, #6a6050 40%, #8a8070 50%, #6a6050 60%, transparent);
 }
 
 .title-crest i {
   display: block;
   width: 7px;
   height: 7px;
-  border: 1px solid #7a8490;
-  background: linear-gradient(165deg, #5a646e, #2a323a);
+  border: 1px solid #7a7060;
+  background: linear-gradient(165deg, #5a544a, #2a2824);
   box-shadow: 0 0 0 1px rgba(10, 12, 16, 0.6);
 }
 
@@ -67,7 +204,7 @@
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
   background: rgba(20, 24, 30, 0.55);
   border: 1px solid rgba(90, 100, 112, 0.55);
-  clip-path: var(--plate-clip-sm);
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
 }
 
 .title-screen .title-mark {
@@ -81,16 +218,6 @@
   background: rgba(20, 24, 30, 0.65);
   border: 2px solid rgba(100, 110, 122, 0.65);
   box-shadow: var(--rim-brass);
-}
-
-.title-screen .title-mark::before,
-.title-screen .title-mark::after {
-  content: "";
-  width: 5px;
-  height: 5px;
-  flex: 0 0 auto;
-  background: linear-gradient(135deg, #9aa4b0, #4a5460);
-  box-shadow: 0 0 0 1px rgba(10, 12, 16, 0.5);
 }
 
 .title-brand {
@@ -124,7 +251,7 @@
   width: min(100%, 200px);
   height: 2px;
   margin: 12px auto 0;
-  background: linear-gradient(90deg, transparent, #5a646e 20%, #8a9098 50%, #5a646e 80%, transparent);
+  background: linear-gradient(90deg, transparent, #6a5838 20%, #c49858 50%, #6a5838 80%, transparent);
   opacity: 0.85;
 }
 
@@ -221,9 +348,8 @@
   gap: 5px;
   padding: 7px 12px;
   border-radius: 0;
-  clip-path: var(--plate-clip-sm);
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
   background:
-    var(--tex-bolts),
     var(--tex-scratches),
     var(--tex-rust),
     linear-gradient(180deg, rgba(72, 48, 28, 0.95), rgba(28, 20, 16, 0.96));
@@ -273,12 +399,9 @@
 
 .btn.title-cta:not(.hub-continue):hover:not(:disabled),
 .btn.title-cta:not(.hub-continue):focus-visible:not(:disabled) {
-  background:
-    linear-gradient(180deg, rgba(230, 140, 80, 0.22) 0%, transparent 40%),
-    linear-gradient(180deg, #b85a30 0%, #8a4420 45%, #6a3018 100%);
   border-color: #d48858;
   color: #fff4ec;
-  filter: brightness(1.04) var(--drop-btn-gold);
+  filter: brightness(1.1) var(--drop-btn-gold);
 }
 
 .btn.title-cta:not(.hub-continue):active:not(:disabled) {
@@ -291,7 +414,3 @@
   margin-bottom: 8px !important;
 }
 
-.title-screen > *:not(.frame-bolts) {
-  position: relative;
-  z-index: 1;
-}

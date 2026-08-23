@@ -75,7 +75,7 @@
   color: #f0e8dc;
   background: linear-gradient(180deg, #8a4a28, #6a3420);
   border-radius: 0;
-  clip-path: var(--plate-clip-sm);
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
   padding: 3px 10px;
   border: 1px solid #a86840;
 }
@@ -103,7 +103,7 @@
   background-size: 96px 96px, auto, auto;
   border: 2px solid #8a6238;
   border-radius: 0;
-  clip-path: var(--plate-clip);
+  clip-path: var(--rough-clip, var(--plate-clip));
   padding: 14px 16px;
   text-align: center;
   box-shadow: 0 4px 0 #14100c, 0 8px 18px rgba(0, 0, 0, 0.32);
@@ -132,8 +132,8 @@
   gap: 6px;
   padding: 10px 18px;
   border-radius: 999px;
-  background: #1c2740;
-  border: 1px solid #3a4f6a;
+  background: #1e1814;
+  border: 1px solid #3a4030;
   color: var(--text);
   font-size: 0.9rem;
   font-weight: 650;
@@ -178,8 +178,7 @@
   padding: 10px 22px;
   gap: 8px;
   min-height: 38px;
-  /* Bolts parked in the absolute corners so they clear Æ / gear / digits */
-  background-image: var(--tex-scratches), var(--tex-bolts-corner) !important;
+  background-image: var(--tex-scratches) !important;
 }
 
 .end-totals .chip .chip-v {
@@ -249,12 +248,9 @@
 
 .btn.hub-continue:hover:not(:disabled),
 .btn.hub-continue:focus-visible:not(:disabled) {
-  background:
-    linear-gradient(180deg, rgba(160, 200, 180, 0.2) 0%, transparent 42%),
-    linear-gradient(180deg, #4a7a66 0%, #345c4e 45%, #284840 100%);
   border-color: #7aafa0;
   color: #f2f8f4;
-  filter: brightness(1.04) var(--drop-btn-call);
+  filter: brightness(1.08) var(--drop-btn-call);
   box-shadow:
     0 1px 0 rgba(190, 220, 210, 0.28) inset,
     0 -2px 0 rgba(0, 0, 0, 0.28) inset;
@@ -273,9 +269,9 @@
   gap: 6px;
   padding: 8px 14px;
   border-radius: 0;
-  clip-path: var(--plate-clip-sm);
-  background: linear-gradient(165deg, rgba(36, 44, 58, 0.96), rgba(18, 24, 36, 0.94));
-  border: 2px solid #5a6a7e;
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
+  background: linear-gradient(165deg, rgba(36, 28, 20, 0.96), rgba(18, 14, 12, 0.94));
+  border: 2px solid #5a4a38;
   box-shadow:
     0 1px 0 rgba(232, 228, 220, 0.08) inset,
     0 2px 6px rgba(0, 0, 0, 0.28);
@@ -366,8 +362,8 @@
 
 .meta-dock {
   padding: 10px 16px calc(14px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid rgba(90, 101, 114, 0.35);
-  background: linear-gradient(180deg, rgba(14, 18, 24, 0.55) 0%, rgba(14, 18, 24, 0.88) 100%);
+  border-top: 1px solid rgba(106, 88, 56, 0.35);
+  background: linear-gradient(180deg, rgba(22, 16, 14, 0.55) 0%, rgba(22, 16, 14, 0.88) 100%);
 }
 
 .meta-dock .btn {
@@ -388,10 +384,6 @@
   padding: 0;
 }
 
-.meta-enter {
-  animation: plate-enter 0.45s ease-out both;
-}
-
 .meta-hero {
   position: relative;
   padding: calc(16px + env(safe-area-inset-top, 0px)) 4px 14px;
@@ -407,15 +399,22 @@
   right: 0;
   bottom: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #5a646e 20%, var(--accent) 50%, #5a646e 80%, transparent);
+  background: linear-gradient(90deg, transparent, #6a5838 20%, var(--accent) 50%, #6a5838 80%, transparent);
   opacity: 0.7;
 }
 
 .meta-hero-row {
+  position: relative;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
+}
+
+.meta-hero-row .x-close {
+  position: absolute;
+  right: 0;
+  top: 0;
 }
 
 .meta-hero h1 {
@@ -424,13 +423,13 @@
   font-size: 1.55rem !important;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  text-align: left !important;
+  text-align: center !important;
   color: #e8e4dc !important;
 }
 
 .meta-blurb {
   margin: 8px 0 0 !important;
-  text-align: left !important;
+  text-align: center !important;
   font-size: 0.86rem !important;
   line-height: 1.35 !important;
   color: var(--muted) !important;
@@ -450,18 +449,18 @@
   position: relative;
   padding: 18px 16px 16px;
   background:
-    var(--tex-bolts),
+    var(--tex-grime),
     var(--tex-scratches),
     var(--tex-noise),
     var(--tex-rust),
     linear-gradient(165deg, rgba(72, 52, 36, 0.96) 0%, rgba(28, 20, 16, 0.98) 100%);
-  background-size: auto, auto, 96px 96px, auto, auto;
+  background-size: auto, auto, auto, 96px 96px, auto, auto;
   border: 2px solid #c48840;
   box-shadow:
     var(--rim-brass),
     0 4px 0 #14100c,
     0 8px 20px rgba(0, 0, 0, 0.4);
-  clip-path: var(--plate-clip);
+  clip-path: var(--rough-clip, var(--plate-clip));
 }
 
 .hub-card::before {
@@ -544,7 +543,7 @@
   border: 1px solid rgba(90, 101, 114, 0.7);
   background: rgba(20, 24, 32, 0.85);
   color: #c8c2b2;
-  clip-path: var(--plate-clip-sm);
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
 }
 
 .threat-tag[data-kind="overlord"],
@@ -567,7 +566,7 @@
 }
 
 .prep-card {
-  clip-path: var(--plate-clip);
+  clip-path: var(--rough-clip, var(--plate-clip));
   border-radius: 0;
 }
 
@@ -580,15 +579,17 @@
 .settings-plate {
   padding: 14px 16px;
   background:
+    var(--tex-grime),
+    var(--tex-scratches),
     var(--tex-noise),
     var(--tex-rust),
     linear-gradient(165deg, rgba(64, 48, 36, 0.96) 0%, rgba(24, 18, 14, 0.98) 100%);
-  background-size: 96px 96px, auto, auto;
+  background-size: auto, auto, 96px 96px, auto, auto;
   border: 2px solid #8a6238;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  clip-path: var(--plate-clip);
+  clip-path: var(--rough-clip, var(--plate-clip));
   box-shadow: 0 4px 0 #14100c;
 }
 
@@ -598,7 +599,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 4px;
-  border-bottom: 1px solid rgba(90, 101, 114, 0.25);
+  border-bottom: 1px solid rgba(106, 88, 56, 0.25);
   font-size: 0.9rem;
   color: var(--text);
   cursor: pointer;
@@ -643,7 +644,7 @@
 
 .gain-pill {
   border-radius: 0 !important;
-  clip-path: var(--plate-clip-sm);
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
   font-family: var(--font-btn);
   letter-spacing: 0.04em;
   padding: 10px 18px !important;

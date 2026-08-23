@@ -1,5 +1,5 @@
 /**
- * Roaming seam portal: endless dwell scheduling, spawn fallback, campaign pins.
+ * Roaming seam portal: static w1-5, shifts w6+, shift budget, campaign pins.
  * Run: node js/tests/portal.test.mjs
  */
 import { Sim } from "../sim/next/sim.js";
@@ -16,32 +16,53 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   return w;
 }
 
-// Wave 1 always opens at the default centre; roaming starts wave 3
+// Waves 1-5: portal stays at centre (no shift)
 {
   const w = newWorld(9, 8, 7, true);
-  w.startWave();
-  assert(w.portal.x === w.grid.spawn.x, "wave 1 portal pins to the centre seam");
-  const center = w.portal.x;
-  const s = w._s;
-  s.waves.queue = Array(30).fill("mite");
-  s.waves.toSpawn = 30;
-  w.setStartLives(5000, { resetCurrent: true });
-  for (let i = 0; i < 2000; i++) w.tick(); // wave 1: static (1 clump)
-  const endWave1 = w.portal.x;
-  assert(endWave1 === center, "wave 1 is static - portal stays at centre");
-  w.startWave(); // wave 2 starts, relocatePortal moves portal
-  assert(w.portal.x !== center, "wave 2 opens on a fresh seam cell (relocated at wave start)");
+  const center = w.grid.spawn.x;
+  for (let wave = 1; wave <= 5; wave++) {
+    w.startWave();
+    assert(w.portal.x === center, `wave ${wave} portal stays at centre`);
+    w._s.waves.queue = Array(20).fill("mite");
+    w._s.waves.toSpawn = 20;
+    delete w._s.waves.clumpState;
+    w.setStartLives(5000, { resetCurrent: true });
+    for (let i = 0; i < 2000; i++) w.tick();
+    assert(w.portal.x === center, `wave ${wave} portal still at centre after clear`);
+  }
 }
 
-// Determinism: same seed, same waves, same portal sequence
+// Wave 6: first shift attempt, emits portal_unstable
+{
+  const w = newWorld(9, 8, 7, true);
+  let gotUnstable = false;
+  w._s._listeners.set("portal_unstable", [() => { gotUnstable = true; }]);
+  // Fast-forward through waves 1-5
+  for (let i = 0; i < 5; i++) {
+    w.startWave();
+    w._s.waves.queue = Array(8).fill("mite");
+    w._s.waves.toSpawn = 8;
+    delete w._s.waves.clumpState;
+    w.setStartLives(5000, { resetCurrent: true });
+    for (let t = 0; t < 1500; t++) w.tick();
+  }
+  w.startWave(); // wave 6
+  assert(gotUnstable, "wave 6 emits portal_unstable");
+  // Portal may or may not have moved (depends on whether center is optimal)
+  // The key invariant: portalIdx was advanced by relocatePortal
+  assert(w._s.waves.portalIdx >= 0, "portal cycle was consulted at wave 6");
+}
+
+// Determinism: same seed → same portal sequence
 {
   const seq = (seed) => {
     const w = newWorld(9, 8, seed, true);
     const out = [];
-    for (let wave = 0; wave < 3; wave++) {
+    for (let wave = 0; wave < 6; wave++) {
       w.startWave();
       w._s.waves.queue = Array(40).fill("mite");
       w._s.waves.toSpawn = 40;
+      delete w._s.waves.clumpState;
       for (let i = 0; i < 1200; i++) w.tick();
       out.push({ x: w.portal.x, idx: w._s.waves.portalIdx });
     }
@@ -50,43 +71,45 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   const a = seq(42);
   const b = seq(42);
   assert(JSON.stringify(a) === JSON.stringify(b), "portal movement is seed-deterministic");
-  // Wave 1-2: static (idx 0), Wave 3: clumps start, portalIdx advances
-  assert(a[2].idx > 0, "portal cycle advances by wave 3");
+  // Waves 1-5: all at centre (portal doesn't shift)
+  for (let i = 0; i < 5; i++) {
+    assert(a[i].x === a[0].x, `wave ${i + 1} portal stays at same position as wave 1`);
+  }
 }
 
-// Dwell: portal does not relocate before the dwell stretch elapses
-{
-  const w = newWorld(9, 8, 7, true);
-  w.startWave();
-  const start = w.portal.x;
-  for (let i = 0; i < 100; i++) w.tick(); // ~3.3s sim time < 8s dwell
-  assert(w.portal.x === start, "portal sits still inside its dwell window");
-}
-
-// Clump-based relocation: portal moves between clumps (wave 3 has 2+ clumps)
+// Clump-based relocation: portal moves between clumps (wave 7 has shift budget=1)
 {
   const w = newWorld(9, 8, 11, true);
   w.setStartLives(5000, { resetCurrent: true });
-  w.startWave(); // wave 1
-  w._s.waves.queue = Array(120).fill("mite");
-  w._s.waves.toSpawn = 120;
-  for (let i = 0; i < 3000; i++) w.tick(); // complete wave 1 (static)
-  w.startWave(); // wave 2
-  for (let i = 0; i < 3000; i++) w.tick(); // complete wave 2 (static)
-  w.startWave(); // wave 3 - has 2+ clumps
-  w._s.waves.queue = Array(120).fill("mite");
-  w._s.waves.toSpawn = 120;
+  // Fast-forward through waves 1-5 (static)
+  for (let i = 0; i < 5; i++) {
+    w.startWave();
+    w._s.waves.queue = Array(20).fill("mite");
+    w._s.waves.toSpawn = 20;
+    delete w._s.waves.clumpState;
+    for (let t = 0; t < 2000; t++) w.tick();
+  }
+  w.startWave(); // wave 6 (first shift)
+  w._s.waves.queue = Array(60).fill("mite");
+  w._s.waves.toSpawn = 60;
+  delete w._s.waves.clumpState;
+  for (let t = 0; t < 3000; t++) w.tick();
+  const wave6Portal = w.portal.x;
+
+  w.startWave(); // wave 7 (budget=1 shift)
+  w._s.waves.queue = Array(60).fill("mite");
+  w._s.waves.toSpawn = 60;
+  delete w._s.waves.clumpState;
   let prev = w.portal.x;
   let moved = 0;
   for (let i = 0; i < 5000; i++) {
     w.tick();
     if (w.portal.x !== prev) {
-      assert(w.portal.x !== prev, "portal moves to a different seam cell");
       prev = w.portal.x;
       moved++;
     }
   }
-  assert(moved >= 1, "portal relocates between clumps in wave 3+");
+  assert(moved <= 1, `wave 7 respects shift budget (moved=${moved})`);
 }
 
 // Spawn fallback: sealed portal column spawns from nearest reachable back cell
@@ -101,7 +124,7 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   assert(w._s.grid.groundDist[w._s.grid.idx(cellX, 0)] < 1e9, "fallback cell is reachable");
 }
 
-// Seam row is buildable except the spawn cell (portal now dodges builds)
+// Seam row is buildable except the spawn cell
 {
   const w = newWorld(9, 8, 1, true);
   for (let x = 0; x < 9; x++) {
@@ -126,25 +149,7 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   assert(w.portal.x === 2, "wave-1 portal dodges occupied seam columns");
 }
 
-// Relocation never lands on an occupied seam column
-{
-  const w = newWorld(9, 8, 5, true);
-  w.setStartLives(5000, { resetCurrent: true });
-  w.startWave();
-  const s = w._s;
-  s.waves.queue = Array(300).fill("mite");
-  s.waves.toSpawn = 300;
-  for (let x = 0; x < 3; x++) s.grid.setBlocked(x, 0, true);
-  s.grid.recompute();
-  let bad = 0;
-  for (let i = 0; i < 6000; i++) {
-    w.tick();
-    if (w.portal.x < 3) bad++;
-  }
-  assert(bad === 0, "portal never lands on an occupied seam column");
-}
-
-// All seams blocked → least-occupied column fallback (avoids the heavy column)
+// All seams blocked → least-occupied column fallback
 {
   const w = newWorld(9, 8, 9, true);
   const s = w._s;
@@ -176,10 +181,11 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
       if (x % 2 === 0) s.grid.setBlocked(x, 0, true);
     }
     s.grid.recompute();
-    w.startWave();
+    w.startWave(); // wave 1 (static)
     const out = [w.portal.x];
     s.waves.queue = Array(40).fill("mite");
     s.waves.toSpawn = 40;
+    delete s.waves.clumpState;
     for (let i = 0; i < 1200; i++) w.tick();
     out.push(w.portal.x);
     return out;

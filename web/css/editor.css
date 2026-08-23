@@ -7,18 +7,18 @@
   width: 100%;
   max-width: 420px;
   margin: 0 auto;
-  background: #0a0c10;
+  background: #0c0a08;
   padding: 4px;
-  border-radius: 8px;
-  border: 1px solid #3a4a5e;
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
+  border: 1px solid #3a3530;
 }
 
 .ed-cell {
   appearance: none;
   aspect-ratio: 1;
-  border: 1px solid #2a3440;
-  background: #1c222a;
-  border-radius: 3px;
+  border: 1px solid #2a2824;
+  background: #1c1a18;
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
   padding: 0;
   cursor: pointer;
 }

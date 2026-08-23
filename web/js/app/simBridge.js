@@ -65,15 +65,29 @@ export function onSimEvent(app, e) {
       app.board?.onGridGrew?.();
       app.refreshHud();
       break;
+    case "portal_unstable":
+      app.toast("Portal destabilizing — it may shift!");
+      app.synth.play("portal", 0.6);
+      if (app.portalAnimator) {
+        app.portalAnimator.phase = "stretching_in";
+        app.portalAnimator.timer = 0.4;
+        app.portalAnimator.stretch = 2.0;
+        app.portalAnimator.bloomIntensity = 0.6;
+      }
+      break;
+    case "portal_moved":
+      app.toast("Portal shifted!");
+      app.synth.play("portal", 0.8);
+      break;
     case "tower_fired":
-      app.synth.play("shot", 0.95 + Math.random() * 0.1);
+      app.synth.play("shot", 0.97 + Math.random() * 0.06);
       if (e.towerId != null) app.board?.noteRecoil?.(e.towerId);
       if (app.meta.settings?.particles !== false && e.x != null) {
         app.fx.muzzle(e.x, e.y, e.angle || 0, e.damageType || "kinetic");
       }
       break;
     case "hit":
-      app.synth.play("hit", 0.9 + Math.random() * 0.15);
+      app.synth.play("hit", 0.95 + Math.random() * 0.1);
       if (app.meta.settings?.particles !== false && e.x != null) {
         app.fx.hit(e.x, e.y, e.type || "kinetic");
         app.fx.damageNumber(e.x, e.y, e.damage || 0, e.type || "kinetic");
@@ -137,7 +151,7 @@ export function onSimEvent(app, e) {
       }
       app._lastReplay = exportReplayBlob(app.sim);
       if (app.sim.modeEndless) clearEndless();
-      app.score.stop();
+      app.score.fadeStop(1.5);
       app.showGameOver();
       break;
     case "tower_leveled":
@@ -173,7 +187,7 @@ export function onCampaignVictory(app) {
     app.sim.economy.injectMeta(app.meta.forge, app.meta.aether);
   }
   app.persistMeta();
-  app.score.stop();
+  app.score.fadeStop(1.5);
   app.status = first && id > 0 ? "First clear · +8 Aether" : "Level cleared";
   app.showVictory({ firstClear: first && id > 0 });
   

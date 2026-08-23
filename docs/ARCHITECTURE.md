@@ -71,7 +71,7 @@ node js/balance/monteCarlo.mjs --runs 4 --preset midMeta --max-waves 45
 Presets ladder the Forge progression (all bots are greedy — real players do better):
 `fresh` (starters only, cap 1) → `earlyAA` (+rail) → `parts2` (+rail/twin/bulwark, cap 2) → `midMeta` (cap 4 + tech).
 Measured on the shipped endless map (`ENDLESS_GRID`, 9×8).
-Difficulty rebalance (2026-08-13): start Coin 75→55 (2 starter towers), early
+Difficulty rebalance (2026-08-13): start Coin 75→50 (leaner opening, fewer enemies)
 packs trimmed ~20% (fewer enemies, tighter margins), endless HP gets a tighter
 opening (×1.08^min(2,w−1)) and a mid-game wall (×1.025^min(9,w−7)) that
 compensates the roaming-seam spread; rail place cost 18→12 so the first Forge

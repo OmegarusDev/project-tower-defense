@@ -248,6 +248,13 @@ export const TECH_TREES = [
             maxRank: 3,
             costs: AE_CHAIN(22, 38, 56),
           },
+          {
+            id: "quick_march",
+            name: "Time Warp",
+            blurb: "Fast forward speed 3× / 5× (from 2×)",
+            maxRank: 2,
+            costs: [{ aether: 30 }, { aether: 55 }],
+          },
         ],
       },
     ],
@@ -527,6 +534,8 @@ export function syncTechDerived(meta) {
   meta.globalDamageMult = globalDamageMult;
   meta.globalRangeMult = globalRangeMult;
   meta.globalRofMult = globalRofMult;
+  const march = rank("quick_march");
+  meta.ffSpeed = march >= 2 ? 5 : march >= 1 ? 3 : 2;
   meta.partUpgrades = partUpgrades;
   return meta;
 }
@@ -573,4 +582,4 @@ export function spendTechCost(meta, cost) {
 }
 
 /** Default endless / campaign base Coin before War Chest bonus. */
-export const BASE_START_CASH = 55;
+export const BASE_START_CASH = 50;

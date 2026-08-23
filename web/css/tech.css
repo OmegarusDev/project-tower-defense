@@ -8,27 +8,36 @@
   overflow: hidden;
   justify-content: flex-start;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(212, 120, 58, 0.1) 0%, transparent 42%),
-    rgba(18, 22, 31, 0.96);
+    radial-gradient(ellipse at 50% 0%, rgba(212, 120, 58, 0.12) 0%, transparent 42%),
+    var(--tex-rust),
+    rgba(28, 20, 16, 0.96);
 }
 
 .tech-screen.meta-screen {
   background:
-    linear-gradient(180deg, rgba(10, 12, 14, 0.5) 0%, rgba(12, 16, 22, 0.82) 40%, rgba(14, 18, 24, 0.95) 100%);
+    var(--tex-rust),
+    linear-gradient(180deg, rgba(36, 24, 16, 0.45) 0%, rgba(22, 16, 14, 0.82) 38%, rgba(18, 14, 12, 0.95) 100%);
 }
 
 .tech-hero {
-  flex: 0 0 auto;
-  padding: calc(16px + env(safe-area-inset-top, 0px)) 18px 12px;
-  border-bottom: 1px solid rgba(90, 101, 114, 0.35);
-  background: linear-gradient(180deg, rgba(14, 18, 24, 0.72) 0%, rgba(14, 18, 24, 0.55) 100%);
+  padding-left: 18px;
+  padding-right: 18px;
+  padding-bottom: 12px;
+  background: linear-gradient(180deg, rgba(22, 16, 14, 0.72) 0%, rgba(22, 16, 14, 0.55) 100%);
 }
 
 .tech-hero-row {
+  position: relative;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
+}
+
+.tech-hero-row .x-close {
+  position: absolute;
+  right: 0;
+  top: 0;
 }
 
 .tech-hero h1 {
@@ -37,7 +46,7 @@
   font-size: 1.55rem !important;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  text-align: left !important;
+  text-align: center !important;
   color: #f3ecda !important;
 }
 
@@ -50,19 +59,20 @@
 
 .tech-stats {
   margin-top: 12px;
-  justify-content: flex-start;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 5px;
 }
 
-.tech-status {
-  min-height: 0;
-  margin-top: 8px;
-  font-size: 0.78rem;
-  text-align: left;
+.tech-stats span {
+  padding: 6px 8px;
+  font-size: 0.7rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
-.tech-status:empty,
-.tech-status[hidden] {
-  display: none;
+.tech-stats i {
+  font-size: 0.55rem;
 }
 
 .tech-body {
@@ -75,7 +85,7 @@
   padding: 14px 16px calc(18px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .tech-body .btn {
@@ -99,11 +109,14 @@
   padding: 11px 10px;
   min-height: 44px;
   border-radius: 0;
-  clip-path: var(--plate-clip-sm);
-  border: 2px solid #6a4a30;
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
+  border: var(--br-w, 2px) solid var(--br-clr, #6a4a30);
   background:
     linear-gradient(180deg, rgba(255, 210, 150, 0.1) 0%, transparent 40%),
+    var(--tex-grime),
+    var(--tex-scratches),
     linear-gradient(180deg, #4a3a2e 0%, #2e241c 100%);
+  background-size: auto, auto, auto, auto;
   color: var(--muted);
   font-family: var(--font-display);
   font-size: 0.78rem;
@@ -123,6 +136,22 @@
     linear-gradient(180deg, rgba(255, 220, 120, 0.22) 0%, transparent 42%),
     linear-gradient(180deg, #7a5028 0%, #4a3018 55%, #2e2010 100%);
   box-shadow: 0 0 0 1px var(--accent-soft), 0 3px 0 #1a1008;
+}
+
+/* Per-element texture variation — ttree-tab */
+.ttree-tab[data-idx] {
+  background-position: 0 0, 0 0, calc(var(--tx, 0) * 1px) calc(var(--ty, 0) * 1px), 0 0;
+  background-size: auto, auto, var(--ns, 56px) var(--ns, 56px), auto;
+  background-image:
+    linear-gradient(180deg, rgba(255, 210, 150, 0.1) 0%, transparent 40%),
+    var(--tex-grime),
+    var(--tex-noise),
+    linear-gradient(180deg, #4a3a2e 0%, #2e241c 100%);
+}
+.ttree-tab[data-idx].active {
+  background-image:
+    linear-gradient(180deg, rgba(255, 220, 120, 0.22) 0%, transparent 42%),
+    linear-gradient(180deg, #7a5028 0%, #4a3018 55%, #2e2010 100%);
 }
 
 .ttree {
@@ -151,7 +180,7 @@
     linear-gradient(180deg, #3a2e24 0%, #1c1814 100%);
   border: 2px solid #6a4a30;
   border-radius: 0;
-  clip-path: var(--plate-clip);
+  clip-path: var(--rough-clip, var(--plate-clip));
   padding: 12px 10px 12px;
   box-shadow: 0 3px 0 #120e0a;
 }
@@ -246,7 +275,7 @@
   margin: 0;
   padding: 12px 14px;
   border-radius: 0;
-  clip-path: var(--plate-clip-sm);
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
   border: 2px solid var(--btn-border);
   background:
     linear-gradient(180deg, rgba(255, 220, 160, 0.14) 0%, transparent 38%),
@@ -393,7 +422,7 @@
   height: 36px;
   margin: 0;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 50%;
   background: transparent;
   color: var(--muted);
   font-size: 1.35rem;
@@ -404,7 +433,7 @@
 }
 
 .tech-sheet-x:hover {
-  border-color: #4a5564;
+  border-color: #6a5838;
   color: var(--text);
 }
 
@@ -475,8 +504,8 @@
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 650;
-  border: 1px solid #4a5564;
-  background: #1a2028;
+  border: 1px solid #5a4a38;
+  background: #1e1814;
 }
 
 .tech-req.ok {
@@ -493,6 +522,14 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.tech-sheet-next-rank {
+  margin: 0 0 4px !important;
+  font-size: 0.78rem !important;
+  color: var(--muted) !important;
+  text-align: left !important;
+  font-style: italic;
 }
 
 .tech-sheet-actions .btn {
@@ -539,6 +576,6 @@
 
 .tech-req {
   border-radius: 0 !important;
-  clip-path: var(--plate-clip-sm);
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
   box-shadow: 0 2px 0 #120e0a;
 }

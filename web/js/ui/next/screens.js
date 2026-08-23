@@ -282,7 +282,7 @@ function techOverlayHtml(state, id) {
 
   let action;
   if (maxed) {
-    action = `<button class="btn secondary" disabled>Maxed · ${rank}/${def.maxRank}</button>`;
+    action = `<button class="btn title-cta" disabled>Maxed · ${rank}/${def.maxRank}</button>`;
   } else if (!prereq) {
     action = `<button class="btn secondary" disabled>Requires prior tech</button>`;
   } else if (!partOk && def.requiresPart) {
@@ -293,15 +293,13 @@ function techOverlayHtml(state, id) {
     const unlockLabel =
       partCost > 0 ? `Unlock ${partLabelTxt} · ${partCost} Parts` : `Unlock ${partLabelTxt} · Free`;
     action = canBuyPart
-      ? `<button class="btn title-cta" data-act="tech-unlock-part:${kind}:${partId}">${unlockLabel}</button>
-         <p class="tech-sheet-next">Then buy mastery${costLabel ? ` · ${costLabel}` : ""}</p>`
-      : `<button class="btn cant-afford" disabled>Need ${partCost} Parts for ${partLabelTxt}</button>
-         <p class="tech-sheet-next">Earn Parts from waves, then unlock this piece</p>`;
+      ? `<button class="btn title-cta" data-act="tech-unlock-part:${kind}:${partId}">${unlockLabel}</button>`
+      : `<button class="btn cant-afford" disabled>Need ${partCost} Parts for ${partLabelTxt}</button>`;
   } else if (!canAffordTech(meta, cost)) {
     action = `<button class="btn cant-afford" disabled>Need ${costLabel}</button>`;
   } else {
-    const buyVerb = def.maxRank > 1 ? `Buy rank ${rank + 1}` : "Unlock";
-    action = `<button class="btn title-cta" data-act="tech-buy:${def.id}">${buyVerb} · ${costLabel}</button>`;
+    const buyVerb = def.maxRank > 1 ? `Level Up · ${costLabel}` : `Unlock · ${costLabel}`;
+    action = `<button class="btn title-cta" data-act="tech-buy:${def.id}">${buyVerb}</button>`;
   }
 
   const rankLine =
@@ -318,10 +316,13 @@ function techOverlayHtml(state, id) {
       ? `<p class="tech-sheet-currency">Spends Parts · own the piece first</p>`
       : "";
 
+  const nextRankHint = !maxed && def.maxRank > 1 && rank < def.maxRank
+    ? `<p class="tech-sheet-next-rank">${def.blurb || ""}</p>`
+    : "";
+
   return `<div class="tech-overlay">
     <button type="button" class="tech-backdrop" data-act="tech-close" aria-label="Dismiss"></button>
     <div class="tech-sheet" role="dialog" aria-modal="true" aria-labelledby="tech-sheet-title">
-      <button type="button" class="tech-sheet-x" data-act="tech-close" aria-label="Close">×</button>
       <p class="tech-sheet-mark">${treeName}</p>
       <h2 id="tech-sheet-title">${def.name}</h2>
       <p class="tech-sheet-blurb">${def.blurb || ""}</p>
@@ -332,19 +333,35 @@ function techOverlayHtml(state, id) {
           ? `<div class="tech-sheet-reqs"><span class="k">Requires</span>${reqBits.join("")}</div>`
           : ""
       }
-      <div class="tech-sheet-actions">${action}</div>
+      <div class="tech-sheet-actions">
+        ${action}
+        <button type="button" class="btn secondary" data-act="tech-close">Back</button>
+      </div>
     </div>
   </div>`;
 }
 
 // ---- Screen renderers -----------------------------------------------------
 
+export function renderSplash() {
+  return `
+    <div class="screen splash-screen meta-enter">
+      <div class="splash-top">
+        <div class="splash-crest" aria-hidden="true"><span></span><i></i><span></span></div>
+        <h1 class="splash-title">Tower Defense</h1>
+        <div class="splash-rule"></div>
+        <p class="splash-tag">Shape the path. Hold the Yard.</p>
+      </div>
+      <button class="btn splash-cta" data-act="splash-start">Tap to Begin</button>
+      <p class="splash-foot">Bastion vs the Cinder</p>
+    </div>`;
+}
+
 export function renderMain(state) {
   const meta = state.meta;
   return `
     <div class="screen title-screen meta-enter">
       <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
-      <div class="frame-bolts" aria-hidden="true"></div>
       <header class="title-hero">
         <div class="title-crest" aria-hidden="true"><span></span><i></i><span></span></div>
         <p class="title-mark">Project</p>
@@ -360,8 +377,8 @@ export function renderMain(state) {
         <button class="btn" data-act="campaign">Campaign</button>
         <button class="btn" data-act="forge-from-main">Forge</button>
         <button class="btn" data-act="upgrade">Tech Tree</button>
-        <button class="btn secondary" data-act="editor">Editor</button>
-        <button class="btn secondary" data-act="settings">Settings</button>
+        <button class="btn" data-act="editor">Editor</button>
+        <button class="btn" data-act="settings">Settings</button>
       </nav>
       <footer class="title-foot">
         <div class="title-stats" aria-label="Progress">
@@ -429,8 +446,8 @@ export function renderSettings(state) {
             <p class="end-note" style="margin:0">Ranks are permanent. Choose with care.</p>
           </div>
         <div class="set-block" style="border-top:1px solid rgba(200,130,60,0.25);padding-top:10px">
-          <h3>Testing</h3>
-          <button class="btn danger" data-act="reset-meta" style="width:100%">Reset Meta (wipe save)</button>
+          <h3>Save Data</h3>
+          <button class="btn danger" data-act="reset-meta" style="width:100%">Reset Save</button>
         </div>
       </div>
     </div>`;
@@ -486,6 +503,7 @@ export function renderCampaign(state) {
       ${acts}
       <div class="screen-foot">
         <button class="btn" data-act="forge-from-campaign">Forge</button>
+        <button class="btn" data-act="upgrade-from-campaign">Tech Tree</button>
       </div>
     </div>`;
 }
@@ -585,6 +603,7 @@ export function renderHub(state) {
           <button class="btn title-cta" data-act="newrun">New Run</button>
           <button class="btn hub-continue" data-act="continue" ${canContinue ? "" : "disabled"}>Continue</button>
           <button class="btn" data-act="forge-from-hub">Forge</button>
+          <button class="btn" data-act="upgrade-from-hub">Tech Tree</button>
         </div>
       </div>
     </div>`;
@@ -671,7 +690,7 @@ export function renderForge(state) {
           <span><i>Cap</i>L${meta.levelCap}</span>
           <span><i>Slots</i>${meta.slotCount}</span>
         </div>
-        <div class="status tech-status forge-status" id="status"${state.status ? "" : " hidden"}>${state.status || ""}</div>
+        <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
       </header>
       <div class="meta-scroll">
         <div class="forge-nav">
@@ -685,7 +704,7 @@ export function renderForge(state) {
         <p class="end-note">Parts unlock pieces — prices climb with each buy. Slots open with Æ.</p>
       </div>
       <footer class="meta-dock">
-        <button class="btn warn" data-act="upgrade">Tech Tree</button>
+        <button class="btn" data-act="upgrade">Tech Tree</button>
       </footer>
     </div>`;
 }
@@ -701,8 +720,8 @@ export function renderTech(state) {
   const tree = TECH_TREES.find((t) => t.id === state.techTreeTab) || TECH_TREES[0];
   const overlay = state.techSelectedId ? techOverlayHtml(state, state.techSelectedId) : "";
   return `
-    <div class="screen tech-screen meta-screen meta-enter">
-      <header class="tech-hero">
+    <div class="screen tech-screen meta-shell meta-screen meta-enter">
+      <header class="meta-hero tech-hero">
         <div class="tech-hero-row">
           <div>
             <h1>Tech Tree</h1>
@@ -717,13 +736,16 @@ export function renderTech(state) {
           <span><i>HP</i>${meta.startLives || BASE_START_LIVES}</span>
           <span><i>Coin</i>${cash}</span>
         </div>
-        <div class="status tech-status" id="status">${state.status}</div>
+        <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
         <div class="ttree-tabs" role="tablist">${tabs}</div>
       </header>
       <div class="tech-body" id="techBody">
         ${techTreeHtml(state, tree)}
         <p class="tech-gift">${giftLine}</p>
       </div>
+      <footer class="meta-dock">
+        <button class="btn" data-act="forge">Forge</button>
+      </footer>
       ${overlay}
     </div>`;
 }
@@ -830,7 +852,7 @@ export function renderVictory(state) {
       <button class="btn secondary" data-act="main">Main Menu</button>
     </div>`;
   return `
-    <div class="screen end-screen meta-enter">
+    <div class="screen end-screen meta-screen meta-enter">
       <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
       <header class="end-hero">
         <h1 class="end-title">Clear</h1>
@@ -894,7 +916,7 @@ export function renderGameOver(state) {
         <button class="btn secondary" data-act="main">Main Menu</button>
       </div>`;
   return `
-    <div class="screen end-screen meta-enter${endless ? " end-endless" : ""}">
+    <div class="screen end-screen meta-screen meta-enter${endless ? " end-endless" : ""}">
       <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
       <header class="end-hero">
         <h1 class="end-title">Fallen</h1>

@@ -1,6 +1,11 @@
 /**
  * Generative ambient bed — layered retro pads + soft delay/shimmer + kick.
  * Routes through SynthBank Music bus (independent of SFX volume).
+ *
+ * Phases:
+ *   "menu"        — calm ambient pad, no kick, dark filter
+ *   "betweenWaves" — slightly brighter, kick at reduced rate
+ *   "inWave"       — full intensity, fastest kick
  */
 
 const PAD_NOTES = [
@@ -14,10 +19,10 @@ export class ScoreEngine {
   constructor(synthBank) {
     this.synth = synthBank;
     this.wave = 1;
+    this.waveOffset = 0;
     this.speed = 1;
     this.running = false;
-    this.density = 0;
-    this.phase = "betweenWaves"; // inWave | betweenWaves
+    this.phase = "menu"; // menu | inWave | betweenWaves
     this._paused = false;
     this._enabled = true;
     this._acc = 0;
@@ -32,22 +37,70 @@ export class ScoreEngine {
     this._chord = 0;
     this._chordT = 0;
     this._built = false;
+    this._fadeTimer = null;
   }
 
   async start() {
-    this.running = true;
-    this._acc = 0;
-    this._nextKick = 0;
+    this._clearFadeTimer();
     if (this.synth) await this.synth.ensure();
     await this.synth?.resume?.();
     this._ensureGraph();
-    this._applyBedLevel(true);
-    this._applyDuck(true);
+    if (!this.running) {
+      // Fresh start: fade in from silence
+      this.running = true;
+      this._acc = 0;
+      this._nextKick = 0;
+      if (this._bedGain && this.synth?.ctx) {
+        const t = this.synth.ctx.currentTime;
+        this._bedGain.gain.setValueAtTime(0.0001, t);
+        this._applyBedLevel(false);
+      }
+      this._applyDuck(true);
+      this._nudgeFilter(true);
+    } else {
+      // Already running (e.g. menu→game): just update phase levels
+      this._applyBedLevel();
+      this._nudgeFilter();
+    }
   }
 
   stop() {
     this.running = false;
+    this._clearFadeTimer();
     this._teardownPads();
+  }
+
+  /** Smooth fade-out over `dur` seconds, then tear down. */
+  fadeStop(dur = 1.2) {
+    if (!this.running) return;
+    if (!this._bedGain || !this.synth?.ctx) {
+      this.stop();
+      return;
+    }
+    this.running = false;
+    const t = this.synth.ctx.currentTime;
+    this._bedGain.gain.cancelScheduledValues(t);
+    this._bedGain.gain.setValueAtTime(this._bedGain.gain.value, t);
+    this._bedGain.gain.linearRampToValueAtTime(0.0001, t + dur);
+    if (this._fxGain) {
+      this._fxGain.gain.cancelScheduledValues(t);
+      this._fxGain.gain.setValueAtTime(this._fxGain.gain.value, t);
+      this._fxGain.gain.linearRampToValueAtTime(0.0001, t + dur);
+    }
+    this._clearFadeTimer();
+    this._fadeTimer = setTimeout(() => {
+      this._teardownPads();
+      this._fadeTimer = null;
+    }, dur * 1000 + 50);
+  }
+
+  /** Transition to menu phase (calm ambient, no kick). */
+  toMenu() {
+    this.phase = "menu";
+    if (this.running) {
+      this._applyBedLevel();
+      this._nudgeFilter();
+    }
   }
 
   setWave(w) {
@@ -55,17 +108,25 @@ export class ScoreEngine {
     this._retunePads();
   }
 
+  setWaveOffset(offset) {
+    this.waveOffset = Math.max(0, offset | 0);
+  }
+
   setSpeed(s) {
     this.speed = Math.max(0.1, s);
   }
 
-  setDensity(n) {
-    this.density = Math.max(0, n | 0);
-    this._nudgeFilter();
-  }
-
   setPhase(p) {
-    this.phase = p === "inWave" ? "inWave" : "betweenWaves";
+    if (p === "inWave") this.phase = "inWave";
+    else if (p === "betweenWaves") this.phase = "betweenWaves";
+    else this.phase = "menu";
+    // Chord tied to wave state: chord 0 = calm (menu/between), chord 1 = active (inWave)
+    const want = this.phase === "inWave" ? 1 : 0;
+    if (this._chord !== want) {
+      this._chord = want;
+      this._chordT = 0;
+      this._retunePads();
+    }
     this._applyBedLevel();
     this._nudgeFilter();
   }
@@ -84,12 +145,13 @@ export class ScoreEngine {
     this.synth?.setMusicVolume?.(v);
   }
 
-  /** Kick interval from wave + crowding + phase. */
+  /** Kick interval from wave — slow start, gentle ramp. No kick in menu. */
   _interval() {
-    const base = Math.max(0.32, 0.918 - (this.wave - 1) * 0.0084);
-    const crowd = Math.min(0.18, this.density * 0.01);
-    const between = this.phase === "betweenWaves" ? 1.18 : 1;
-    return Math.max(0.26, ((base - crowd) * between) / this.speed);
+    if (this.phase === "menu") return 999; // effectively no kick
+    const effectiveWave = this.wave + this.waveOffset;
+    const base = Math.max(0.35, 1.8 - (effectiveWave - 1) * 0.025);
+    const between = this.phase === "betweenWaves" ? 1.15 : 1;
+    return Math.max(0.28, (base * between) / this.speed);
   }
 
   tick(dt) {
@@ -98,15 +160,22 @@ export class ScoreEngine {
     if (!this.synth?.ctx || !this.synth.ready) return;
 
     this._chordT += dt;
-    if (this._chordT > 14 / Math.max(0.5, this.speed)) {
+    // During waves, cycle through chords for variety (every ~18s)
+    // Between waves / menu, stay on chord 0
+    if (this.phase === "inWave") {
+      const chordSpeed = 18;
+      if (this._chordT > chordSpeed / Math.max(0.5, this.speed)) {
+        this._chordT = 0;
+        // Alternate between chord 1 and chord 2 during waves
+        this._chord = this._chord === 1 ? 2 : 1;
+        this._retunePads();
+      }
+    } else {
       this._chordT = 0;
-      this._chord = (this._chord + 1) % PAD_NOTES.length;
-      this._retunePads();
-    }
-
-    // Soft LFO motion on filter
-    if (this._filter && this._lfo) {
-      // LFO already wired; density/phase nudge cutoff separately
+      if (this._chord !== 0) {
+        this._chord = 0;
+        this._retunePads();
+      }
     }
 
     this._acc += dt;
@@ -134,7 +203,7 @@ export class ScoreEngine {
     this._duckGain.connect(bank.musicGain);
 
     this._bedGain = ctx.createGain();
-    this._bedGain.gain.value = 0.22;
+    this._bedGain.gain.value = 0.28;
     this._bedGain.connect(this._duckGain);
 
     this._filter = ctx.createBiquadFilter();
@@ -253,10 +322,13 @@ export class ScoreEngine {
 
   _nudgeFilter(immediate = false) {
     if (!this._filter || !this.synth?.ctx) return;
-    const waveLift = Math.min(220, (this.wave - 1) * 12);
-    const dens = Math.min(160, this.density * 6);
-    const between = this.phase === "betweenWaves" ? -80 : 40;
-    const target = 520 + waveLift + dens + between;
+    const effectiveWave = this.wave + this.waveOffset;
+    const waveLift = Math.min(220, (effectiveWave - 1) * 12);
+    let between;
+    if (this.phase === "menu") between = -120;
+    else if (this.phase === "betweenWaves") between = -80;
+    else between = 40;
+    const target = 520 + waveLift + between;
     const t = this.synth.ctx.currentTime;
     if (immediate) this._filter.frequency.setValueAtTime(target, t);
     else this._filter.frequency.setTargetAtTime(target, t, 1.2);
@@ -265,13 +337,16 @@ export class ScoreEngine {
   _applyBedLevel(immediate = false) {
     if (!this._bedGain || !this.synth?.ctx) return;
     const on = this.running && this._enabled;
-    const between = this.phase === "betweenWaves" ? 0.86 : 1;
-    const target = on ? 0.22 * between : 0.0001;
+    let mult;
+    if (this.phase === "menu") mult = 0.65;
+    else if (this.phase === "betweenWaves") mult = 0.86;
+    else mult = 1;
+    const target = on ? 0.28 * mult : 0.0001;
     const t = this.synth.ctx.currentTime;
     if (immediate) this._bedGain.gain.setValueAtTime(target, t);
     else this._bedGain.gain.setTargetAtTime(target, t, 0.35);
     if (this._fxGain) {
-      const fx = on ? 0.16 * between : 0.0001;
+      const fx = on ? 0.20 * mult : 0.0001;
       if (immediate) this._fxGain.gain.setValueAtTime(fx, t);
       else this._fxGain.gain.setTargetAtTime(fx, t, 0.4);
     }
@@ -289,6 +364,7 @@ export class ScoreEngine {
     const bank = this.synth;
     if (!bank?.ctx || !bank.ready || !this._duckGain) return;
     if (!this._enabled || this._paused) return;
+    if (this.phase === "menu") return; // no kick in menu
     const ctx = bank.ctx;
     const t0 = when ?? ctx.currentTime;
     const osc = ctx.createOscillator();
@@ -303,5 +379,12 @@ export class ScoreEngine {
     osc.connect(g).connect(this._duckGain);
     osc.start(t0);
     osc.stop(t0 + 0.18);
+  }
+
+  _clearFadeTimer() {
+    if (this._fadeTimer != null) {
+      clearTimeout(this._fadeTimer);
+      this._fadeTimer = null;
+    }
   }
 }

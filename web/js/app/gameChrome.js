@@ -5,6 +5,7 @@ import { renderTowerNext } from "../view/next/renderTower.js";
 import { chromeState } from "../ui/next/stateOf.js";
 import { chromeHtml, composeSheetHtml, syncHud } from "../ui/next/chrome.js";
 import { rosterSlotButtonsHtml } from "../ui/next/screens.js";
+import { applyBtnTextures } from "../ui/next/registry.js";
 
 /** Always show S1–S6; locked slots stay visible until Roster tech unlocks them. */
   /** Live place quote for a roster index (game only). */
@@ -49,7 +50,28 @@ export function waveBusy(app) {
 export function renderGameChrome(app) {
   app._previewTick = 0;
   if (!app.sim) return;
+  const existing = app.ui.firstElementChild;
+  const onGame = !!(existing && existing.classList.contains("game-chrome"));
+  if (!onGame && existing && existing.classList.contains("meta-enter")) {
+    existing.classList.remove("meta-enter");
+    existing.classList.add("meta-exit");
+    const onEnd = () => {
+      existing.removeEventListener("animationend", onEnd);
+      _applyChrome(app, true);
+    };
+    existing.addEventListener("animationend", onEnd, { once: true });
+    setTimeout(() => {
+      if (app.ui.firstElementChild === existing) _applyChrome(app, true);
+    }, 250);
+    return;
+  }
+  _applyChrome(app, !onGame);
+}
+
+function _applyChrome(app, animate) {
   app.ui.innerHTML = chromeHtml(chromeState(app));
+  if (!animate) app.ui.firstElementChild?.classList.remove("meta-enter");
+  applyBtnTextures(app.ui);
   app.bindUi();
   app._bindCallButton(app.ui.querySelector("#callBtn"));
   app.ui.querySelector("#pitchLive")?.addEventListener("input", (e) => {
@@ -58,7 +80,6 @@ export function renderGameChrome(app) {
   refreshHud(app);
   paintSlotPreviews(app);
   if (app.paused) app._renderPauseSheet();
-  
 }
 
 export function toggleLiveCompose(app) {
@@ -75,7 +96,7 @@ export function applyLiveComposePart(app, kind, id) {
   app.meta.roster[app.slot] = makeSlot(s.base, s.barrel, s.payload, app.meta.levelCap);
   app.persistMeta();
   app._syncSimFromMeta(app.sim);
-  app.synth.play("ui");
+  app.synth.play("ui", 1, 0.4);
   renderGameChrome(app);
   
 }

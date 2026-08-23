@@ -80,14 +80,23 @@ export class BoardView {
       (e) => {
         if (!this.sim) return;
         e.preventDefault();
-        // Ctrl / ⌘ + wheel → zoom about the cursor (desktop twin of pinch)
+        // ⌘ / Ctrl + wheel → zoom about the cursor
         if (e.ctrlKey || e.metaKey) {
           const factor = Math.exp(-e.deltaY * 0.0018);
           this.zoomAbout(this._zoomT * factor, e.clientX, e.clientY);
           return;
         }
-        this._panYT = Math.max(this.panMin, Math.min(this.panMax, this._panYT - e.deltaY * 0.45));
-        this._panXT = Math.max(this.panMinX, Math.min(this.panMaxX, this._panXT - e.deltaX * 0.45));
+        // Shift + wheel → pan (horizontal + vertical)
+        if (e.shiftKey) {
+          this._panYT = Math.max(this.panMin, Math.min(this.panMax, this._panYT - e.deltaY * 0.45));
+          this._panXT = Math.max(this.panMinX, Math.min(this.panMaxX, this._panXT - e.deltaX * 0.45));
+          return;
+        }
+        // Plain wheel → camera pitch
+        if (this.onPitchChange) {
+          const cur = VIEW25.pitchDeg;
+          this.onPitchChange(cur + e.deltaY * 0.09);
+        }
       },
       { passive: false }
     );

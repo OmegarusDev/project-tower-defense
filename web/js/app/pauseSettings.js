@@ -12,6 +12,8 @@ export function applyPitch(app, deg, { save = true } = {}) {
   app.board.setPitchDeg(v);
   const live = app.ui?.querySelector("#pitchLive");
   if (live && +live.value !== Math.round(v)) live.value = String(Math.round(v));
+  const label = app.ui?.querySelector("#pitchLabel");
+  if (label) label.textContent = `${Math.round(v)}°`;
   if (app.paintSlotPreviews) app.paintSlotPreviews(true);
   if (save) {
     clearTimeout(app._pitchSaveT);
@@ -73,6 +75,7 @@ function finishQuit(app, fromEditor, campaign) {
   app.selectedTowerId = -1;
   app.selectedWallId = -1;
   app.clearUndoStack();
+  app.score.fadeStop(1);
   app.sim = null;
   app.playtestFromEditor = false;
   if (fromEditor) app.showEditor();

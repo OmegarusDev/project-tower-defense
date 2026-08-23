@@ -57,7 +57,7 @@
 - Plain square grid; no pre-walls
 - Grid grows every **5 waves**, up to **22 rows**, **south from top** (spawn fixed; exit moves down)
 - Starts compact (**9×8**); drag / scroll the board when the field is taller than the screen
-- Base start: **3 HP / 75 Coin** (Iron Guard tech raises HP 3→5→7→10→15→20→25; sim field remains `lives`)
+- Base start: **3 HP / 50 Coin** (Iron Guard tech raises HP 3→5→7→10→15→20→25; sim field remains `lives`)
 - Kick drum tempo rises each wave; no music gap between waves
 
 ## 5. Campaign

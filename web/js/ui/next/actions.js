@@ -7,9 +7,18 @@
  */
 import { loadEditorLevels } from "../levelEditor.js";
 import { MAX_ROSTER_SLOTS } from "../../data/parts.js";
-import { confirmSheet } from "./modal.js";
+import { confirmSheet, holdConfirmSheet } from "./modal.js";
 
 const R = [
+  // ---- splash ----
+  {
+    is: "splash-start",
+    run: (app) => {
+      app.showMain();
+      app.unlockAudio();
+    },
+  },
+
   // ---- screen nav (exact) ----
   { is: "endless", run: (app) => app.showEndlessHub() },
   { is: "hub", run: (app) => app.showEndlessHub() },
@@ -35,12 +44,12 @@ const R = [
   {
     is: "reset-meta",
     run: (app) => {
-      confirmSheet(app.ui, {
+      holdConfirmSheet(app.ui, {
         mark: "Forgeworks",
-        title: "Scuttle the Forge?",
-        note: "All progress, parts and ranks are burned. This cannot be undone.",
-        confirmLabel: "Scuttle",
-        danger: true,
+        title: "Reset Save?",
+        note: "All progress, parts and ranks will be erased. Hold the button to confirm.",
+        confirmLabel: "Hold to Reset",
+        holdMs: 2000,
       }).then((yes) => {
         if (!yes) return;
         try {
@@ -151,6 +160,8 @@ const R = [
   { is: "forge-from-campaign", run: (app) => app.showForge("campaign") },
   { is: "forge-from-prep", run: (app) => app.showForge("prep") },
   { is: "upgrade-from-prep", run: (app) => app.showUpgrade("prep") },
+  { is: "upgrade-from-hub", run: (app) => app.showUpgrade("hub") },
+  { is: "upgrade-from-campaign", run: (app) => app.showUpgrade("campaign") },
   {
     is: "upgrade",
     run: (app) => {

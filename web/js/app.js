@@ -86,8 +86,10 @@ export class App {
       this.board.hover = null;
       this._syncGhostPlan();
     };
+    this.board.onPitchChange = (deg) => this.applyPitch(deg);
     window.addEventListener("resize", () => this.board._fit(true));
     window.addEventListener("keydown", (e) => this.onKeyDown(e));
+    window.addEventListener("keyup", (e) => this.onKeyUp(e));
     document.addEventListener("visibilitychange", () => {
       if (document.hidden && this.screen === "game" && this.sim && !this.paused) {
         this.openPause();
@@ -96,7 +98,7 @@ export class App {
   }
 
   start() {
-    this.showMain();
+    this.showSplash();
     this._last = performance.now();
     const loop = (now) => {
       const dt = Math.min(0.05, (now - this._last) / 1000);
@@ -116,7 +118,7 @@ export class App {
 
   tick(dt) {
     this.score.tick(dt);
-    if (this._metaBackdropScreens().has(this.screen) && this.screen !== "game") {
+    if (this._metaBackdropScreens().has(this.screen) && this.screen !== "game" && this.screen !== "splash") {
       this.title.tick(dt);
       this.title.draw();
       if (this.screen === "forge") {
@@ -138,7 +140,6 @@ export class App {
         }
       }
       if (!this.paused) this.fx.tick(dt * this.speed);
-      this.score.setDensity(this.sim.enemies.length);
       this.score.setPhase(this.sim.checkpointPhase || "betweenWaves");
       this.board.tool = this.tool;
       this.board.selectedTowerId = this.selectedTowerId;
@@ -188,8 +189,12 @@ export class App {
 
   async unlockAudio() {
     await this.synth.resume();
-    if (this.screen === "game" && this.meta.settings?.music !== false) {
+    if (this.meta.settings?.music === false) return;
+    if (this.screen === "game") {
       await this.score.start();
+    } else if (["main", "hub", "campaign", "prep", "settings", "forge", "upgrade", "editor"].includes(this.screen)) {
+      this.score.toMenu();
+      if (!this.score.running) await this.score.start();
     }
   }
 
@@ -200,7 +205,7 @@ export class App {
       st.textContent = msg;
       st.classList.remove("empty");
     }
-    this.synth.play("ui", 1);
+    this.synth.play("ui", 1, 0.4);
   }
 
   wireSim() {
@@ -222,8 +227,13 @@ export class App {
     });
   }
 
+  showSplash() {
+    this.screen = "splash";
+    mountScreen(this.ui, "splash", screenState(this));
+    this.bindUi();
+  }
   showMain() {
-    this.score.stop();
+    this.score.toMenu();
     this.screen = "main";
     mountScreen(this.ui, "main", screenState(this));
     this.bindUi();
@@ -233,6 +243,7 @@ export class App {
     this.selectedTowerId = -1;
     this.selectedWallId = -1;
     this.screen = "campaign";
+    this.score?.toMenu();
     mountScreen(this.ui, "campaign", screenState(this));
     this.bindUi();
     paintCampaignThumbs(this);
@@ -251,6 +262,7 @@ export class App {
   showEditor() {
     if (!this.editor) this.editor = new LevelEditor();
     this.screen = "editor";
+    this.score?.toMenu();
     mountScreen(this.ui, "editor", {
       ...screenState(this),
       editor: this.editor,
@@ -275,6 +287,11 @@ export class App {
     mountScreen(this.ui, "settings", screenState(this));
     this.bindUi();
     wireSettings(this);
+  }
+
+  backScreen() {
+    const x = this.ui.querySelector(".x-close");
+    if (x) handleUiAction(this, x.getAttribute("data-act"));
   }
 
   // Delegates keep App method names for data-act / hotkeys / cross-module app.* calls
@@ -338,6 +355,7 @@ export class App {
   sellSelected() { return place.sellSelected(this); }
 
   onKeyDown(e) { return input.onKeyDown(this, e); }
+  onKeyUp(e) { return input.onKeyUp(this, e); }
   setSpeed(n) { return input.setSpeed(this, n); }
   selectBuildSlot(i) { return input.selectBuildSlot(this, i); }
   _beginFastForward() { return input.beginFastForward(this); }

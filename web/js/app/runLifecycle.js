@@ -10,6 +10,12 @@ import {
 } from "../saveStore.js";
 import { getCampaignLevel, isLevelUnlocked, levelPortalCell } from "../data/campaign.js";
 
+const ACT_TEMPO_OFFSET = {
+  Outskirts: 0,
+  Foundry: 6,
+  "Deep Vein": 12,
+};
+
 export function newRun(app, seed, { skipConfirm = false } = {}) {
   if (!skipConfirm && hasEndless()) {
     confirmSheet(app.ui, {
@@ -128,6 +134,7 @@ function bootLevel(app, lv) {
   app.sim.runSeed = (lv.seed || 1) >>> 0;
   app.sim.campaignLevelId = lv.id || 0;
   app.sim.wavesToWin = lv.wavesToWin;
+  app.sim.campaignAct = lv.act || null;
   // Prefer authored `waves`; migrate legacy editor `waveScripts` pack ids.
   app.sim.campaignWaves =
     lv.waves ||
@@ -175,6 +182,8 @@ export function enterGame(app) {
   if (app.sim && app.slot >= app.sim.roster.length) app.slot = 0;
   app.clearPlaceConfirm();
   app.score.setWave(app.sim?.waveIndex || 1);
+  const act = app.sim?.campaignAct;
+  app.score.setWaveOffset(act ? (ACT_TEMPO_OFFSET[act] || 0) : 0);
   app.score.setSpeed(app.speed || 1);
   app.score.setPhase(app.sim?.checkpointPhase || "betweenWaves");
   app.score.setPaused(!!app.paused);

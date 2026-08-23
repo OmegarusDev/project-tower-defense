@@ -10,6 +10,7 @@ import { renderTowerNext } from "../view/next/renderTower.js";
 import { forgePartGridHtml, forgePreviewCard, forgeUnlockCard } from "./next/screens.js";
 import { renderForge } from "./next/screens.js";
 import { forgeState } from "./next/stateOf.js";
+import { applyBtnTextures } from "./next/registry.js";
 
 /** Patch the open Forge screen without wiping scroll / replaying enter anim. */
 export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true } = {}) {
@@ -29,7 +30,7 @@ export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true 
   const status = root.querySelector("#status");
   if (status) {
     status.textContent = app.status || "";
-    status.hidden = !app.status;
+    status.classList.toggle("empty", !app.status);
   }
 
   const stats = root.querySelector(".tech-stats");
@@ -90,14 +91,32 @@ export function showForge(app, returnTo) {
   const slotCount = app.meta.slotCount | 0;
   const total = slotCount + (slotCount < MAX_ROSTER_SLOTS ? 1 : 0);
   if ((app.forgeSlot | 0) >= total) app.forgeSlot = 0;
-  app.ui.innerHTML = renderForge(forgeState(app));
+  const html = renderForge(forgeState(app));
+  const existing = app.ui.firstElementChild;
+  if (existing && existing.classList.contains("meta-enter")) {
+    existing.classList.remove("meta-enter");
+    existing.classList.add("meta-exit");
+    const onEnd = () => {
+      existing.removeEventListener("animationend", onEnd);
+      _applyForge(app, html);
+    };
+    existing.addEventListener("animationend", onEnd, { once: true });
+    setTimeout(() => {
+      if (app.ui.firstElementChild === existing) _applyForge(app, html);
+    }, 250);
+    return;
+  }
+  _applyForge(app, html);
+}
+
+function _applyForge(app, html) {
+  app.ui.innerHTML = html;
+  applyBtnTextures(app.ui);
   app.bindUi();
   paintForgePreview(app);
-  // Drop enter anim so later DOM patches never replay a full-screen fade.
   requestAnimationFrame(() => {
     app.ui.querySelector(".forge-screen")?.classList.remove("meta-enter");
   });
-  
 }
 
 export function forgeCost(app, kind, id) {
@@ -153,7 +172,7 @@ export function applyForgePart(app, kind, id) {
   const r = forgeApplyPart(app.meta, app.forgeSlot, kind, id);
   app.persistMeta();
   if (app.sim) app._syncSimFromMeta(app.sim);
-  app.synth.play("ui");
+  app.synth.play("ui", 1, 0.4);
   app.status = r.status;
   refreshForgeUi(app);
   

@@ -22,13 +22,12 @@ export function chromeHtml(state) {
   const pitch = Math.round(state.meta.settings?.cameraPitch ?? state.pitchDeg ?? 24);
   const endless = !!state.sim.modeEndless;
   const composeBtn = endless
-    ? `<button type="button" class="chrome-fab compose-fab plate" data-act="compose-toggle" title="Live compose" aria-label="Live compose">
+    ? `<button type="button" class="chrome-fab compose-fab plate" data-act="compose-toggle" title="Compose — swap tower parts mid-run" aria-label="Compose">
         <svg class="fab-ico" viewBox="0 0 24 24" aria-hidden="true">
           <path class="fab-ico-body" d="M5 7.5h5.2l1.3-2.2h1l1.3 2.2H19v2.2h-1.6l-2.2 7.1H8.8L6.6 9.7H5V7.5z"/>
           <path class="fab-ico-accent" d="M9.2 11.2h5.6l-.7 2.4H9.9l-.7-2.4z"/>
-          <circle class="fab-ico-rivet" cx="8.2" cy="8.6" r="0.7"/>
-          <circle class="fab-ico-rivet" cx="15.8" cy="8.6" r="0.7"/>
         </svg>
+        <span class="compose-label">Compose</span>
       </button>`
     : "";
   const composeSheet = endless && state.liveCompose ? composeSheetHtml(state) : "";
@@ -44,7 +43,7 @@ export function chromeHtml(state) {
       </div>`
     : "";
   return `
-    <div class="game-chrome">
+    <div class="game-chrome meta-enter">
       ${ghostBar}
       <header class="hud-bar">
         <div class="wave-badge plate" id="waveBadge">
@@ -97,10 +96,9 @@ export function chromeHtml(state) {
             <span class="wall-tile-cost" id="wallCost">—</span>
           </button>
         </div>
-        <button type="button" class="call-btn" id="callBtn" title="Tap to deploy · hold for 5×" aria-label="Deploy wave, hold for fast forward">
+        <button type="button" class="call-btn" id="callBtn" title="Tap to deploy" aria-label="Deploy wave, hold for fast forward">
           <span class="call-kicker">Deploy</span>
           <span class="call-label" id="callLabel">Wave 1</span>
-          <span class="call-bolts" aria-hidden="true"></span>
         </button>
       </footer>
     </div>`;
@@ -121,7 +119,7 @@ export function composeSheetHtml(state) {
         <h3>Live Compose · Slot ${state.slot + 1}</h3>
         <button class="btn secondary part-chip" data-act="compose-close">Close</button>
       </div>
-      <p style="margin:0 0 6px;font-size:0.72rem;color:#9aacbe">${forgePlanSummary(slot)}</p>
+      <p style="margin:0 0 6px;font-size:0.72rem;color:#9a8a78">${forgePlanSummary(slot)}</p>
       <div class="compose-cols">
         <div><h4 style="margin:0 0 4px;font-size:0.65rem">Base</h4>${Object.keys(PARTS.bases).map((id) => partBtn("base", id)).join("")}</div>
         <div><h4 style="margin:0 0 4px;font-size:0.65rem">Barrel</h4>${Object.keys(PARTS.barrels).map((id) => partBtn("barrel", id)).join("")}</div>
@@ -155,7 +153,7 @@ export function pauseSheetHtml(state) {
         <button type="button" class="btn secondary ${state.speed === 2 ? "equipped" : ""}" data-act="speed:2">2×</button>
         <button type="button" class="btn secondary ${state.speed === 3 ? "equipped" : ""}" data-act="speed:3">3×</button>
       </div>
-      <p class="pause-hint">Hold Deploy for 5× · seed ${sim.runSeed >>> 0}</p>
+      <p class="pause-hint">Hold Deploy for ${state.meta?.ffSpeed || 2}× · seed ${sim.runSeed >>> 0}</p>
       <button type="button" class="btn title-cta" data-act="resume">Resume</button>
       <button type="button" class="btn secondary" data-act="quit-run">${
         state.playtestFromEditor ? "Editor" : quitLabel
@@ -212,6 +210,7 @@ export function callButtonState(state) {
       label,
     };
   }
+  const ffSpeed = state.meta?.ffSpeed || 2;
   return {
     disabled: done,
     clsBusy: busy && !ff,
@@ -219,9 +218,9 @@ export function callButtonState(state) {
     title: done
       ? "Complete"
       : busy || ff
-        ? "Hold for 5×"
-        : "Tap to deploy · hold for 5×",
-    kicker: ff ? "5×" : done ? "Done" : busy ? "Hold" : "Deploy",
+        ? `Hold for ${ffSpeed}×`
+        : `Tap to deploy · hold for ${ffSpeed}×`,
+    kicker: ff ? `${ffSpeed}×` : done ? "Done" : busy ? "Hold" : "Deploy",
     label: ff ? "Speed" : busy ? "Live" : done ? "Clear" : `Wave ${sim.waveIndex + 1}`,
   };
 }

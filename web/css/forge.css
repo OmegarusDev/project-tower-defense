@@ -9,7 +9,7 @@
     linear-gradient(165deg, #3a3028 0%, #1c1814 100%);
   border: 2px solid #8a6238;
   border-radius: 0;
-  clip-path: var(--plate-clip);
+  clip-path: var(--rough-clip, var(--plate-clip));
   padding: 10px;
   box-shadow: 0 3px 0 #14100c;
 }
@@ -43,9 +43,10 @@
 
 .part-btn.locked {
   opacity: 0.78;
-  background: linear-gradient(180deg, #2a3344 0%, #1e2634 100%);
+  background: linear-gradient(180deg, #2a2420 0%, #1e1a18 100%);
   border-style: dashed;
-  border-color: #4a5a72;
+  border-width: 2px;
+  border-color: #5a4a38;
   box-shadow: none;
 }
 
@@ -57,27 +58,6 @@
   border-color: var(--accent);
   box-shadow: var(--shadow-btn), 0 0 0 1px var(--accent-soft);
   background: linear-gradient(180deg, #524a32 0%, #3a3628 50%, #2e2c22 100%);
-}
-
-.forge-screen .forge-status {
-  display: block;
-  min-height: 1.45em;
-  margin: 10px 0 2px;
-  padding: 0 4px;
-  text-align: center;
-  font-size: 0.92rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1.35;
-  color: var(--warn);
-  overflow-wrap: anywhere;
-  position: relative;
-  z-index: 2;
-}
-
-.forge-screen .forge-status[hidden] {
-  display: block;
-  visibility: hidden;
 }
 
 .forge-screen .meta-scroll .build-strip {
@@ -113,9 +93,10 @@
 
 .build-strip .btn.slot-locked {
   opacity: 0.48;
-  background: linear-gradient(180deg, #2a3344 0%, #1e2634 100%);
+  background: linear-gradient(180deg, #2a2420 0%, #1e1a18 100%);
   border-style: dashed;
-  border-color: #4a5a72;
+  border-width: 2px;
+  border-color: #5a4a38;
   box-shadow: none;
   color: var(--muted);
 }
@@ -123,6 +104,7 @@
 .build-strip .btn.slot-unlock {
   opacity: 0.92;
   border-style: dashed;
+  border-width: 2px;
   border-color: rgba(201, 162, 39, 0.55);
   color: var(--accent);
   background: linear-gradient(180deg, #3a3428 0%, #2a2418 100%);
@@ -137,7 +119,7 @@
   padding: 8px 10px !important;
   font-size: 0.72rem !important;
   letter-spacing: 0.04em;
-  clip-path: var(--plate-clip-sm);
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
   border-radius: 0 !important;
 }
 
@@ -157,7 +139,7 @@
 }
 
 .forge-part-grid .btn.part-btn {
-  clip-path: var(--plate-clip-sm);
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
   border-radius: 0;
   padding: 10px 8px;
   font-size: 0.72rem;
@@ -233,7 +215,7 @@
   background: linear-gradient(180deg, #2a2f28, #1c201b);
   border: 1px solid rgba(201, 162, 39, 0.35);
   color: #e8c56a;
-  border-radius: 6px;
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
   cursor: pointer;
   flex: 0 0 auto;
 }
@@ -256,7 +238,7 @@
   align-items: center;
   gap: 6px;
   font-size: 0.62rem;
-  color: #9aacbe;
+  color: #9a8a78;
 }
 .stat-bar-k {
   letter-spacing: 0.12em;
@@ -300,14 +282,14 @@
   gap: 6px;
   text-align: center;
   padding: 18px;
-  border: 1px dashed rgba(201, 162, 39, 0.4);
+  border: 2px dashed rgba(201, 162, 39, 0.4);
 }
 .forge-unlock-k {
   margin: 0;
   font-size: 0.66rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #9aacbe;
+  color: #9a8a78;
 }
 .forge-unlock h3 {
   margin: 0;
@@ -318,5 +300,5 @@
 .forge-unlock-cost {
   margin: 0 0 8px;
   font-size: 0.85rem;
-  color: #9aacbe;
+  color: #9a8a78;
 }

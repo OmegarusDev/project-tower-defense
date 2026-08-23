@@ -1167,18 +1167,60 @@ export function drawTowerFrame(ctx, cam, palette, t, px, py, s, opts) {
 export function drawPendingPlace(ctx, cam, palette, pending, cell, t, cellSize) {
   const { x, y } = pending;
   const pulse = 0.5 + 0.5 * Math.sin(t * 7.2);
+  const flash = 0.5 + 0.5 * Math.sin(t * 12);  /* fast flash overlay */
   const accent = palette.accent || "#e8c56a";
 
+  /* Outer expanding ring — pulses outward */
+  const ringPhase = (t * 1.8) % 1;
+  const ringScale = 3 + ringPhase * 5;
+  const ringAlpha = (1 - ringPhase) * 0.35;
+  strokeQuad(ctx, cam.cellQuad(x, y, ringScale), withAlpha(accent, ringAlpha), 1.4);
+
+  /* Main cell fill + stroke */
   const pad = cam.cellQuad(x, y, 2);
-  fillQuad(ctx, pad, `rgba(232, 197, 106, ${0.16 + pulse * 0.14})`);
-  strokeQuad(ctx, pad, withAlpha(accent, 0.55 + pulse * 0.4), 2.4);
-  strokeQuad(ctx, cam.cellQuad(x, y, 5), withAlpha(accent, 0.18 + pulse * 0.22), 1.2);
+  fillQuad(ctx, pad, `rgba(232, 197, 106, ${0.18 + pulse * 0.18})`);
+  strokeQuad(ctx, pad, withAlpha(accent, 0.6 + pulse * 0.4), 2.8);
+
+  /* Corner flash highlights — sharp bright marks at corners */
+  const cornerAlpha = flash * 0.55;
+  const cq = cam.cellQuad(x, y, 1.5);
+  const cx = (cq[0] + cq[2]) / 2, cy = (cq[1] + cq[5]) / 2;
+  const cw = (cq[2] - cq[0]) / 2, ch = (cq[5] - cq[1]) / 2;
+  ctx.save();
+  ctx.strokeStyle = withAlpha("#fff8e0", cornerAlpha);
+  ctx.lineWidth = 1.5;
+  const cLen = cw * 0.28;
+  /* top-left */
+  ctx.beginPath();
+  ctx.moveTo(cq[0] + 2, cq[1] + cLen);
+  ctx.lineTo(cq[0] + 2, cq[1] + 2);
+  ctx.lineTo(cq[0] + cLen, cq[1] + 2);
+  ctx.stroke();
+  /* top-right */
+  ctx.beginPath();
+  ctx.moveTo(cq[2] - cLen, cq[1] + 2);
+  ctx.lineTo(cq[2] - 2, cq[1] + 2);
+  ctx.lineTo(cq[2] - 2, cq[1] + cLen);
+  ctx.stroke();
+  /* bottom-left */
+  ctx.beginPath();
+  ctx.moveTo(cq[0] + 2, cq[5] - cLen);
+  ctx.lineTo(cq[0] + 2, cq[5] - 2);
+  ctx.lineTo(cq[0] + cLen, cq[5] - 2);
+  ctx.stroke();
+  /* bottom-right */
+  ctx.beginPath();
+  ctx.moveTo(cq[2] - cLen, cq[5] - 2);
+  ctx.lineTo(cq[2] - 2, cq[5] - 2);
+  ctx.lineTo(cq[2] - 2, cq[5] - cLen);
+  ctx.stroke();
+  ctx.restore();
 
   if (pending.base && pending.barrel && pending.payload) {
     const p = cam.projectCell(x, y);
     const s = cellSize * p.s * UNIT_SCALE;
     ctx.save();
-    ctx.globalAlpha = 0.38 + pulse * 0.18;
+    ctx.globalAlpha = 0.4 + pulse * 0.24;
     renderTowerNext(
       ctx,
       palette,

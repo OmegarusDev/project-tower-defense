@@ -168,12 +168,22 @@ export class BoardGrid {
       nextArr[i] = { x: i % this.cols, y: (i / this.cols) | 0 };
     }
     const q = [];
-    // Seed every home-line cell
-    for (let x = 0; x < this.cols; x++) {
-      const y = this.rows - 1;
-      const ei = this.idx(x, y);
+    if (flying) {
+      // Air BFS: seed from exit cell only — creates a radial gradient
+      // so flying enemies path toward the exit with lateral movement.
+      const ex = this.exit.x;
+      const ey = this.rows - 1;
+      const ei = this.idx(ex, ey);
       dist[ei] = 0;
-      q.push(x, y);
+      q.push(ex, ey);
+    } else {
+      // Ground BFS: seed every home-line cell
+      for (let x = 0; x < this.cols; x++) {
+        const y = this.rows - 1;
+        const ei = this.idx(x, y);
+        dist[ei] = 0;
+        q.push(x, y);
+      }
     }
     let head = 0;
     while (head < q.length) {
