@@ -221,6 +221,7 @@ export class Sim {
     if (!s.running) return;
     s.tickIndex += 1;
     this.tickIndex = s.tickIndex;
+    s.dt = this.dt;
     tickWaves(s);
     tickCombat(s);
     tickEnemies(s);

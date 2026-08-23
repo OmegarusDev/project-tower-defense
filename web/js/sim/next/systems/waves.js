@@ -237,12 +237,12 @@ function buildPortal(state, w) {
     }
   } else if (w <= 5) {
     // Waves 1-5: portal stays at its current position (center from w=1)
-  } else if (w === 6) {
-    // Wave 6: first shift — warn the player
-    emit(state, "portal_unstable", {});
-    relocatePortal(state);
   } else {
-    relocatePortal(state);
+    // Wave 6+: pick starting column from cycle (no warning — clump system handles mid-wave shifts)
+    const { x } = pickPortalX(state, state.waves.portalCycle, 0, state.waves.lastPortalX);
+    state.waves.portalIdx = 0; // reset cycle index for this wave's clump shifts
+    state.waves.lastPortalX = x;
+    state.portal = { x, y: 0 };
   }
 }
 
