@@ -51,9 +51,9 @@ function _hashStr(s) {
   return h >>> 0;
 }
 
-/* Rough "badly-cut" silhouette — jittered chamfer corners + a dense jagged
-   edge with occasional deep corrosion bites. Per element: every plate is
-   cut differently and some are more eaten-away than others. */
+/* Rough "badly-cut" silhouette — jittered chamfer corners + a finely
+   crenellated edge of many small grooves. Per element: every plate is
+   serrated differently and some are more eaten-away than others. */
 const LARGE_RE =
   /(^|\s)(plate-frame|level-card|end-card|hub-card|prep-card|pause-card|compose-sheet|ttree-branch|forge-preview-wrap|ed-grid)(\s|$)/;
 
@@ -62,16 +62,16 @@ function _roughClip(rand, large) {
   const f = (v) => { const s = v.toFixed(1); return s === "-0.0" ? "0.0" : s; };
 
   const amp = r(0.85, 1.5); // per-element roughness scale
-  const devLo = large ? -3.0 : -2.2;
-  const devHi = large ? 3.5 : 2.6;
-  const gougeLo = large ? 3.0 : 2.0;
-  const gougeHi = large ? 6.0 : 4.5;
+  const devLo = large ? -2.2 : -1.6;
+  const devHi = large ? 2.6 : 2.0;
+  const gougeLo = large ? 1.8 : 1.2;
+  const gougeHi = large ? 3.6 : 2.8;
   const chamferLo = large ? 6 : 2;
   const chamferHi = large ? 15 : 9;
 
   const dev = () => {
-    let v = r(devLo, devHi) * amp;             // wavy edge, slightly inward-biased
-    if (rand() < 0.15) v += r(gougeLo, gougeHi) * amp; // occasional deep corrosion bite
+    let v = r(devLo, devHi) * amp;              // fine wavy edge, slightly inward-biased
+    if (rand() < 0.5) v += r(gougeLo, gougeHi) * amp; // frequent shallow groove
     return v;
   };
   const chamfer = () => r(chamferLo, chamferHi);
@@ -83,13 +83,13 @@ function _roughClip(rand, large) {
   };
 
   const edge = (orient) => {
-    const n = 5 + ((rand() * 3) | 0); // 5–7 points per edge
+    const n = 8 + ((rand() * 4) | 0); // 8–11 points per edge (tight crenellations)
     const pts = [];
     for (let i = 0; i < n; i++) {
-      const t = (i + 0.5 + r(-0.35, 0.35)) / n;
+      const t = (i + 0.5 + r(-0.3, 0.3)) / n;
       const pc = f(t * 100);
       const d = dev();
-      const wob = f(r(-1.5, 1.5));
+      const wob = f(r(-1.2, 1.2));
       if (orient === "top") pts.push(`calc(${pc}% + ${wob}px) ${f(d)}px`);
       else if (orient === "right") pts.push(`calc(100% ${sub(d)}) calc(${pc}% + ${wob}px)`);
       else if (orient === "bottom") pts.push(`calc(${pc}% + ${wob}px) calc(100% ${sub(d)})`);
