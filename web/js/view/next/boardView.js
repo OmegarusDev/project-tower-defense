@@ -377,26 +377,25 @@ export class BoardView {
       const midDx = mid.x - this._pinch.mid0.x;
       const midDy = mid.y - this._pinch.mid0.y;
 
-      // Zoom (distance) takes priority — always active during pinch
+      // Zoom anchored at initial midpoint — keeps board point fixed
       if (this._pinch.mid0) {
         const b = this.cam.unproject(this._pinch.mid0.x, this._pinch.mid0.y);
         this._zoomT = z;
         this._fit(true);
         const p = this.cam.project(b.x, b.y);
-        this._panXT = this.panX = this.panX + (this._pinch.mid0.x - p.x);
+        this._panXT = this._pinch.panX0 + (this._pinch.mid0.x - p.x);
+        this._panYT = this._pinch.panY0 + (this._pinch.mid0.y - p.y);
       } else {
         this._zoomT = z;
+        this._panXT = this._pinch.panX0;
+        this._panYT = this._pinch.panY0;
       }
 
-      // Pan in ALL directions during zoom (midpoint movement)
-      this._panXT = this.panX = Math.max(
-        this.panMinX,
-        Math.min(this.panMaxX, this._pinch.panX0 + midDx)
-      );
-      this._panYT = this.panY = Math.max(
-        this.panMin,
-        Math.min(this.panMax, this._pinch.panY0 + midDy)
-      );
+      // Additional pan from midpoint movement (two-finger drag while pinching)
+      this._panXT = Math.max(this.panMinX, Math.min(this.panMaxX, this._panXT + midDx));
+      this._panYT = Math.max(this.panMin, Math.min(this.panMax, this._panYT + midDy));
+      this.panX = this._panXT;
+      this.panY = this._panYT;
 
       // Pitch only when zoom is stable (small distance change) — deadzone on scale
       const scaleDelta = Math.abs(scale - 1);

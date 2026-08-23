@@ -181,6 +181,7 @@ export function enterGame(app) {
   app.screen = "game";
   if (app.sim && app.slot >= app.sim.roster.length) app.slot = 0;
   app.clearPlaceConfirm();
+  app.clearHand();
   app.score.setWave(app.sim?.waveIndex || 1);
   const act = app.sim?.campaignAct;
   app.score.setWaveOffset(act ? (ACT_TEMPO_OFFSET[act] || 0) : 0);

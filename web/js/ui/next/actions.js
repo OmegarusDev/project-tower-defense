@@ -265,6 +265,7 @@ const R = [
       // Keep sim loadouts aligned with Forge before selecting/placing.
       if ((app.sim.roster?.length | 0) < unlocked) app._syncSimFromMeta(app.sim);
       app.slot = i;
+      app._handSlot = i; // Put this tower in hand
       app.tool = "tower";
       app.clearPlaceConfirm();
       app.selectedTowerId = -1;
