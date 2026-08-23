@@ -175,14 +175,15 @@ export class App {
     if (this._handSlot != null && this.board && this.sim) {
       const loadout = this.sim.roster?.[this._handSlot];
       if (loadout?.complete) {
-        // Get cursor position from board's last known hover or center
         const hover = this.board.hover;
         if (hover) {
           const p = this.board.cellScreenCenter(hover.x, hover.y);
           this.board.setHandGhost(loadout, p.x, p.y);
+          return;
         }
       }
     }
+    this.board.setHandGhost(null);
   }
 
   _syncGhostPlan() {
@@ -190,43 +191,31 @@ export class App {
       this.board.setGhostPlan(null);
       return;
     }
-    // Only show ghost when there's a tower in hand OR a tower is selected
-    if (this._handSlot == null && this.selectedTowerId < 0) {
+    // Hand has priority — use _handGhost (follows cursor), not _ghostPlan
+    if (this._handSlot != null) {
       this.board.setGhostPlan(null);
       return;
     }
-    let cell = this.placeConfirm || this.board.hover;
-    let slot;
-    if (this._handSlot != null) {
-      slot = this.sim.roster?.[this._handSlot];
-    } else if (this.selectedTowerId >= 0) {
-      const t = this.sim.towers.find((x) => x.id === this.selectedTowerId);
-      if (t) {
-        cell = t.cell;
-        slot = t;
-      }
-    }
+    // Selected tower shows ghost at its cell
     if (this.selectedTowerId >= 0) {
       const t = this.sim.towers.find((x) => x.id === this.selectedTowerId);
       if (t) {
-        cell = t.cell;
-        slot = t;
+        const cell = t.cell;
+        const slot = t;
+        const up = this.sim.partUpgrades || {};
+        const g = this.sim.globalMods || {};
+        const plan = buildAttackPlan(
+          slot.base,
+          slot.barrel,
+          slot.payload,
+          slot.level || 1,
+          planOptsFromParts(up, g, slot)
+        );
+        this.board.setGhostPlan(plan, cell);
+        return;
       }
     }
-    if (!cell || !slot?.base || !slot?.barrel || !slot?.payload) {
-      this.board.setGhostPlan(null);
-      return;
-    }
-    const up = this.sim.partUpgrades || {};
-    const g = this.sim.globalMods || {};
-    const plan = buildAttackPlan(
-      slot.base,
-      slot.barrel,
-      slot.payload,
-      slot.level || 1,
-      planOptsFromParts(up, g, slot)
-    );
-    this.board.setGhostPlan(plan, cell);
+    this.board.setGhostPlan(null);
   }
 
   clearHand() {
