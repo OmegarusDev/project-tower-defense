@@ -148,11 +148,6 @@ export function pauseSheetHtml(state) {
       <p class="pause-mark">Paused</p>
       <h2 id="pauseTitle">Wave ${wave}</h2>
       <p class="pause-note">${note}</p>
-      <div class="pause-speeds" role="group" aria-label="Speed">
-        <button type="button" class="btn secondary ${state.speed === 1 ? "equipped" : ""}" data-act="speed:1">1×</button>
-        <button type="button" class="btn secondary ${state.speed === 2 ? "equipped" : ""}" data-act="speed:2">2×</button>
-        <button type="button" class="btn secondary ${state.speed === 3 ? "equipped" : ""}" data-act="speed:3">3×</button>
-      </div>
       <p class="pause-hint">Hold Deploy for ${state.meta?.ffSpeed || 2}× · seed ${sim.runSeed >>> 0}</p>
       <button type="button" class="btn title-cta" data-act="resume">Resume</button>
       <button type="button" class="btn secondary" data-act="quit-run">${

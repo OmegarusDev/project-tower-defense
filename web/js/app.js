@@ -91,8 +91,13 @@ export class App {
     window.addEventListener("keydown", (e) => this.onKeyDown(e));
     window.addEventListener("keyup", (e) => this.onKeyUp(e));
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden && this.screen === "game" && this.sim && !this.paused) {
-        this.openPause();
+      if (document.hidden) {
+        if (this.screen === "game" && this.sim && !this.paused) {
+          this.openPause();
+        }
+        this.score.stop();
+      } else if (this.screen === "game" && this.sim && !this.paused) {
+        this.unlockAudio();
       }
     });
   }
