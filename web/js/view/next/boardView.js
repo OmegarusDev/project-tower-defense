@@ -318,6 +318,7 @@ export class BoardView {
       mid0: mid,
       panX0: this.panX,
       panY0: this.panY,
+      pitch0: VIEW25.pitchDeg,
     };
     this._drag = null;
   }
@@ -360,17 +361,22 @@ export class BoardView {
       if (!mid || dist < 8) return;
       const scale = dist / this._pinch.dist0;
       const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._pinch.zoom0 * scale));
-      // Two-finger scroll pans while pinching
-      this._panXT = this.panX = this._pinch.panX0 + (mid.x - this._pinch.mid0.x);
-      this._panYT = this.panY = this._pinch.panY0 + (mid.y - this._pinch.mid0.y);
-      // Zoom anchored at the touch midpoint
+      // Horizontal midpoint movement → pan X
+      this._panXT = this.panX = Math.max(
+        this.panMinX,
+        Math.min(this.panMaxX, this._pinch.panX0 + (mid.x - this._pinch.mid0.x))
+      );
+      // Vertical midpoint movement → pitch (two-finger tilt), not pan
+      if (this.onPitchChange) {
+        this.onPitchChange(this._pinch.pitch0 + (mid.y - this._pinch.mid0.y) * 0.25);
+      }
+      // Zoom anchored horizontally at the touch midpoint
       if (this._pinch.mid0) {
         const b = this.cam.unproject(this._pinch.mid0.x, this._pinch.mid0.y);
         this._zoomT = z;
         this._fit(true);
         const p = this.cam.project(b.x, b.y);
         this._panXT = this.panX = this.panX + (this._pinch.mid0.x - p.x);
-        this._panYT = this.panY = this.panY + (this._pinch.mid0.y - p.y);
       } else {
         this._zoomT = z;
       }

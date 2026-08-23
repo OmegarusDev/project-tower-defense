@@ -36,7 +36,7 @@ Design docs: `docs/GDD.md` (game spec), `docs/ARCHITECTURE.md` (code structure),
 
 ## Modes
 
-**Endless:** infinite waves; live compose **without** pausing; wave-start checkpoint (**inWave** Continue = start of that wave) plus **betweenWaves** save on clear/quit-between so Continue keeps the post-clear board; starts 9×8 and grows south every 5 waves (cap 22 rows); pan/scroll the board; pinch (or ⌘/Ctrl+scroll) to zoom; in-game Pitch slider for foreshortening; base start **3 HP / 50 Coin**; no pre-walls; Forge/Aether meta not mid-run (delta-merge run gains into meta — never clobber vault with stale checkpoint).
+**Endless:** infinite waves; live compose **without** pausing; wave-start checkpoint (**inWave** Continue = start of that wave) plus **betweenWaves** save on clear/quit-between so Continue keeps the post-clear board; starts 9×8 and grows south every 5 waves (cap 22 rows); pan/scroll the board; pinch to zoom, two-finger vertical drag to tilt (⌘/Ctrl+scroll zoom, Shift+scroll pan, plain scroll pitch on desktop); in-game Pitch slider for foreshortening; base start **3 HP / 50 Coin**; no pre-walls; Forge/Aether meta not mid-run (delta-merge run gains into meta — never clobber vault with stale checkpoint).
 
 **Campaign:** **shipped slice = 7 linear Act I levels**; future PINNED 5/10/25 × 3 campaigns. Prep = compose+Forge+Aether (untimed); in-level roster frozen (no compose/meta); predefined map seeds + valid pre-walls; victory per level data (waves and/or boss).
 
