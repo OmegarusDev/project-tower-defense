@@ -118,6 +118,8 @@ function growSouth(state, extra) {
 function spawnOne(state) {
   const w = state.waves.index;
   const kind = state.waves.queue.shift() || "mite";
+  // Set current portal X on grid for this spawn
+  if (state.portal) state.grid.setPortalX(state.portal.x);
   const e = makeEnemy(state, kind, w, {
     speedMult: state.waves.speedMult,
     pos: spawnPos(state, kind),
@@ -130,7 +132,9 @@ function spawnOne(state) {
 export function spawnPos(state, kind) {
   const g = state.grid;
   const p = state.portal || { x: g.spawn.x, y: 0 };
-  const dist = enemyDef(kind).flying ? g.airDist : g.groundDist;
+  const portalX = state.portal ? state.portal.x : null;
+  const dists = portalX != null ? g.getPortalDist(portalX) : { groundDist: g.groundDist, airDist: g.airDist };
+  const dist = enemyDef(kind).flying ? dists.airDist : dists.groundDist;
   if (g.inBounds(p.x, p.y) && dist[g.idx(p.x, p.y)] < INF) {
     return { x: p.x + 0.5, y: p.y + 0.5 };
   }
@@ -187,6 +191,7 @@ export function makeEnemy(state, kind, wave, opts = {}) {
     splitKind: def.splitKind || "mite",
     regen: def.regen || 0,
     spawns: def.spawns || 0,
+    spawnPortalX: state.portal ? state.portal.x : null,
     spawnEvery: def.spawnEvery || 7,
     spawnKind: def.spawnKind || "mite",
     aura: def.aura ? { ...def.aura } : null,
@@ -293,6 +298,7 @@ function relocatePortal(state) {
   state.waves.portalIdx = (startIdx + k) % cycle.length;
   state.waves.lastPortalX = x;
   state.portal = { x, y: 0 };
+  state.grid.setPortalX(x);
   emit(state, "portal_moved", { x, y: 0 });
 }
 

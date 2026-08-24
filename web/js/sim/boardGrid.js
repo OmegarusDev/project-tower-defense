@@ -26,6 +26,9 @@ export class BoardGrid {
     this.towerProx = [];
     this.groundNext = [];
     this.airNext = [];
+    /** Per-portal distance maps: portalX -> { groundDist, airDist, groundNext, airNext } */
+    this.portalDists = new Map();
+    this.currentPortalX = null;
   }
 
   setup(cols, rows) {
@@ -123,7 +126,42 @@ export class BoardGrid {
     this._bfs(false, this.groundDist, this.groundNext);
     this._bfs(true, this.airDist, this.airNext);
     this._rebuildTowerProx();
+    // Also update the current portal's distance maps
+    if (this.currentPortalX != null) {
+      this._ensurePortalDist(this.currentPortalX);
+    }
   }
+
+  /** Ensure distance maps exist for a portal X position. */
+  _ensurePortalDist(portalX) {
+    if (this.portalDists.has(portalX)) return;
+    const n = this.cols * this.rows;
+    const gDist = new Int32Array(n);
+    const aDist = new Int32Array(n);
+    const gNext = new Array(n);
+    const aNext = new Array(n);
+    for (let i = 0; i < n; i++) {
+      gNext[i] = { x: i % this.cols, y: (i / this.cols) | 0 };
+      aNext[i] = { x: i % this.cols, y: (i / this.cols) | 0 };
+    }
+    this._bfs(false, gDist, gNext);
+    this._bfs(true, aDist, aNext);
+    this.portalDists.set(portalX, { groundDist: gDist, airDist: aDist, groundNext: gNext, airNext: aNext });
+  }
+
+  /** Get distance maps for a portal X (computes if needed). */
+  getPortalDist(portalX) {
+    this._ensurePortalDist(portalX);
+    return this.portalDists.get(portalX);
+  }
+
+  /** Set the current portal X for new enemies. */
+  setPortalX(x) {
+    this.currentPortalX = x;
+    this._ensurePortalDist(x);
+  }
+
+  /** Soft cost near towers — precomputed on place/sell, not per-enemy BFS. */
 
   /** Soft cost near towers — precomputed on place/sell, not per-enemy BFS. */
   _rebuildTowerProx() {
@@ -369,7 +407,9 @@ export class BoardGrid {
   pickNextAir(x, y, opts = {}) {
     if (!this.inBounds(x, y)) return { x, y };
     if (this.isExit(x, y)) return { x, y };
-    return this._pickAmong(x, y, this.airDist, true, {
+    const portalX = opts.portalX ?? this.currentPortalX;
+    const dists = portalX != null ? this.getPortalDist(portalX) : { airDist: this.airDist };
+    return this._pickAmong(x, y, dists.airDist, true, {
       avoid: opts.avoid || "none",
       id: opts.id | 0,
       tick: opts.tick | 0,
@@ -380,12 +420,14 @@ export class BoardGrid {
 
   /**
    * Per-enemy ground step: shortest exit distance, soft tower avoid, fair ties.
-   * @param {{ id?: number, tick?: number, avoidTowers?: boolean }} [opts]
+   * @param {{ id?: number, tick?: number, avoidTowers?: boolean, portalX?: number }} [opts]
    */
   pickNextGround(x, y, opts = {}) {
     if (!this.inBounds(x, y)) return { x, y };
     if (this.isExit(x, y)) return { x, y };
-    return this._pickAmong(x, y, this.groundDist, false, {
+    const portalX = opts.portalX ?? this.currentPortalX;
+    const dists = portalX != null ? this.getPortalDist(portalX) : { groundDist: this.groundDist };
+    return this._pickAmong(x, y, dists.groundDist, false, {
       avoid: opts.avoid || "soft",
       id: opts.id | 0,
       tick: opts.tick | 0,
