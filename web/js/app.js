@@ -179,7 +179,7 @@ export class App {
         const hover = this.board.hover;
         if (hover) {
           const p = this.board.cellScreenCenter(hover.x, hover.y);
-          this.board.setHandGhost(loadout, p.x, p.y);
+          this.board.setHandGhost(loadout, p.x, p.y, hover);
           this.board.setHasHandTower(true);
           return;
         }

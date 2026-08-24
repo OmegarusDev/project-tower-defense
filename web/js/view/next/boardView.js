@@ -174,9 +174,9 @@ export class BoardView {
     this._ghostPlan = plan && cell ? { plan, cell } : null;
   }
 
-  setHandGhost(loadout, screenX, screenY) {
+  setHandGhost(loadout, screenX, screenY, cell) {
     if (loadout && screenX != null && screenY != null) {
-      this._handGhost = { loadout, x: screenX, y: screenY };
+      this._handGhost = { loadout, x: screenX, y: screenY, cell };
       this._hasHandTower = true;
     } else {
       this._handGhost = null;
@@ -727,7 +727,7 @@ export class BoardView {
   }
 
   _drawHandGhost(ghost) {
-    const { loadout, x, y } = ghost;
+    const { loadout, x, y, cell } = ghost;
     if (!loadout?.complete) return;
     const s = this.cell * UNIT_SCALE;
     const px = x - s / 2;
@@ -744,7 +744,7 @@ export class BoardView {
       levelCap: loadout.levelCap || 1,
     };
     renderTowerNext(this.ctx, this.palette, mockTower, px, py, s, { selected: false });
-    // Range ring
+    // Range ring — projected through camera from board space
     const up = this.sim?.partUpgrades || {};
     const g = this.sim?.globalMods || {};
     const plan = buildAttackPlan(
@@ -754,9 +754,9 @@ export class BoardView {
       loadout.level || 1,
       planOptsFromParts(up, g, loadout)
     );
-    if (plan && plan.rangeCells) {
-      const cx = x;
-      const cy = y;
+    if (plan && plan.rangeCells && cell) {
+      const cx = cell.x + 0.5;
+      const cy = cell.y + 0.5;
       const r = plan.rangeCells * this.cell;
       const steps = 48;
       this.ctx.strokeStyle = "rgba(232,197,106,0.35)";
@@ -765,10 +765,11 @@ export class BoardView {
       this.ctx.beginPath();
       for (let i = 0; i <= steps; i++) {
         const a = (i / steps) * Math.PI * 2;
-        const spx = cx + Math.cos(a) * r;
-        const spy = cy + Math.sin(a) * r;
-        if (i === 0) this.ctx.moveTo(spx, spy);
-        else this.ctx.lineTo(spx, spy);
+        const wx = cx * this.cell + Math.cos(a) * r;
+        const wy = cy * this.cell + Math.sin(a) * r;
+        const sp = this.cam.project(wx, wy);
+        if (i === 0) this.ctx.moveTo(sp.x, sp.y);
+        else this.ctx.lineTo(sp.x, sp.y);
       }
       this.ctx.stroke();
       this.ctx.setLineDash([]);
