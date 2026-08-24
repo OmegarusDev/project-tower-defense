@@ -91,6 +91,7 @@ export function onKeyDown(app, e) {
       e.preventDefault();
       app.tool = "wall";
       app.clearPlaceConfirm();
+      app.clearHand(); // Clear hand when switching to wall tool
       app.refreshHud();
       return;
     }
