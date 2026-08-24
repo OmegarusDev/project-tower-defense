@@ -84,11 +84,10 @@ export class BoardView {
       (e) => {
         if (!this.sim) return;
         e.preventDefault();
-        const { x, y } = this._toCanvas(e.clientX, e.clientY);
-        // ⌘ / Ctrl + wheel → zoom about the cursor
+        // ⌘ / Ctrl + wheel → zoom about grid center
         if (e.ctrlKey || e.metaKey) {
           const factor = Math.exp(-e.deltaY * 0.0018);
-          this.zoomAbout(this._zoomT * factor, x, y);
+          this.zoomAtGridCenter(this._zoomT * factor);
           return;
         }
         // Shift + wheel → pan (horizontal + vertical)
@@ -222,6 +221,17 @@ export class BoardView {
     this._zoomAnchor = { cx, cy, bx: b.x, by: b.y };
   }
 
+  /** Zoom keeping the grid center fixed. */
+  zoomAtGridCenter(z) {
+    if (!this.sim) return;
+    this._zoomT = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+    const g = this.sim.grid;
+    const gridCenterX = (g.cols - 1) * 0.5;
+    const gridCenterY = (g.rows - 1) * 0.5;
+    const p = this.cam.project(gridCenterX, gridCenterY);
+    this._zoomAnchor = { cx: p.x, cy: p.y, bx: gridCenterX, by: gridCenterY };
+  }
+
   setPitchDeg(deg) {
     setPitch(deg);
     this._fit(true);
@@ -340,8 +350,11 @@ export class BoardView {
     const mid = this._pointerMid();
     const dist = this._pointerDist();
     if (!mid || dist < 8) return;
-    // Store the board point under the initial midpoint for stable zoom anchoring
-    const anchorBoard = this.cam.unproject(mid.x, mid.y);
+    // Anchor zoom at grid center (board coordinates)
+    const g = this.sim.grid;
+    const gridCenterX = (g.cols - 1) * 0.5;
+    const gridCenterY = (g.rows - 1) * 0.5;
+    const anchorBoard = { x: gridCenterX, y: gridCenterY };
     this._pinch = {
       dist0: dist,
       zoom0: this.zoom,
