@@ -305,10 +305,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
   align-items: center;
   width: 100%;
-  max-height: 45vh; /* limit height to prevent oversized panel */
+  max-height: 50vh;
   background:
     var(--tex-rust),
     linear-gradient(165deg, #3a3028 0%, #1c1814 100%);
@@ -324,7 +323,7 @@
   flex-direction: row;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 16px 56px; /* space for arrows on sides */
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -336,11 +335,13 @@
   box-shadow: none;
   flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
 .forge-carousel .forge-arrow {
-  position: relative;
-  flex: 0 0 auto;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
   width: 40px;
   height: 40px;
   padding: 0;
@@ -355,7 +356,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 4px;
+}
+
+.forge-carousel .forge-arrow.prev {
+  left: 8px;
+}
+
+.forge-carousel .forge-arrow.next {
+  right: 8px;
 }
 
 .forge-carousel .forge-arrow:hover {
@@ -364,8 +372,9 @@
 }
 
 .forge-carousel .forge-arrow:active {
-  transform: scale(0.95);
+  transform: translateY(-50%) scale(0.95);
 }
+
 .stat-bars {
   display: grid;
   gap: 4px;
