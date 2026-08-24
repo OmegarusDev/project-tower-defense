@@ -632,20 +632,31 @@ export function forgeStatBars(plan) {
 }
 
 /** The preview card: canvas + slot line + stat bars + loadout. */
-export function forgePreviewCard(state, total) {
-  const idx = state.forgeSlot ?? 0;
+function buildForgeSlotCard(state, idx, total) {
   const slot = state.meta.roster?.[idx] || makeSlot();
   const plan = slot?.complete
     ? buildAttackPlan(slot.base, slot.barrel, slot.payload, 1, {})
     : null;
+  const active = idx === state.forgeSlot ? "active" : "";
   return `
-    <canvas id="forgePreview" class="forge-preview-flash" width="160" height="160" aria-label="Tower preview"></canvas>
-    <div class="forge-summary">
-      <h3>Slot ${idx + 1} / ${total}</h3>
-      ${forgeStatBars(plan)}
-      <p id="forgeLoadout">${forgePlanSummary(slot)}</p>
-      <button class="btn secondary part-chip" data-act="forge-clear" style="margin-top:8px">Clear slot</button>
+    <div class="forge-slot-card ${active}" data-slot="${idx}" data-act="forge-slot:${idx}">
+      <canvas class="forge-preview-flash" width="160" height="160" aria-label="Tower preview"></canvas>
+      <div class="forge-summary">
+        <h3>Slot ${idx + 1} / ${total}</h3>
+        ${forgeStatBars(plan)}
+        <p id="forgeLoadout">${forgePlanSummary(slot)}</p>
+        <button class="btn secondary part-chip" data-act="forge-clear" style="margin-top:8px">Clear slot</button>
+      </div>
     </div>`;
+}
+
+export function forgePreviewCard(state, total) {
+  const slotCount = state.meta.slotCount | 0;
+  const cards = [];
+  for (let i = 0; i < slotCount; i++) {
+    cards.push(buildForgeSlotCard(state, i, total));
+  }
+  return cards.join("");
 }
 
 /** The unlock card: shown at the end of the slot cycle while slots remain. */
@@ -696,13 +707,13 @@ export function renderForge(state) {
         <div class="status-toast ${state.status ? "" : "empty"}" id="status">${state.status || ""}</div>
       </header>
       <div class="meta-scroll">
-        <div class="forge-nav">
-          <button type="button" class="forge-arrow" data-act="forge-slot-prev" aria-label="Previous slot">◀</button>
-          <div class="forge-preview-wrap">
-            ${isPanel ? forgeUnlockCard(state, total) : forgePreviewCard(state, total)}
-          </div>
-          <button type="button" class="forge-arrow" data-act="forge-slot-next" aria-label="Next slot">▶</button>
-        </div>
+        ${isPanel
+          ? forgeUnlockCard(state, total)
+          : `
+            <div class="forge-preview-wrap" role="list" aria-label="Tower slots">
+              ${forgePreviewCard(state, total)}
+            </div>
+          `}
         ${isPanel ? "" : `<div class="cols forge-part-grid">${forgePartGridHtml(state, slot)}</div>`}
         <p class="end-note">Parts unlock pieces — prices climb with each buy. Slots open with Æ.</p>
       </div>
