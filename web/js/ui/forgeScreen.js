@@ -125,43 +125,48 @@ export function forgeCost(app, kind, id) {
 }
 
 export function paintForgePreview(app) {
-  const canvas = app.ui.querySelector("#forgePreview");
-  if (!canvas || app.screen !== "forge") return;
-  const ctx = canvas.getContext("2d");
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const css = 112;
-  if (canvas.width !== Math.floor(css * dpr)) {
-    canvas.width = Math.floor(css * dpr);
-    canvas.height = Math.floor(css * dpr);
-  }
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, css, css);
-  ctx.fillStyle = "#1a1c18";
-  ctx.fillRect(0, 0, css, css);
-  const slot = app.meta.roster[app.forgeSlot];
-  if (!slot?.complete) {
-    ctx.fillStyle = "#9aa6b8";
-    ctx.font = "12px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("incomplete", css / 2, css / 2);
-    return;
-  }
-  const t = {
-    base: slot.base,
-    barrel: slot.barrel,
-    payload: slot.payload,
-    aimAngle: app.forgeAim,
-    level: 1,
-    pendingPicks: 0,
-    branch: { damage: 0, rof: 0, range: 0 },
-  };
-  const size = 72;
-  const px = (css - size) / 2;
-  const py = (css - size) / 2;
-  // The painter owns ground-plane foreshortening (foreshortenBarrel in the
-  // turret) — no pre-scale here, or barrels would double-squash.
-  renderTowerNext(ctx, app.palette, t, px, py, size, {});
+  if (app.screen !== "forge") return;
+  const canvases = app.ui.querySelectorAll(".forge-preview-flash");
+  if (!canvases.length) return;
   
+  canvases.forEach((canvas, idx) => {
+    const slot = app.meta.roster?.[idx];
+    if (!slot) return;
+    
+    const ctx = canvas.getContext("2d");
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    // Canvas size from CSS (160x160 in HTML)
+    const css = 160;
+    if (canvas.width !== Math.floor(css * dpr)) {
+      canvas.width = Math.floor(css * dpr);
+      canvas.height = Math.floor(css * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, css, css);
+    ctx.fillStyle = "#1a1c18";
+    ctx.fillRect(0, 0, css, css);
+    
+    if (!slot?.complete) {
+      ctx.fillStyle = "#9aa6b8";
+      ctx.font = "12px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("incomplete", css / 2, css / 2);
+      return;
+    }
+    const t = {
+      base: slot.base,
+      barrel: slot.barrel,
+      payload: slot.payload,
+      aimAngle: app.forgeAim,
+      level: 1,
+      pendingPicks: 0,
+      branch: { damage: 0, rof: 0, range: 0 },
+    };
+    const size = 112;  // Use larger size for 160px canvas
+    const px = (css - size) / 2;
+    const py = (css - size) / 2;
+    renderTowerNext(ctx, app.palette, t, px, py, size, {});
+  });
 }
 
 export function applyForgePart(app, kind, id) {
