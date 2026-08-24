@@ -126,15 +126,20 @@ export class BoardGrid {
     this._bfs(false, this.groundDist, this.groundNext);
     this._bfs(true, this.airDist, this.airNext);
     this._rebuildTowerProx();
-    // Also update the current portal's distance maps
-    if (this.currentPortalX != null) {
-      this._ensurePortalDist(this.currentPortalX);
+    // Rebuild ALL portal distance maps to reflect current grid state
+    for (const portalX of this.portalDists.keys()) {
+      this._rebuildPortalDist(portalX);
     }
   }
 
   /** Ensure distance maps exist for a portal X position. */
   _ensurePortalDist(portalX) {
     if (this.portalDists.has(portalX)) return;
+    this._rebuildPortalDist(portalX);
+  }
+
+  /** (Re)build distance maps for a portal X position. */
+  _rebuildPortalDist(portalX) {
     const n = this.cols * this.rows;
     const gDist = new Int32Array(n);
     const aDist = new Int32Array(n);

@@ -726,10 +726,10 @@ export function renderForge(state) {
           ? forgeUnlockCard(state, total)
           : `
             <div class="forge-carousel" role="list" aria-label="Tower slots">
+              <button type="button" class="forge-arrow prev" data-act="forge-slot-prev" aria-label="Previous slot">◀</button>
               <div class="forge-preview-wrap">
                 ${forgePreviewCard(state, total)}
               </div>
-              <button type="button" class="forge-arrow prev" data-act="forge-slot-prev" aria-label="Previous slot">◀</button>
               <button type="button" class="forge-arrow next" data-act="forge-slot-next" aria-label="Next slot">▶</button>
             </div>
           `}
