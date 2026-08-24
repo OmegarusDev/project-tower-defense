@@ -158,6 +158,7 @@ export class App {
       this.board.selectedTowerId = this.selectedTowerId;
       this._syncGhostPlan();
       this._updateHandGhost();
+      this._updateWallPreview();
       // Update portal animator with dt
       if (this.portalAnimator) {
         this.portalAnimator.update(dt);
@@ -179,11 +180,26 @@ export class App {
         if (hover) {
           const p = this.board.cellScreenCenter(hover.x, hover.y);
           this.board.setHandGhost(loadout, p.x, p.y);
+          this.board.setHasHandTower(true);
           return;
         }
       }
     }
     this.board.setHandGhost(null);
+    this.board.setHasHandTower(false);
+  }
+
+  _updateWallPreview() {
+    if (this.tool === "wall" && this.board && this.sim) {
+      const hover = this.board.hover;
+      if (hover && this.sim.grid.inBounds(hover.x, hover.y) && this.sim.grid.isBuildable(hover.x, hover.y)) {
+        const wallCost = this.sim.economy.wallCost(this.sim.playerWallCount());
+        const canAfford = this.sim.economy.battle >= wallCost;
+        this.board.setWallPreview(hover, wallCost, canAfford);
+        return;
+      }
+    }
+    this.board.setWallPreview(null);
   }
 
   _syncGhostPlan() {

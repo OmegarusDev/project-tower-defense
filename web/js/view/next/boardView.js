@@ -58,6 +58,8 @@ export class BoardView {
     this._stains = [];
     this._ghostPlan = null;
     this._handGhost = null;
+    this._hasHandTower = false;
+    this._wallPreview = null;
     this.recoil = new Map();
     this.atmosphereId = "default";
     this._handOffT = 0;
@@ -175,8 +177,22 @@ export class BoardView {
   setHandGhost(loadout, screenX, screenY) {
     if (loadout && screenX != null && screenY != null) {
       this._handGhost = { loadout, x: screenX, y: screenY };
+      this._hasHandTower = true;
     } else {
       this._handGhost = null;
+      this._hasHandTower = false;
+    }
+  }
+
+  setHasHandTower(has) {
+    this._hasHandTower = has;
+  }
+
+  setWallPreview(cell, cost, canAfford) {
+    if (cell && this.sim && this.sim.grid.inBounds(cell.x, cell.y)) {
+      this._wallPreview = { x: cell.x, y: cell.y, cost, canAfford };
+    } else {
+      this._wallPreview = null;
     }
   }
 
@@ -554,10 +570,11 @@ export class BoardView {
     if (this._ghostPlan) this._drawPlanGhost(this._ghostPlan.plan, this._ghostPlan.cell);
     if (this.pendingPlace && g.inBounds(this.pendingPlace.x, this.pendingPlace.y)) {
       this._drawPendingPlace(this.pendingPlace);
-    } else if (this.hover && g.inBounds(this.hover.x, this.hover.y) && this.selectedTowerId < 0) {
+    } else if (this.hover && g.inBounds(this.hover.x, this.hover.y) && this.selectedTowerId < 0 && !this._hasHandTower) {
       this._drawHover(this.hover.x, this.hover.y, g.isBuildable(this.hover.x, this.hover.y));
     }
     if (this._handGhost) this._drawHandGhost(this._handGhost);
+    if (this._wallPreview) this._drawWallPreview(this._wallPreview);
 
     ctx.restore();
     this._drawAtmosphere(cssW, cssH);
@@ -757,6 +774,22 @@ export class BoardView {
       this.ctx.setLineDash([]);
       this.ctx.lineWidth = 1;
     }
+  }
+
+  _drawWallPreview(preview) {
+    const { x, y, canAfford } = preview;
+    const q = this.cam.cellQuad(x, y, 2);
+    const col = canAfford ? this.palette.spawn : this.palette.exit;
+    fillQuad(this.ctx, q, canAfford ? "rgba(111,175,122,0.35)" : "rgba(196,90,74,0.35)");
+    strokeQuad(this.ctx, q, col, 2);
+    // Cost label
+    const cx = (q[0].x + q[2].x) / 2;
+    const cy = (q[0].y + q[2].y) / 2;
+    this.ctx.fillStyle = canAfford ? "#e8c56a" : "#e86a6a";
+    this.ctx.font = `600 ${Math.max(10, this.cell * 0.18)}px "Chakra Petch", sans-serif`;
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+    this.ctx.fillText(`${preview.cost}₡`, cx, cy - this.cell * 0.15);
   }
 
   _drawAtmosphere(cssW, cssH) {
