@@ -68,8 +68,17 @@
   flex: 0 0 auto;
 }
 
-.forge-part-grid {
+.forge-screen .forge-nav {
   flex: 0 0 auto;
+}
+
+.forge-part-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .build-strip {
