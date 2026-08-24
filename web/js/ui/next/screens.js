@@ -726,11 +726,11 @@ export function renderForge(state) {
           ? forgeUnlockCard(state, total)
           : `
             <div class="forge-nav">
-              <button type="button" class="forge-arrow" data-act="forge-slot-prev" aria-label="Previous slot">◀</button>
               <div class="forge-preview-wrap" role="list" aria-label="Tower slots">
                 ${forgePreviewCard(state, total)}
               </div>
-              <button type="button" class="forge-arrow" data-act="forge-slot-next" aria-label="Next slot">▶</button>
+              <button type="button" class="forge-arrow prev" data-act="forge-slot-prev" aria-label="Previous slot">◀</button>
+              <button type="button" class="forge-arrow next" data-act="forge-slot-next" aria-label="Next slot">▶</button>
             </div>
           `}
         ${isPanel ? "" : `<div class="cols forge-part-grid">${forgePartGridHtml(state, slot)}</div>`}

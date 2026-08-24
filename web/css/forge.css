@@ -300,14 +300,39 @@
   shape-rendering: geometricPrecision;
 }
 
-/* Forge slot navigator — arrows + stat bars + unlock panel */
+/* Forge slot navigator — arrows on sides of scrollable carousel */
 .forge-nav {
+  position: relative;
   display: flex;
+  flex-direction: column;
+  gap: 8px;
   align-items: center;
-  gap: 10px;
-  justify-content: center;
 }
+
+.forge-nav .forge-preview-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 16px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  flex: 1;
+  min-width: 0;
+}
+
 .forge-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
   width: 40px;
   height: 40px;
   padding: 0;
@@ -319,11 +344,25 @@
   clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
   cursor: pointer;
   flex: 0 0 auto;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+.forge-arrow.prev {
+  left: -48px;
+}
+
+.forge-arrow.next {
+  right: -48px;
+}
+
 .forge-arrow:hover {
   background: linear-gradient(180deg, #343a30, #242921);
   border-color: rgba(201, 162, 39, 0.65);
 }
+
 .forge-arrow:active {
   transform: translateY(1px);
 }
