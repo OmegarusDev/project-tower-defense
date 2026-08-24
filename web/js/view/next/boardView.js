@@ -411,7 +411,7 @@ export class BoardView {
     if (this._pinch && this._pointers.size >= 2) {
       const mid = this._pointerMid();
       const dist = this._pointerDist();
-      if (!mid || dist < 8) return;
+      if (!mid || dist < 6) return;
 
       const scale = dist / this._pinch.dist0;
       const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._pinch.zoom0 * scale));
@@ -446,7 +446,7 @@ export class BoardView {
     if (!d || e.pointerId !== d.id) return;
     const dy = y - d.y0;
     const dx = x - d.x0;
-    if (!d.moved && Math.hypot(dx, dy) > 8) {
+    if (!d.moved && Math.hypot(dx, dy) > 6) {
       d.moved = true;
       // A drag means "look around" — drop any tower currently in hand.
       if (this.onPanStart) this.onPanStart();

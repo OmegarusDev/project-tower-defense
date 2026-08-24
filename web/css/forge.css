@@ -18,18 +18,18 @@
 
 .forge-slot-card {
   flex: 0 0 auto;
-  width: clamp(280px, 70vw, 360px);
+  width: clamp(240px, 60vw, 320px);
   scroll-snap-align: start;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   background:
     var(--tex-rust),
     linear-gradient(165deg, #3a3028 0%, #1c1814 100%);
   border: 2px solid #8a6238;
   border-radius: 0;
   clip-path: var(--rough-clip, var(--plate-clip));
-  padding: 12px;
+  padding: 10px;
   box-shadow: 0 3px 0 #14100c;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -308,6 +308,7 @@
   gap: 8px;
   align-items: center;
   width: 100%;
+  max-height: 45vh; /* limit height to prevent oversized panel */
   background:
     var(--tex-rust),
     linear-gradient(165deg, #3a3028 0%, #1c1814 100%);
