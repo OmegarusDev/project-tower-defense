@@ -652,9 +652,24 @@ function buildForgeSlotCard(state, idx, total) {
 
 export function forgePreviewCard(state, total) {
   const slotCount = state.meta.slotCount | 0;
+  const maxSlots = state.maxSlots || MAX_ROSTER_SLOTS;
+  const canUnlock = slotCount < maxSlots;
   const cards = [];
   for (let i = 0; i < slotCount; i++) {
     cards.push(buildForgeSlotCard(state, i, total));
+  }
+  // Add unlock slot tile at the end if slots remain
+  if (canUnlock) {
+    const unlock = state.nextUnlock;
+    cards.push(`
+      <div class="forge-slot-card unlock-card" data-slot="${slotCount}" data-act="forge-unlock-slot">
+        <div class="forge-unlock-content">
+          <p class="forge-unlock-k">Slot ${slotCount + 1} / ${total}</p>
+          <h3>Unlock Slot ${slotCount + 1}?</h3>
+          <p class="forge-unlock-cost">${unlock ? formatTechCost(unlock.cost) : "—"}</p>
+          <button class="btn title-cta" data-act="forge-unlock-slot" ${unlock ? "" : "disabled"}>Unlock</button>
+        </div>
+      </div>`);
   }
   return cards.join("");
 }
@@ -710,8 +725,12 @@ export function renderForge(state) {
         ${isPanel
           ? forgeUnlockCard(state, total)
           : `
-            <div class="forge-preview-wrap" role="list" aria-label="Tower slots">
-              ${forgePreviewCard(state, total)}
+            <div class="forge-nav">
+              <button type="button" class="forge-arrow" data-act="forge-slot-prev" aria-label="Previous slot">◀</button>
+              <div class="forge-preview-wrap" role="list" aria-label="Tower slots">
+                ${forgePreviewCard(state, total)}
+              </div>
+              <button type="button" class="forge-arrow" data-act="forge-slot-next" aria-label="Next slot">▶</button>
             </div>
           `}
         ${isPanel ? "" : `<div class="cols forge-part-grid">${forgePartGridHtml(state, slot)}</div>`}
