@@ -198,42 +198,6 @@ export function drawDeckTile(ctx, cam, palette, x, y, isSpawn, cell) {
   const depthShade = -VIEW25.depthFog * 0.1 * (1 - Math.max(0, Math.min(1, depthV)));
   fillQuad(ctx, q, shade(base, n * 0.012 + depthShade));
 
-  // Forge atmosphere: molten metal glow along seams
-  if (p._atmosphereId === "forge") {
-    // Base molten glow under the plate
-    const glowGrad = ctx.createRadialGradient(
-      (q[0].x + q[2].x) / 2, (q[0].y + q[2].y) / 2, 0,
-      (q[0].x + q[2].x) / 2, (q[0].y + q[2].y) / 2, cell * 1.2
-    );
-    glowGrad.addColorStop(0, "rgba(255, 107, 42, 0.08)");
-    glowGrad.addColorStop(0.5, "rgba(255, 80, 30, 0.04)");
-    glowGrad.addColorStop(1, "rgba(200, 50, 20, 0)");
-    fillQuad(ctx, q, glowGrad);
-    
-    // Molten veins along tile edges
-    const veinAlpha = 0.12 + Math.abs(Math.sin(performance.now() * 0.001 + x * 0.7 + y * 0.3)) * 0.08;
-    ctx.strokeStyle = `rgba(255, 120, 50, ${veinAlpha})`;
-    ctx.lineWidth = Math.max(0.8, cell * 0.018);
-    const veinOffset = cell * 0.04;
-    // Horizontal veins
-    for (let i = 1; i < 3; i++) {
-      const py = q[0].y + (q[3].y - q[0].y) * (i / 3);
-      ctx.beginPath();
-      ctx.moveTo(q[0].x, py);
-      ctx.lineTo(q[1].x, py);
-      ctx.stroke();
-    }
-    // Vertical veins
-    for (let i = 1; i < 3; i++) {
-      const px = q[0].x + (q[1].x - q[0].x) * (i / 3);
-      ctx.beginPath();
-      ctx.moveTo(px, q[0].y);
-      ctx.lineTo(px, q[3].y);
-      ctx.stroke();
-    }
-    ctx.lineWidth = 1;
-  }
-
   // Soft left-face shade for plate thickness reading
   const leftShade = [
     q[0],
@@ -1283,6 +1247,7 @@ export function drawAtmosphere(ctx, palette, cssW, cssH, t, motes, state) {
   const moteWarm = atmo.moteWarm || palette.accent;
   const moteCool = atmo.moteCool || "#9eb0c0";
   const bloomA = atmo.bloom ?? 0.35;
+  const isForge = palette._atmosphereId === "forge";
 
   const vg = ctx.createRadialGradient(
     cssW * 0.5,
@@ -1302,6 +1267,58 @@ export function drawAtmosphere(ctx, palette, cssW, cssH, t, motes, state) {
   bloom.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = bloom;
   ctx.fillRect(0, 0, cssW, cssH * 0.3);
+
+  // Forge background: molten glow around board edges + ember particles
+  if (isForge && plate) {
+    const left = Math.min(plate[0].x, plate[3].x);
+    const right = Math.max(plate[1].x, plate[2].x);
+    const top = Math.min(plate[0].y, plate[1].y);
+    const bot = Math.max(plate[2].y, plate[3].y);
+    const padX = (right - left) * 0.15;
+    const padY = (bot - top) * 0.12;
+
+    // Molten glow radiating from board edges
+    const edgeGrad = ctx.createLinearGradient(left - padX, 0, right + padX, cssH);
+    edgeGrad.addColorStop(0, "rgba(255, 107, 42, 0.08)");
+    edgeGrad.addColorStop(0.25, "rgba(255, 107, 42, 0.03)");
+    edgeGrad.addColorStop(0.5, "transparent");
+    edgeGrad.addColorStop(0.75, "rgba(255, 107, 42, 0.03)");
+    edgeGrad.addColorStop(1, "rgba(255, 107, 42, 0.08)");
+    ctx.fillStyle = edgeGrad;
+    ctx.fillRect(0, 0, cssW, cssH);
+
+    // Top/bottom molten seams
+    const seamGrad = ctx.createLinearGradient(0, top - padY, 0, top + padY);
+    seamGrad.addColorStop(0, "transparent");
+    seamGrad.addColorStop(0.3, "rgba(255, 140, 60, 0.12)");
+    seamGrad.addColorStop(0.7, "rgba(255, 100, 30, 0.06)");
+    seamGrad.addColorStop(1, "transparent");
+    ctx.fillStyle = seamGrad;
+    ctx.fillRect(0, top - padY, cssW, padY * 2);
+
+    const seamGrad2 = ctx.createLinearGradient(0, bot - padY, 0, bot + padY);
+    seamGrad2.addColorStop(0, "transparent");
+    seamGrad2.addColorStop(0.3, "rgba(255, 140, 60, 0.12)");
+    seamGrad2.addColorStop(0.7, "rgba(255, 100, 30, 0.06)");
+    seamGrad2.addColorStop(1, "transparent");
+    ctx.fillStyle = seamGrad2;
+    ctx.fillRect(0, bot - padY, cssW, padY * 2);
+
+    // Subtle corner glows
+    const cornerR = Math.min(cssW, cssH) * 0.18;
+    for (const cx of [left, right]) {
+      for (const cy of [top, bot]) {
+        const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, cornerR);
+        cg.addColorStop(0, "rgba(255, 120, 50, 0.18)");
+        cg.addColorStop(0.5, "rgba(255, 80, 30, 0.06)");
+        cg.addColorStop(1, "transparent");
+        ctx.fillStyle = cg;
+        ctx.beginPath();
+        ctx.arc(cx, cy, cornerR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
 
   if (themePulse > 0) {
     ctx.fillStyle = withAlpha(atmo.pulse || moteWarm, themePulse * 0.12);
