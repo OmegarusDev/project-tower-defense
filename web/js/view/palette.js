@@ -253,6 +253,14 @@ export class ProcPalette {
         bloom: 0.32,
         pulse: "#a8b0a0",
       },
+      // In-game molten forge atmosphere
+      forge: {
+        fog: "rgba(18, 6, 4, 0.68)",
+        moteWarm: "#ff6b2a",
+        moteCool: "#602010",
+        bloom: 0.2,
+        pulse: "#ff6b2a",
+      },
     };
     this.atmosphere = table[key] || table[key.replace(/^event_/, "")] || table.default;
     this.fog = this.atmosphere.fog;

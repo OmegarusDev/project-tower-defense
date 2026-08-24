@@ -471,7 +471,12 @@ export class BoardView {
     if (d.moved) return;
     const { x, y } = this._toCanvas(e.clientX, e.clientY);
     const c = this._cellAt(x, y);
-    if (this.sim.grid.inBounds(c.x, c.y) && this.onTap) this.onTap(c);
+    // Click off-grid clears hand
+    if (!this.sim.grid.inBounds(c.x, c.y)) {
+      if (this._handSlot != null && this.onPanStart) this.onPanStart();
+      return;
+    }
+    if (this.onTap) this.onTap(c);
   }
 
   /** Damped camera glide: inputs write targets; draw() eases toward them. */

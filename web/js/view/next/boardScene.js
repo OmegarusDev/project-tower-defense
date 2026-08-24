@@ -198,6 +198,42 @@ export function drawDeckTile(ctx, cam, palette, x, y, isSpawn, cell) {
   const depthShade = -VIEW25.depthFog * 0.1 * (1 - Math.max(0, Math.min(1, depthV)));
   fillQuad(ctx, q, shade(base, n * 0.012 + depthShade));
 
+  // Forge atmosphere: molten metal glow along seams
+  if (p._atmosphereId === "forge") {
+    // Base molten glow under the plate
+    const glowGrad = ctx.createRadialGradient(
+      (q[0].x + q[2].x) / 2, (q[0].y + q[2].y) / 2, 0,
+      (q[0].x + q[2].x) / 2, (q[0].y + q[2].y) / 2, cell * 1.2
+    );
+    glowGrad.addColorStop(0, "rgba(255, 107, 42, 0.08)");
+    glowGrad.addColorStop(0.5, "rgba(255, 80, 30, 0.04)");
+    glowGrad.addColorStop(1, "rgba(200, 50, 20, 0)");
+    fillQuad(ctx, q, glowGrad);
+    
+    // Molten veins along tile edges
+    const veinAlpha = 0.12 + Math.abs(Math.sin(performance.now() * 0.001 + x * 0.7 + y * 0.3)) * 0.08;
+    ctx.strokeStyle = `rgba(255, 120, 50, ${veinAlpha})`;
+    ctx.lineWidth = Math.max(0.8, cell * 0.018);
+    const veinOffset = cell * 0.04;
+    // Horizontal veins
+    for (let i = 1; i < 3; i++) {
+      const py = q[0].y + (q[3].y - q[0].y) * (i / 3);
+      ctx.beginPath();
+      ctx.moveTo(q[0].x, py);
+      ctx.lineTo(q[1].x, py);
+      ctx.stroke();
+    }
+    // Vertical veins
+    for (let i = 1; i < 3; i++) {
+      const px = q[0].x + (q[1].x - q[0].x) * (i / 3);
+      ctx.beginPath();
+      ctx.moveTo(px, q[0].y);
+      ctx.lineTo(px, q[3].y);
+      ctx.stroke();
+    }
+    ctx.lineWidth = 1;
+  }
+
   // Soft left-face shade for plate thickness reading
   const leftShade = [
     q[0],

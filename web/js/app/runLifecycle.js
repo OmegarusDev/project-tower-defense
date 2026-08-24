@@ -193,6 +193,9 @@ export function enterGame(app) {
   app.score.start();
   app.unlockAudio();
   app.renderGameChrome();
+  // Forge-themed molten metal atmosphere for in-game
+  app.board.setAtmosphere?.("forge");
+  app.palette.setAtmosphere?.("forge");
   // Single fit + immediate paint — no hand-off zoom, no deferred second refit.
   app.board.prepareEntry?.();
   if (app.sim?.modeEndless) {

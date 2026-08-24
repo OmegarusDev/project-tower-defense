@@ -84,6 +84,7 @@ export class App {
     this.board.onTap = (cell) => this.onCellTap(cell);
     this.board.onPanStart = () => {
       if (this.placeConfirm) this.cancelPlaceConfirm();
+      this.clearHand();
       this.board.hover = null;
       this._syncGhostPlan();
     };
