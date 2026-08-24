@@ -671,14 +671,16 @@
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 4px;
-  align-content: start;
-  overflow-x: hidden;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  padding: 4px 8px;
+  scroll-padding: 0 8px;
 }
 
 .slot-tile,
@@ -691,6 +693,8 @@
   justify-content: flex-end;
   gap: 0;
   min-width: 0;
+  width: clamp(68px, 14vw, 84px);
+  flex-shrink: 0;
   height: clamp(52px, 14vw, 68px);
   flex-shrink: 0;
   padding: 3px 2px 4px;
@@ -711,6 +715,7 @@
     0 4px 8px rgba(0, 0, 0, 0.3);
   -webkit-tap-highlight-color: transparent;
   overflow: hidden;
+  scroll-snap-align: start;
 }
 
 .wall-tile {
