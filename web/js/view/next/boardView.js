@@ -761,7 +761,6 @@ export class BoardView {
       const steps = 48;
       this.ctx.strokeStyle = "rgba(232,197,106,0.35)";
       this.ctx.lineWidth = 1.5;
-      this.ctx.setLineDash([5, 4]);
       this.ctx.beginPath();
       for (let i = 0; i <= steps; i++) {
         const a = (i / steps) * Math.PI * 2;
@@ -772,7 +771,6 @@ export class BoardView {
         else this.ctx.lineTo(sp.x, sp.y);
       }
       this.ctx.stroke();
-      this.ctx.setLineDash([]);
       this.ctx.lineWidth = 1;
     }
   }

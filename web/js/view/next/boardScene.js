@@ -1120,9 +1120,8 @@ export function drawPlanGhost(ctx, cam, palette, plan, cell, cellSize) {
 export function drawRangeRing(ctx, cam, palette, cx, cy, rangeCells, cell, accent) {
   const r = rangeCells * cell;
   const steps = 48;
-  ctx.strokeStyle = withAlpha(accent, 0.4);
+  ctx.strokeStyle = withAlpha(accent, 0.35);
   ctx.lineWidth = 1.5;
-  ctx.setLineDash([5, 4]);
   ctx.beginPath();
   for (let i = 0; i <= steps; i++) {
     const a = (i / steps) * Math.PI * 2;
@@ -1133,7 +1132,6 @@ export function drawRangeRing(ctx, cam, palette, cx, cy, rangeCells, cell, accen
     else ctx.lineTo(sp.x, sp.y);
   }
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.lineWidth = 1;
 }
 
