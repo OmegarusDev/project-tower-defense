@@ -79,6 +79,31 @@
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.forge-part-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.forge-part-grid h4 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 6px;
+  padding: 6px 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #e8c56a;
+  background: linear-gradient(180deg, #1c1814 0%, #161210 100%);
+  border-bottom: 1px solid rgba(138, 98, 56, 0.25);
+  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
 }
 
 .build-strip {
