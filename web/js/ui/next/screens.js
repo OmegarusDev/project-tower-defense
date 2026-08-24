@@ -725,8 +725,8 @@ export function renderForge(state) {
         ${isPanel
           ? forgeUnlockCard(state, total)
           : `
-            <div class="forge-nav">
-              <div class="forge-preview-wrap" role="list" aria-label="Tower slots">
+            <div class="forge-carousel" role="list" aria-label="Tower slots">
+              <div class="forge-preview-wrap">
                 ${forgePreviewCard(state, total)}
               </div>
               <button type="button" class="forge-arrow prev" data-act="forge-slot-prev" aria-label="Previous slot">◀</button>
