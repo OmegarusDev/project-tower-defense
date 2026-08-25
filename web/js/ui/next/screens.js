@@ -715,12 +715,13 @@ return `
     <div class="screen meta-shell meta-screen forge-screen meta-enter">
       <header class="meta-hero">
         <div class="meta-hero-row">
+          <button class="btn secondary part-chip ${meta.devMode ? "active" : ""}" data-act="dev-toggle" aria-label="Dev Mode">Dev</button>
           <div>
             <h1>Forge</h1>
           </div>
-          <button class="btn secondary part-chip ${meta.devMode ? "active" : ""}" data-act="dev-toggle" aria-label="Dev Mode">Dev</button>
           ${xClose(backAct)}
         </div>
+        <div class="title-stats tech-stats">
           
           ${xClose(backAct)}
         </div>

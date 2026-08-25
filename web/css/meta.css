@@ -403,21 +403,19 @@
 .meta-hero-row {
   position: relative;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
+  min-height: 52px;
+  padding: 0 8px;
 }
 
 .meta-hero-row .x-close {
-  position: absolute;
-  right: 0;
-  top: 0;
+  flex-shrink: 0;
 }
 
 .meta-hero-row .btn[data-act="dev-toggle"] {
-  position: absolute;
-  left: 0;
-  top: 0;
+  flex-shrink: 0;
 }
 
 .meta-hero h1 {
