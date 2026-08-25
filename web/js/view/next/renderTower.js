@@ -83,13 +83,14 @@ export function renderTowerNext(ctx, palette, t, px, py, s, opts = {}) {
 
 function drawGroundShadow(ctx, cx, groundY, s) {
   const rx = s * 0.38;
+  const shadowDrop = vz(s, 0.055);
   ctx.fillStyle = "rgba(0,0,0,0.22)";
   ctx.beginPath();
-  ctx.ellipse(cx + s * VIEW25.shadowSkew * 1.4, groundY + s * 0.08, rx * 1.15, deckRy(rx) * 1.1, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx + s * VIEW25.shadowSkew * 1.4, groundY + shadowDrop + vz(s, 0.02), rx * 1.15, deckRy(rx) * 1.1, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = "rgba(0,0,0,0.34)";
   ctx.beginPath();
-  ctx.ellipse(cx + s * VIEW25.shadowSkew, groundY + s * 0.06, rx, deckRy(rx), 0, 0, Math.PI * 2);
+  ctx.ellipse(cx + s * VIEW25.shadowSkew, groundY + shadowDrop, rx, deckRy(rx), 0, 0, Math.PI * 2);
   ctx.fill();
 }
 

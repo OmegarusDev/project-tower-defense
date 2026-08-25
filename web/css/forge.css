@@ -34,6 +34,14 @@
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Unique corroded borders per base type */
+.forge-base-sentry { border-color: #4f7eb0; box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(79, 126, 176, 0.3); }
+.forge-base-bulwark { border-color: #6d746c; box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(109, 116, 108, 0.3); }
+.forge-base-spire { border-color: #c4783a; box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(196, 120, 58, 0.3); }
+.forge-base-aerie { border-color: #7a5a9a; box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(122, 90, 154, 0.3); }
+.forge-base-warden { border-color: #3d9a8e; box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(61, 154, 142, 0.3); }
+.forge-base-talon { border-color: #b86448; box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(184, 100, 72, 0.3); }
+
 .forge-slot-card.active {
   transform: scale(1.02);
   box-shadow: 0 3px 0 #14100c, 0 0 0 2px #e8c56a;

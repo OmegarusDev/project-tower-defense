@@ -69,7 +69,7 @@ export const BASE_VISUALS = {
     ["roundRectFill", { x0: -0.05, y: 0.02, w: 0.1, h: 0.07, r: 2, color: "sideDeep", stroke: "rim", strokeAlpha: 0.5 }],
   ],
   talon: [
-    ["cyl", { x: 0, y: 0.02, rx: 0.26, rise: 0.04, top: "sideDark", side: "sideDeep", bottom: "rim" }],
+    ["cyl", { x: 0, y: 0.02, rx: 0.27, rise: 0.045, top: "sideDark", side: "sideDeep", bottom: "rim" }],
     ["rivets", { y: 0.02, rx: 0.2, n: 6, color: "rim" }],
     ["diamond", { y: 0.12, rx: 0.24, rise: 0.12, top: "top", side: "side", dark: "sideDark" }],
     ["claws", { y: 0.12, angles: [-0.7, 0.7, 2.4, -2.4], r0: 0.06, r1: 0.2, dy0: 0.04, dy1: 0.1, color: "accent", alpha: 0.55, lw: 1.2 }],
