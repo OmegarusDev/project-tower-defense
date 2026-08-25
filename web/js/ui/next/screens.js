@@ -721,10 +721,7 @@ return `
           </div>
           ${xClose(backAct)}
         </div>
-        <div class="title-stats tech-stats">
-          
-          ${xClose(backAct)}
-        </div>
+<div class="title-stats tech-stats">
         <div class="title-stats tech-stats">
           <span><i>Parts</i>${meta.forge}</span>
           <span><i>Æ</i>${meta.aether}</span>
