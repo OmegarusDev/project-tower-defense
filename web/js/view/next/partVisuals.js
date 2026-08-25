@@ -16,7 +16,7 @@
 export const BASE_VISUALS = {
   sentry: [
     ["cyl", { x: 0, y: -0.02, rx: 0.3, rise: 0.05, top: "sideDark", side: "sideDeep", bottom: "rim" }],
-    ["cyl", { x: 0, y: 0.08, rx: 0.25, rise: 0.12, top: "top", side: "side", bottom: "sideDark" }],
+    ["cyl", { x: 0, y: 0.08, rx: 0.25, rise: 0.12, top: "top", side: "side", bottom: "sideDark", roundedBottom: true }],
     ["vents", { xs: [-0.16, 0.16], y0: 0.04, y1: 0.12, color: "sideDeep", w: 0.02 }],
     ["ring", { y: 0.1, rx: 0.22, color: "rim", alpha: 0.55 }],
     ["cyl", { x: 0, y: 0.14, rx: 0.16, rise: 0.06, top: "topHi", side: "accent", bottom: "sideDark" }],
@@ -48,14 +48,14 @@ export const BASE_VISUALS = {
     ["rivets", { y: 0.02, rx: 0.22, n: 8, color: "rim" }],
     ["frustum", { y: 0.14, rxBot: 0.22, rxTop: 0.13, rise: 0.12, top: "top", side: "side", dark: "sideDark" }],
     ["ring", { y: 0.16, rx: 0.15, color: "accent", alpha: 0.65 }],
-    ["cyl", { x: 0, y: 0.22, rx: 0.1, rise: 0.1, top: "topHi", side: "side", bottom: "sideDark" }],
-    ["cyl", { x: 0, y: 0.28, rx: 0.13, rise: 0.04, top: "top", side: "accent", bottom: "sideDark" }],
+    ["cyl", { x: 0, y: 0.22, rx: 0.1, rise: 0.1, top: "topHi", side: "side", bottom: "sideDark", roundedBottom: true }],
+    ["cyl", { x: 0, y: 0.28, rx: 0.13, rise: 0.04, top: "top", side: "accent", bottom: "sideDark", roundedBottom: true }],
     ["ellipseFill", { x: -0.03, y: 0.3, rx: 0.04, ryFactor: 0.03, rot: -0.4, color: "topHi", alpha: 0.55 }],
   ],
   aerie: [
     ["legs", { angles: [-0.9, 0.9, 3.14], r: 0.18, dr: 0.02, rx: 0.06, rise: 0.04, top: "side", side: "sideDark", bottom: "rim" }],
     ["struts", { angles: [-0.9, 0.9, 3.14], r: 0.16, r0: 0.05, yTop: 0.08, color: "sideDark", rim: "rim", alpha: 0.4 }],
-    ["cyl", { x: 0, y: 0.1, rx: 0.24, rise: 0.07, top: "top", side: "side", bottom: "sideDark" }],
+    ["cyl", { x: 0, y: 0.1, rx: 0.24, rise: 0.07, top: "top", side: "side", bottom: "sideDark", roundedBottom: true }],
     ["ring", { y: 0.1, rx: 0.2, color: "accent", alpha: 0.45 }],
     ["ellipseFill", { x: 0, y: 0.1, rx: 0.14, ryFactor: 0.14, color: "sideDeep" }],
     ["ellipseFill", { x: 0, y: 0.12, rx: 0.11, ryFactor: 0.11, color: "topHi" }],

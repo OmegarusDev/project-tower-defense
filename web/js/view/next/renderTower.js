@@ -101,7 +101,7 @@ function drawBaseVisuals(ctx, cx, groundY, s, base, m) {
   for (const [prim, e] of list) {
     switch (prim) {
       case "cyl":
-        cyl25(ctx, cx + e.x * s, yAt(e.y), e.rx * s, vz(s, e.rise), m[e.top], m[e.side], e.bottom ? m[e.bottom] : undefined);
+        cyl25(ctx, cx + e.x * s, yAt(e.y), e.rx * s, vz(s, e.rise), m[e.top], m[e.side], e.bottom ? m[e.bottom] : undefined, { roundedBottom: e.roundedBottom === true });
         break;
       case "box":
         box25(ctx, cx, yAt(e.y), e.w * s, e.d * s, vz(s, e.h), { top: m[e.top], side: m[e.side], sideDark: m[e.dark] });

@@ -13,21 +13,37 @@ export function vz(s, k) {
   return s * k * VIEW25.vExag;
 }
 
-export function cyl25(ctx, cx, topY, rx, rise, topCol, sideCol, bottomCol) {
+export function cyl25(ctx, cx, topY, rx, rise, topCol, sideCol, bottomCol, opts = {}) {
   const ry = deckRy(rx);
+  const bottomY = topY + rise;
+  const useRoundedBottom = opts.roundedBottom === true;
+  const effectiveBottomCol = bottomCol || shade(sideCol, -0.15);
+
   ctx.fillStyle = sideCol;
   ctx.fillRect(cx - rx, topY, rx * 2, Math.max(1, rise));
+
+  ctx.fillStyle = effectiveBottomCol;
   ctx.beginPath();
-  ctx.ellipse(cx, topY + rise, rx, ry, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, bottomY, rx, ry, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = bottomCol || shade(sideCol, -0.15);
+
+  if (useRoundedBottom) {
+    ctx.fillStyle = sideCol;
+    ctx.beginPath();
+    ctx.ellipse(cx, bottomY, rx, ry, 0, Math.PI, 0, true);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = effectiveBottomCol;
   ctx.beginPath();
-  ctx.ellipse(cx, topY + rise, rx, ry, 0, 0.15, Math.PI - 0.15);
+  ctx.ellipse(cx, bottomY, rx, ry, 0, 0.15, Math.PI - 0.15);
   ctx.fill();
+
   ctx.fillStyle = topCol;
   ctx.beginPath();
   ctx.ellipse(cx, topY, rx, ry, 0, 0, Math.PI * 2);
   ctx.fill();
+
   ctx.strokeStyle = withAlpha("#fff8e0", 0.18);
   ctx.lineWidth = 1.25;
   ctx.beginPath();
