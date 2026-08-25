@@ -323,9 +323,11 @@ export class BoardView {
     return true;
   }
 
-  _cellAt(clientX, clientY) {
-    const rect = this.canvas.getBoundingClientRect();
-    return this.cam.cellAtScreen(clientX - rect.left, clientY - rect.top);
+  _cellAt(canvasX, canvasY) {
+    // Callers pass _toCanvas output (canvas-relative CSS px). Subtracting
+    // rect here too double-converted and shifted every tap left by the
+    // canvas's page offset (invisible at rect.left=0, broken when centered).
+    return this.cam.cellAtScreen(canvasX, canvasY);
   }
 
   _pointerMid() {
@@ -797,8 +799,10 @@ export class BoardView {
     const { x, y, canAfford } = preview;
     const q = this.cam.cellQuad(x, y, 2);
     const col = canAfford ? this.palette.spawn : this.palette.exit;
-    fillQuad(this.ctx, q, canAfford ? "rgba(111,175,122,0.35)" : "rgba(196,90,74,0.35)");
-    strokeQuad(this.ctx, q, col, 2);
+    // Qualified: bare names here threw ReferenceError mid-frame, killing the
+    // rAF loop (sim freeze) whenever the wall preview rendered.
+    S.fillQuad(this.ctx, q, canAfford ? "rgba(111,175,122,0.35)" : "rgba(196,90,74,0.35)");
+    S.strokeQuad(this.ctx, q, col, 2);
     // Cost label
     const cx = (q[0].x + q[2].x) / 2;
     const cy = (q[0].y + q[2].y) / 2;

@@ -62,9 +62,12 @@ function world() {
 
 // syncSimFromMetaData: no battle/lives touch without flags
 {
-  const meta = freshMeta({ tech: { iron_guard: 4 } });
+  // Real tech id is `lives` (rank 2 → 7 HP per IRON_GUARD_LIVES) — a rank
+  // that must actually change startLives so this block isn't vacuous.
+  const meta = freshMeta({ tech: { lives: 2 } });
   syncTechDerived(meta);
   const derivedLives = meta.startLives;
+  assert(derivedLives === 7, `iron-guard rank 2 derives 7 HP (got ${derivedLives})`);
   const sim = world();
   sim.setStartLives(derivedLives, { resetCurrent: true });
   sim.economy.battle = 123;

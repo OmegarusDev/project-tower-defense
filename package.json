@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Dev-only tooling deps (corpus capture / golden images). The game itself has zero dependencies.",
   "devDependencies": {
+    "pngjs": "^7.0.0",
     "playwright": "^1.62.1"
   }
 }

@@ -15,6 +15,7 @@ import {
   getTechNode,
 } from "../data/techTree.js";
 import { normalizeMeta } from "../saveStore.js";
+import { mergeRunGains } from "../app/metaSync.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -33,22 +34,34 @@ function placeOpen(sim, slot = 0) {
   throw new Error("no buildable cell");
 }
 
-// ——— C1: between-wave vs in-wave continue math ———
+// ——— C1: between-wave vs in-wave continue math (via real Sim checkpoint) ———
 {
   // inWave: roll back so Call restarts saved wave
-  const savedWave = 4;
-  const phase = "inWave";
-  let waveIndex = savedWave;
-  if (phase === "inWave" && savedWave > 0) waveIndex = savedWave - 1;
-  assert(waveIndex === 3, "inWave continue rolls back");
-  assert(waveIndex + 1 === savedWave, "Call restarts saved wave");
+  const sim = new Sim();
+  sim.setup(11, 14, 21, true);
+  for (let i = 0; i < 4; i++) sim.startWave();
+  const blobIn = sim.checkpoint();
+  assert(blobIn.wave === 4 && blobIn.phase === "inWave", "inWave checkpoint at wave 4");
+
+  const r1 = new Sim();
+  r1.loadCheckpoint(blobIn);
+  if (blobIn.phase !== "betweenWaves" && (blobIn.wave | 0) > 0) r1.waveIndex = (blobIn.wave | 0) - 1;
+  assert(r1.waveIndex === 3, "inWave continue rolls back");
+  r1.startWave();
+  assert(r1.waveIndex === 4, "Call restarts saved wave");
 
   // betweenWaves: keep cleared index; Call starts next
-  waveIndex = 4;
-  const phase2 = "betweenWaves";
-  if (phase2 === "inWave" && waveIndex > 0) waveIndex -= 1;
-  assert(waveIndex === 4, "betweenWaves keeps cleared wave");
-  assert(waveIndex + 1 === 5, "Call starts next wave");
+  const sim2 = new Sim();
+  sim2.setup(11, 14, 21, true);
+  sim2.startWave();
+  sim2.checkpointPhase = "betweenWaves";
+  const blobBw = sim2.checkpoint();
+  const r2 = new Sim();
+  r2.loadCheckpoint(blobBw);
+  if (blobBw.phase !== "betweenWaves" && (blobBw.wave | 0) > 0) r2.waveIndex = (blobBw.wave | 0) - 1;
+  assert(r2.waveIndex === 1, "betweenWaves keeps cleared wave");
+  r2.startWave();
+  assert(r2.waveIndex === 2, "Call starts next wave");
 }
 
 {
@@ -105,36 +118,34 @@ function placeOpen(sim, slot = 0) {
   assert(sim2.waveIndex === 1, "restarts same wave");
 }
 
-// ——— C2: delta-merge meta gains (unit of the merge math) ———
+// ——— C2: delta-merge meta gains (the real mergeRunGains, not a re-implementation) ———
 {
   const meta = { forge: 10, aether: 20 };
-  const runWaveGains = { parts: 6, aether: 4 };
-  let applied = { parts: 0, aether: 0 };
-  // first sync
-  let dP = runWaveGains.parts - applied.parts;
-  let dA = runWaveGains.aether - applied.aether;
-  meta.forge += dP;
-  meta.aether += dA;
-  applied = { ...runWaveGains };
+  const sim = new Sim();
+  sim.setup(11, 14, 21, true);
+  sim.modeEndless = true;
+  sim.economy.runWaveGains.parts = 6;
+  sim.economy.runWaveGains.aether = 4;
+  sim.metaAppliedGains = { parts: 0, aether: 0 };
+
+  // first sync: full delta merges, cursor aligns, vault mirrors meta
+  mergeRunGains(meta, sim);
   assert(meta.forge === 16 && meta.aether === 24, "first sync adds gains");
+  assert(sim.metaAppliedGains.parts === 6 && sim.metaAppliedGains.aether === 4, "cursor aligned");
+  assert(sim.economy.forge === 16 && sim.economy.aether === 24, "sim vault aligned");
+
   // hub spend
   meta.forge -= 5;
   meta.aether -= 8;
   assert(meta.forge === 11 && meta.aether === 16, "hub spend sticks");
+
   // second sync with same gains must not restore spent currency
-  dP = runWaveGains.parts - applied.parts;
-  dA = runWaveGains.aether - applied.aether;
-  if (dP > 0) meta.forge += dP;
-  if (dA > 0) meta.aether += dA;
+  mergeRunGains(meta, sim);
   assert(meta.forge === 11 && meta.aether === 16, "no vault clobber");
-  // new wave gain
-  runWaveGains.parts = 9;
-  runWaveGains.aether = 4;
-  dP = runWaveGains.parts - applied.parts;
-  dA = runWaveGains.aether - applied.aether;
-  if (dP > 0) meta.forge += dP;
-  if (dA > 0) meta.aether += dA;
-  applied = { parts: runWaveGains.parts, aether: runWaveGains.aether };
+
+  // new wave gain: only the new delta merges
+  sim.economy.runWaveGains.parts = 9;
+  mergeRunGains(meta, sim);
   assert(meta.forge === 14 && meta.aether === 16, "only new delta merges");
 }
 

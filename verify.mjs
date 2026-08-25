@@ -46,13 +46,19 @@ console.log("all modules parse OK");
 const tests = readdirSync(join(WEB, "js", "tests"))
   .filter((f) => f.endsWith(".test.mjs"))
   .sort();
+const failures = [];
 for (const t of tests) {
   const r = spawnSync(process.execPath, [join(WEB, "js", "tests", t)], {
     stdio: "inherit",
   });
   if (r.status !== 0) {
-    console.error(`TEST FAIL: ${t}`);
-    process.exit(1);
+    failures.push(t);
+    console.error(`TEST FAIL: ${t} — continuing (aggregate report at end).`);
   }
+}
+if (failures.length) {
+  console.error(`\n${failures.length}/${tests.length} test file(s) failed:`);
+  for (const t of failures) console.error(`  - ${t}`);
+  process.exit(1);
 }
 console.log(`${tests.length} test files passed.`);

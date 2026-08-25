@@ -2,6 +2,7 @@
     <div class="screen meta-shell meta-screen forge-screen meta-enter">
       <header class="meta-hero">
         <div class="meta-hero-row">
+          <button class="btn secondary part-chip " data-act="dev-toggle" aria-label="Dev Mode">Dev</button>
           <div>
             <h1>Forge</h1>
           </div>
@@ -11,29 +12,57 @@
     </svg>
   </button>
         </div>
+<div class="title-stats tech-stats">
         <div class="title-stats tech-stats">
           <span><i>Parts</i>0</span>
           <span><i>Æ</i>0</span>
           <span><i>Cap</i>L1</span>
           <span><i>Slots</i>3</span>
         </div>
-        <div class="status tech-status forge-status" id="status" hidden=""></div>
-      </header>
+        <div class="status-toast empty" id="status"></div>
+      </div></header>
       <div class="meta-scroll">
-        <div class="forge-nav">
-          <button type="button" class="forge-arrow" data-act="forge-slot-prev" aria-label="Previous slot">◀</button>
-          <div class="forge-preview-wrap">
-            
-    <canvas id="forgePreview" class="forge-preview-flash" width="112" height="112" aria-label="Tower preview"></canvas>
-    <div class="forge-summary">
-      <h3>Slot 1 / 4</h3>
-      <div class="stat-bars"><div class="stat-bar"><span class="stat-bar-k">DMG</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:16.666666666666664%"></div></div><span class="stat-bar-v">10</span></div><div class="stat-bar"><span class="stat-bar-k">ROF</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:17.39130434782609%"></div></div><span class="stat-bar-v">0.87</span></div><div class="stat-bar"><span class="stat-bar-k">RNG</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:40%"></div></div><span class="stat-bar-v">3.2</span></div></div>
-      <p id="forgeLoadout">Sentry · First<br>Single + Kinetic · 19 Coin<br><span style="color:var(--muted)">kinetic · r3.2 · 10 dmg</span></p>
-      <button class="btn secondary part-chip" data-act="forge-clear" style="margin-top:8px">Clear slot</button>
+        
+            <div class="forge-carousel" role="list" aria-label="Tower slots">
+              <button type="button" class="forge-arrow prev" data-act="forge-slot-prev" aria-label="Previous slot">◀</button>
+              <div class="forge-preview-wrap">
+                
+    <div class="forge-slot-card active" data-slot="0" data-act="forge-slot:0">
+      <canvas class="forge-preview-flash" width="120" height="120" aria-label="Tower preview"></canvas>
+      <div class="forge-summary">
+        <h3>Slot 1 / 4</h3>
+        <div class="stat-bars"><div class="stat-bar"><span class="stat-bar-k">DMG</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:16.666666666666664%"></div></div><span class="stat-bar-v">10</span></div><div class="stat-bar"><span class="stat-bar-k">ROF</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:17.39130434782609%"></div></div><span class="stat-bar-v">0.87</span></div><div class="stat-bar"><span class="stat-bar-k">RNG</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:40%"></div></div><span class="stat-bar-v">3.2</span></div></div>
+        <p id="forgeLoadout" class="forge-loadout-compact">Sentry / Single / Kinetic · 19 Coin</p>
+      </div>
     </div>
-          </div>
-          <button type="button" class="forge-arrow" data-act="forge-slot-next" aria-label="Next slot">▶</button>
+    <div class="forge-slot-card " data-slot="1" data-act="forge-slot:1">
+      <canvas class="forge-preview-flash" width="120" height="120" aria-label="Tower preview"></canvas>
+      <div class="forge-summary">
+        <h3>Slot 2 / 4</h3>
+        <div class="stat-bars"><div class="stat-bar"><span class="stat-bar-k">DMG</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:0%"></div></div><span class="stat-bar-v">—</span></div><div class="stat-bar"><span class="stat-bar-k">ROF</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:0%"></div></div><span class="stat-bar-v">—</span></div><div class="stat-bar"><span class="stat-bar-k">RNG</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:0%"></div></div><span class="stat-bar-v">—</span></div></div>
+        <p id="forgeLoadout" class="forge-loadout-compact">Base · Barrel · Payload</p>
+      </div>
+    </div>
+    <div class="forge-slot-card " data-slot="2" data-act="forge-slot:2">
+      <canvas class="forge-preview-flash" width="120" height="120" aria-label="Tower preview"></canvas>
+      <div class="forge-summary">
+        <h3>Slot 3 / 4</h3>
+        <div class="stat-bars"><div class="stat-bar"><span class="stat-bar-k">DMG</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:0%"></div></div><span class="stat-bar-v">—</span></div><div class="stat-bar"><span class="stat-bar-k">ROF</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:0%"></div></div><span class="stat-bar-v">—</span></div><div class="stat-bar"><span class="stat-bar-k">RNG</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:0%"></div></div><span class="stat-bar-v">—</span></div></div>
+        <p id="forgeLoadout" class="forge-loadout-compact">Base · Barrel · Payload</p>
+      </div>
+    </div>
+      <div class="forge-slot-card unlock-card" data-slot="3" data-act="forge-unlock-slot">
+        <div class="forge-unlock-content">
+          <p class="forge-unlock-k">Slot 4 / 4</p>
+          <h3>Unlock Slot 4?</h3>
+          <p class="forge-unlock-cost">—</p>
+          <button class="btn title-cta" data-act="forge-unlock-slot" disabled="">Unlock</button>
         </div>
+      </div>
+              </div>
+              <button type="button" class="forge-arrow next" data-act="forge-slot-next" aria-label="Next slot">▶</button>
+            </div>
+          
         <div class="cols forge-part-grid">
     <div><h4>Base</h4><button class="btn part-btn part-chip equipped" data-act="forge-part:base:sentry" title="Lane clearer — shoots first on the path"><span class="part-btn-inner"><svg class="part-ico" width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><polygon points="8,1.5 13.5,4.5 13.5,11.5 8,14.5 2.5,11.5 2.5,4.5" fill="#4f7eb0" stroke="#1a222c" stroke-width="0.8"></polygon>
      <circle cx="8" cy="8" r="2.2" fill="#1a222c" opacity="0.35"></circle></svg><span class="part-btn-label">Sentry · First</span></span></button><button class="btn part-btn part-chip locked cant-afford" data-act="buy:base:bulwark" title="Point defense — short &amp; fast; nearest threat — unlock for 5 Parts"><span class="part-btn-inner"><svg class="part-ico" width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><polygon points="8,1.5 13.5,4.5 13.5,11.5 8,14.5 2.5,11.5 2.5,4.5" fill="#6d746c" stroke="#1a222c" stroke-width="0.8"></polygon>
@@ -58,6 +87,6 @@
         <p class="end-note">Parts unlock pieces — prices climb with each buy. Slots open with Æ.</p>
       </div>
       <footer class="meta-dock">
-        <button class="btn warn" data-act="upgrade">Tech Tree</button>
+        <button class="btn" data-act="upgrade">Tech Tree</button>
       </footer>
     </div>

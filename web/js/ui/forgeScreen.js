@@ -51,19 +51,21 @@ export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true 
   const wrap = root.querySelector(".forge-preview-wrap");
   if (wrap) {
     wrap.innerHTML = isPanel ? forgeUnlockCard(st, total) : forgePreviewCard(st, total);
+    // Bind once per element — refreshForgeUi runs on every forge action and
+    // this used to stack an unbounded number of pitch wheel handlers.
+    if (!wrap.dataset.pitchBound) {
+      wrap.dataset.pitchBound = "1";
+      wrap.addEventListener("wheel", (e) => {
+        if (e.deltaY !== 0) {
+          e.preventDefault();
+          const pitch = Math.max(8, Math.min(58, (app.meta.settings?.cameraPitch ?? 24) + e.deltaY * 0.09));
+          app.applyPitch(pitch);
+        }
+      }, { passive: false });
+    }
   }
   applyBtnTextures(root);
-  // Pitch control via vertical scroll on carousel (match in-game: +deltaY * 0.09)
-  const previewWrap = root.querySelector(".forge-preview-wrap");
-  if (previewWrap) {
-    previewWrap.addEventListener("wheel", (e) => {
-      if (e.deltaY !== 0) {
-        e.preventDefault();
-        const pitch = Math.max(8, Math.min(58, (app.meta.settings?.cameraPitch ?? 24) + e.deltaY * 0.09));
-        app.applyPitch(pitch);
-      }
-    }, { passive: false });
-  }
+  const grid = root.querySelector(".forge-part-grid");
   if (grid) {
     grid.hidden = isPanel;
     if (rebuildParts && !isPanel) grid.innerHTML = forgePartGridHtml(st, slot);
@@ -81,13 +83,15 @@ export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true 
 }
 
 function flashForgePreview(app) {
-  const canvas = app.ui.querySelector("#forgePreview");
-  if (!canvas || app.screen !== "forge") return;
+  if (app.screen !== "forge") return;
+  // The carousel renders one canvas per slot card; flash the active card's
+  // canvas (the old #forgePreview id is no longer emitted by any renderer).
+  const canvas = app.ui.querySelector(".forge-slot-card.active .forge-preview-flash");
+  if (!canvas) return;
   canvas.classList.remove("forge-preview-flash");
   void canvas.offsetWidth;
   canvas.classList.add("forge-preview-flash");
   paintForgePreview(app);
-  
 }
 
 export function showForge(app, returnTo) {

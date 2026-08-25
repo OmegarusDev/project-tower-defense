@@ -24,14 +24,26 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Serve web/
-        run: cd web && python3 -m http.server 8123 &
+        run: |
+          cd web && python3 -m http.server 8123 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8123/index.html >/dev/null && exit 0
+            sleep 0.5
+          done
+          echo "server did not come up" && exit 1
 
       - name: Unit tests + parse gates
         run: node verify.mjs
 
       - name: No native dialogs
         run: |
-          if grep -rn "confirm(\|alert(\|prompt(" web/js --include=*.js | grep -v /dev/ | grep -v tests; then
+          # Match real call sites only — skip comment lines (*, //, /*) so
+          # JSDoc mentions like "confirm(). Promise-based" don't false-positive.
+          hits=$(grep -rnE "\b(confirm|alert|prompt)[[:space:]]*\(" web/js --include=*.js \
+            | grep -v /dev/ | grep -v tests \
+            | grep -vE ':[0-9]+:[[:space:]]*(\*|//|/\*)' || true)
+          if [ -n "$hits" ]; then
+            echo "$hits"
             echo "native dialog call found — use ui/next/modal.js" && exit 1
           fi
 
@@ -61,3 +73,14 @@ jobs:
 
       - name: Live smoke walk (app integration)
         run: node tools/corpus/smokeWalk.mjs
+
+      - name: QA walk (3 device ratios, console-clean)
+        run: node tools/corpus/qaWalk.mjs
+
+      # Balance signal, not a merge gate yet: reports campaign beatability
+      # under tiered meta. Currently 6/12 levels fail vs the greedy bot
+      # (L3-L8 wave-1 packs overwhelm the tier's opening economy). Blocking
+      # this starts after the dedicated balance pass.
+      - name: Campaign beatability ladder (non-blocking)
+        run: node tools/corpus/campaignLadder.mjs
+        continue-on-error: true

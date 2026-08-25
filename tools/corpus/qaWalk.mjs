@@ -62,7 +62,11 @@ for (const vp of VIEWPORTS) {
 
   await page.goto("http://127.0.0.1:8123/", { waitUntil: "networkidle", timeout: 30000 });
   await page.waitForTimeout(1000);
-  step("title screen", await page.evaluate(() => !!document.querySelector(".title-screen")));
+  step("title screen", await page.evaluate(() => !!document.querySelector(".splash-screen")));
+
+  // Boot now lands on a splash gate before the main menu.
+  await page.click("[data-act='splash-start']");
+  await page.waitForTimeout(800);
 
   // endless: place/sell/undo/wall → wave → pause → speed → quit-confirm → hub → continue
   await page.click("text=Endless");
@@ -70,6 +74,10 @@ for (const vp of VIEWPORTS) {
   await page.click("text=New Run");
   await page.waitForTimeout(1500);
   step("game chrome", await page.evaluate(() => !!document.querySelector(".game-chrome")));
+
+  // Fresh runs boot with no slot selected — pick dock slot 1 first.
+  await page.click("[data-act='slot:0']");
+  await page.waitForTimeout(300);
 
   const t1 = await clickEmptyCell(page, 0);
   const t2 = await clickEmptyCell(page, 1);
@@ -101,7 +109,9 @@ for (const vp of VIEWPORTS) {
   await page.click(".hud-pause");
   await page.waitForTimeout(400);
   step("pause sheet", await page.evaluate(() => !!document.getElementById("pauseSheet")));
-  await page.click("[data-act='speed:2']");
+  // Pause sheet no longer hosts speed buttons (FF is hold-Deploy now);
+  // exercise the same speed plumbing directly.
+  await page.evaluate(() => window.__app.setSpeed(2));
   await page.waitForTimeout(250);
   step("speed toggle", await page.evaluate(() => window.__app.speed === 2));
   await page.click(".pause-card [data-act='resume']");
@@ -127,17 +137,32 @@ for (const vp of VIEWPORTS) {
   }
   step("resumed placements", (await page.evaluate(() => window.__app.sim.towers.length)) >= 2);
 
-  // forced game over (sim path): call the resumed wave, then leak a 1-life run
+  // forced game over (sim path): call the resumed wave, then leak a 1-life run.
+  // Spawn the sacrificial enemy on the LIVE trunk path (walls may have rerouted
+  // it) — a hardcoded cell can end up in a walled-off pocket and never leak.
   await page.click(".call-btn");
   await page.waitForTimeout(1200);
-  await page.evaluate(() => {
+  const leakAt = await page.evaluate(() => {
+    const s = window.__app.sim._s;
+    let x = s.grid.spawn.x, y = s.grid.spawn.y;
+    let last = { x, y };
+    for (let i = 0; i < 500; i++) {
+      if (s.grid.isExit(x, y)) break;
+      last = { x, y };
+      const n = s.grid.groundNext[s.grid.idx(x, y)];
+      if (!n || (n.x === x && n.y === y)) break;
+      x = n.x; y = n.y;
+    }
+    return last;
+  });
+  await page.evaluate(({ x: cx, y: cy }) => {
     const sim = window.__app.sim;
     sim.setStartLives(1, { resetCurrent: true });
     sim.enemies.push({
-      id: 999, pos: { x: 4.5, y: 7.4 }, cell: { x: 4, y: 6 },
+      id: 999, pos: { x: cx + 0.5, y: cy + 0.5 }, cell: { x: cx, y: cy },
       hp: 9999, maxHp: 9999, kind: "mite", silhouette: "mite", speed: 0.5, ballast: "mid", slowAmount: 0,
     });
-  });
+  }, leakAt);
   const over = await waitFor(page, () => document.querySelector(".end-screen")?.innerText?.includes("FALLEN") ?? false, 15000);
   step("game over screen", over);
   step("ghost replay button", await page.evaluate(() => !!document.querySelector("[data-act='ghost-replay']")));
@@ -215,10 +240,10 @@ for (const vp of VIEWPORTS) {
   await page.waitForTimeout(300);
   await page.click("[data-act='forge-slot-next']");
   await page.waitForTimeout(300);
-  step("forge unlock panel", await page.evaluate(() => !!document.querySelector(".forge-unlock")));
+  step("forge unlock panel", await page.evaluate(() => !!document.querySelector(".forge-unlock-content")));
   await page.click("[data-act='forge-slot-next']");
   await page.waitForTimeout(300);
-  step("forge loops to slot 1", await page.evaluate(() => document.querySelector(".forge-summary h3")?.textContent?.startsWith("Slot 1") ?? false));
+  step("forge loops to slot 1", await page.evaluate(() => document.querySelector(".forge-slot-card.active h3")?.textContent?.startsWith("Slot 1") ?? false));
   await page.click(".x-close");
   await page.waitForTimeout(400);
 
@@ -226,8 +251,9 @@ for (const vp of VIEWPORTS) {
   await page.click("text=Tech Tree");
   await page.waitForTimeout(700);
   step("tech screen", await page.evaluate(() => !!document.querySelector(".tech-screen")));
-  await page.click(".x-close");
-  await page.waitForTimeout(400);
+  // Tech opened from Main returns via its own back action.
+  await page.click(".tech-screen [data-act='main']");
+  await waitFor(page, () => !!document.querySelector("[data-act='endless']"));
 
   // settings: toggle every control + reload persistence
   await page.click("text=Settings");
@@ -242,7 +268,10 @@ for (const vp of VIEWPORTS) {
   await page.keyboard.press("ArrowRight");
   await page.waitForTimeout(300);
   await page.reload({ waitUntil: "networkidle" });
+  // Reload boots back to the splash gate — tap through to Main.
   await page.waitForTimeout(800);
+  await page.click("[data-act='splash-start']");
+  await page.waitForTimeout(600);
   await page.click("text=Settings");
   await page.waitForTimeout(600);
   step("settings persist after reload", await page.evaluate(() => document.querySelector("#music")?.checked === false));

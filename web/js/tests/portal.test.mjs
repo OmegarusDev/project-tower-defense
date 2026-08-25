@@ -32,25 +32,39 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   }
 }
 
-// Wave 6: first shift attempt, emits portal_unstable
+// Wave 6+: first mid-wave shift — portal_unstable fires between clumps,
+// then at most one relocation lands within the wave's shift budget.
 {
   const w = newWorld(9, 8, 7, true);
-  let gotUnstable = false;
-  w._s._listeners.set("portal_unstable", [() => { gotUnstable = true; }]);
-  // Fast-forward through waves 1-5
+  const s = w._s;
+  let unstable = 0;
+  s._listeners.set("portal_unstable", [() => { unstable++; }]);
+  // Fast-forward through waves 1-5 (static)
   for (let i = 0; i < 5; i++) {
     w.startWave();
-    w._s.waves.queue = Array(8).fill("mite");
-    w._s.waves.toSpawn = 8;
-    delete w._s.waves.clumpState;
+    s.waves.queue = Array(8).fill("mite");
+    s.waves.toSpawn = 8;
+    delete s.waves.clumpState;
     w.setStartLives(5000, { resetCurrent: true });
-    for (let t = 0; t < 1500; t++) w.tick();
+    for (let t = 0; t < 2000; t++) w.tick();
   }
-  w.startWave(); // wave 6
-  assert(gotUnstable, "wave 6 emits portal_unstable");
-  // Portal may or may not have moved (depends on whether center is optimal)
-  // The key invariant: portalIdx was advanced by relocatePortal
-  assert(w._s.waves.portalIdx >= 0, "portal cycle was consulted at wave 6");
+  w.startWave(); // wave 6 — budget = 1
+  assert(!unstable, "no portal_unstable at wave start (warning precedes the move)");
+  s.waves.queue = Array(120).fill("mite");
+  s.waves.toSpawn = 120;
+  delete s.waves.clumpState;
+  w.setStartLives(5000, { resetCurrent: true });
+  let prev = w.portal.x;
+  let moved = 0;
+  for (let t = 0; t < 60000 && s.waves.active; t++) {
+    w.tick();
+    if (w.portal.x !== prev) {
+      prev = w.portal.x;
+      moved++;
+    }
+  }
+  assert(unstable >= 1, "wave 6 emits portal_unstable before shifting (mid-wave, between clumps)");
+  assert(moved <= 1, `wave 6 respects shift budget (moved=${moved})`);
 }
 
 // Determinism: same seed → same portal sequence

@@ -1,5 +1,5 @@
 <div id="ui">
-    <div class="game-chrome">
+    <div class="game-chrome meta-enter">
       
       <header class="hud-bar">
         <div class="wave-badge plate" id="waveBadge">
@@ -31,13 +31,12 @@
           </svg>
           <input id="pitchLive" class="cam-pitch" type="range" min="8" max="58" step="1" value="24" orient="vertical" aria-label="Camera angle">
         </div>
-        <button type="button" class="chrome-fab compose-fab plate" data-act="compose-toggle" title="Live compose" aria-label="Live compose">
+        <button type="button" class="chrome-fab compose-fab plate" data-act="compose-toggle" title="Compose — swap tower parts mid-run" aria-label="Compose">
         <svg class="fab-ico" viewBox="0 0 24 24" aria-hidden="true">
           <path class="fab-ico-body" d="M5 7.5h5.2l1.3-2.2h1l1.3 2.2H19v2.2h-1.6l-2.2 7.1H8.8L6.6 9.7H5V7.5z"></path>
           <path class="fab-ico-accent" d="M9.2 11.2h5.6l-.7 2.4H9.9l-.7-2.4z"></path>
-          <circle class="fab-ico-rivet" cx="8.2" cy="8.6" r="0.7"></circle>
-          <circle class="fab-ico-rivet" cx="15.8" cy="8.6" r="0.7"></circle>
         </svg>
+        <span class="compose-label">Compose</span>
       </button>
       </aside>
       
@@ -66,10 +65,9 @@
             <span class="wall-tile-cost" id="wallCost">17</span>
           </button>
         </div>
-        <button type="button" class="call-btn hot" id="callBtn" title="Hold for 5×" aria-label="Deploy wave, hold for fast forward">
-          <span class="call-kicker">5×</span>
+        <button type="button" class="call-btn hot" id="callBtn" title="Hold for 2×" aria-label="Deploy wave, hold for fast forward">
+          <span class="call-kicker">2×</span>
           <span class="call-label" id="callLabel">Speed</span>
-          <span class="call-bolts" aria-hidden="true"></span>
         </button>
       </footer>
     </div></div>

@@ -21,9 +21,32 @@ const step = (name, ok) => {
   console.log(`${ok ? "PASS" : "FAIL"} ${name}`);
 };
 
+/** Click the screen-center of an empty buildable cell (robust across ratios). */
+async function clickEmptyCell(page, offset = 0) {
+  return page.evaluate((off) => {
+    const app = window.__app;
+    const s = app.sim._s;
+    const found = [];
+    for (let y = 2; y < s.grid.rows; y++) {
+      for (let x = 0; x < s.grid.cols; x++) {
+        if (s.grid.isBuildable(x, y)) found.push([x, y]);
+      }
+    }
+    if (!found.length) return null;
+    const [cx, cy] = found[Math.min(off, found.length - 1)];
+    const p = app.board.cellScreenCenter(cx, cy);
+    const r = app.board.canvas.getBoundingClientRect();
+    return { x: r.left + p.x, y: r.top + p.y };
+  }, offset);
+}
+
 await page.goto("http://127.0.0.1:8123/", { waitUntil: "networkidle", timeout: 30000 });
 await page.waitForTimeout(1000);
-step("title screen", await page.evaluate(() => !!document.querySelector(".title-screen")));
+step("title screen", await page.evaluate(() => !!document.querySelector(".splash-screen")));
+
+// Boot now lands on a splash gate before the main menu.
+await page.click("[data-act='splash-start']");
+await page.waitForTimeout(800);
 
 // endless run: place, select, sell, undo, wall, compose, pause, quit
 await page.click("text=Endless");
@@ -31,12 +54,16 @@ await page.waitForTimeout(600);
 await page.click("text=New Run");
 await page.waitForTimeout(1500);
 step("game chrome", await page.evaluate(() => !!document.querySelector(".game-chrome")));
-await page.mouse.click(480, 380);
+// Fresh runs boot with no slot selected — pick dock slot 1 first.
+await page.click("[data-act='slot:0']");
 await page.waitForTimeout(300);
-await page.mouse.click(480, 380);
+const t1 = await clickEmptyCell(page, 0);
+await page.mouse.click(t1.x, t1.y);
+await page.waitForTimeout(300);
+await page.mouse.click(t1.x, t1.y);
 await page.waitForTimeout(500);
 step("tower placed", (await page.evaluate(() => window.__app.sim.towers.length)) === 1);
-await page.mouse.click(480, 380);
+await page.mouse.click(t1.x, t1.y);
 await page.waitForTimeout(400);
 step("tower overlay", await page.evaluate(() => !document.getElementById("towerOverlay")?.classList.contains("hidden")));
 await page.click("[data-act='sell']");
@@ -58,15 +85,30 @@ step("pause sheet", await page.evaluate(() => !!document.getElementById("pauseSh
 await page.click(".pause-card [data-act='resume']");
 await page.waitForTimeout(300);
 
-// forced game over (sim path, no waiting on wave death)
-await page.evaluate(() => {
+// forced game over (sim path, no waiting on wave death).
+// Spawn the sacrificial enemy on the LIVE trunk path — a hardcoded cell can
+// end up walled off and never leak.
+const leakAt = await page.evaluate(() => {
+  const s = window.__app.sim._s;
+  let x = s.grid.spawn.x, y = s.grid.spawn.y;
+  let last = { x, y };
+  for (let i = 0; i < 500; i++) {
+    if (s.grid.isExit(x, y)) break;
+    last = { x, y };
+    const n = s.grid.groundNext[s.grid.idx(x, y)];
+    if (!n || (n.x === x && n.y === y)) break;
+    x = n.x; y = n.y;
+  }
+  return last;
+});
+await page.evaluate(({ x: cx, y: cy }) => {
   const sim = window.__app.sim;
   sim.setStartLives(1, { resetCurrent: true });
   sim.enemies.push({
-    id: 999, pos: { x: 4.5, y: 7.4 }, cell: { x: 4, y: 6 },
+    id: 999, pos: { x: cx + 0.5, y: cy + 0.5 }, cell: { x: cx, y: cy },
     hp: 9999, maxHp: 9999, kind: "mite", silhouette: "mite", speed: 0.5, ballast: "mid", slowAmount: 0,
   });
-});
+}, leakAt);
 let over = false;
 for (let i = 0; i < 20 && !over; i++) {
   await page.waitForTimeout(500);
@@ -106,15 +148,15 @@ step("forge screen", await page.evaluate(() => !!document.querySelector(".forge-
 step("forge nav arrows", await page.evaluate(() => document.querySelectorAll(".forge-arrow").length === 2));
 await page.click("[data-act='forge-slot-next']");
 await page.waitForTimeout(400);
-step("forge cycles slots", await page.evaluate(() => document.querySelector(".forge-summary h3")?.textContent?.startsWith("Slot 2") ?? false));
+step("forge cycles slots", await page.evaluate(() => document.querySelector(".forge-slot-card.active h3")?.textContent?.startsWith("Slot 2") ?? false));
 // cycle to the unlock panel (slotCount 3 fresh -> panel at index 3)
 await page.click("[data-act='forge-slot-next']");
 await page.click("[data-act='forge-slot-next']");
 await page.waitForTimeout(400);
-step("forge unlock panel", await page.evaluate(() => !!document.querySelector(".forge-unlock")));
+step("forge unlock panel", await page.evaluate(() => !!document.querySelector(".forge-unlock-content")));
 await page.click("[data-act='forge-slot-next']");
 await page.waitForTimeout(400);
-step("forge loops back to slot 1", await page.evaluate(() => document.querySelector(".forge-summary h3")?.textContent?.startsWith("Slot 1") ?? false));
+step("forge loops back to slot 1", await page.evaluate(() => document.querySelector(".forge-slot-card.active h3")?.textContent?.startsWith("Slot 1") ?? false));
 await page.click(".x-close");
 await page.waitForTimeout(400);
 await page.click("text=Tech Tree");

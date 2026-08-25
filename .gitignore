@@ -1,2 +1,5 @@
 .DS_Store
 node_modules
+
+# corpus browser screenshots (no consumer; recapture via tools/corpus/capture.mjs)
+tools/corpus/out/screens/

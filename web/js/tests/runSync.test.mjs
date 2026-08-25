@@ -8,23 +8,42 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-// Checkpoint is saved after waveIndex increments; inWave resume must roll back one.
+// inWave continue contract, driven through the real Sim API:
+// checkpoint saved after waveIndex increments; Continue rolls back one so
+// Call restarts the saved wave (runLifecycle.continueRun mirrors this).
 {
-  const savedWave = 4;
-  const phase = "inWave";
-  const resumeIndex = phase === "inWave" ? Math.max(0, savedWave - 1) : savedWave;
-  assert(resumeIndex === 3, "inWave resume rolls back so Call starts saved wave");
-  const afterCall = resumeIndex + 1;
-  assert(afterCall === savedWave, "Call Wave after continue starts the saved wave");
+  const sim = new Sim();
+  sim.setup(11, 14, 5, true);
+  for (let i = 0; i < 4; i++) sim.startWave();
+  assert(sim.waveIndex === 4, "four waves started");
+  const blob = sim.checkpoint();
+  assert(blob.wave === 4 && blob.phase === "inWave", "checkpoint stores wave + inWave phase");
+
+  const resumed = new Sim();
+  resumed.loadCheckpoint(blob);
+  const savedWave = blob.wave | 0;
+  if (blob.phase !== "betweenWaves" && savedWave > 0) resumed.waveIndex = savedWave - 1;
+  assert(resumed.waveIndex === 3, "inWave resume rolls back so Call starts saved wave");
+  resumed.startWave();
+  assert(resumed.waveIndex === 4, "Call Wave after continue starts the saved wave");
 }
 
-// betweenWaves: no rollback — Call starts next wave with board intact.
+// betweenWaves continue contract: no rollback — Call starts next wave.
 {
-  const savedWave = 4;
-  const phase = "betweenWaves";
-  const resumeIndex = phase === "inWave" ? Math.max(0, savedWave - 1) : savedWave;
-  assert(resumeIndex === 4, "betweenWaves keeps cleared index");
-  assert(resumeIndex + 1 === 5, "Call starts wave 5");
+  const sim = new Sim();
+  sim.setup(11, 14, 5, true);
+  sim.startWave();
+  sim.checkpointPhase = "betweenWaves"; // as wave_cleared hands off
+  const blob = sim.checkpoint();
+  assert(blob.phase === "betweenWaves", "checkpoint stores betweenWaves phase");
+
+  const resumed = new Sim();
+  resumed.loadCheckpoint(blob);
+  const savedWave = blob.wave | 0;
+  if (blob.phase !== "betweenWaves" && savedWave > 0) resumed.waveIndex = savedWave - 1;
+  assert(resumed.waveIndex === 1, "betweenWaves keeps cleared index");
+  resumed.startWave();
+  assert(resumed.waveIndex === 2, "Call starts wave 2 with board intact");
 }
 
 // setStartLives can update budget without healing.
