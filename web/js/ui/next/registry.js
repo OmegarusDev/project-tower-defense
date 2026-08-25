@@ -120,7 +120,7 @@ const ROUGH_SEL = [
   ".threat-tag", ".title-mark", ".end-best-tag",
   ".plate", ".plate-frame", ".level-card", ".level-thumb", ".end-card",
   ".hub-card", ".prep-card", ".pause-card", ".compose-sheet", ".tower-overlay",
-  ".ttree-branch", ".forge-preview-wrap", ".ed-grid", "#forgePreview",
+  ".ttree-branch", ".forge-preview-wrap", ".forge-slot-card", ".ed-grid", "#forgePreview",
   "input[type='text']", "input[type='number']", "select",
 ].join(", ");
 

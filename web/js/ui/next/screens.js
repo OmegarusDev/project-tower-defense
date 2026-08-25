@@ -644,11 +644,9 @@ function buildForgeSlotCard(state, idx, total) {
     ? buildAttackPlan(slot.base, slot.barrel, slot.payload, 1, {})
     : null;
   const active = idx === state.forgeSlot ? "active" : "";
-  // Use slot index for unique border pattern, not base type
-  const patternClass = `forge-pattern-${idx % 6}`;
   return `
-    <div class="forge-slot-card ${active} ${patternClass}" data-slot="${idx}" data-act="forge-slot:${idx}">
-      <canvas class="forge-preview-flash" width="160" height="160" aria-label="Tower preview"></canvas>
+    <div class="forge-slot-card ${active}" data-slot="${idx}" data-act="forge-slot:${idx}">
+      <canvas class="forge-preview-flash" width="120" height="120" aria-label="Tower preview"></canvas>
       <div class="forge-summary">
         <h3>Slot ${idx + 1} / ${total}</h3>
         ${forgeStatBars(plan)}
@@ -713,14 +711,17 @@ export function renderForge(state) {
         : state.forgeReturn === "prep"
           ? `prep:${state.prepLevelId || 1}`
           : "main";
-  return `
+return `
     <div class="screen meta-shell meta-screen forge-screen meta-enter">
       <header class="meta-hero">
         <div class="meta-hero-row">
           <div>
             <h1>Forge</h1>
           </div>
-          <button class="btn secondary part-chip ${meta.devMode ? "active" : ""}" data-act="dev-toggle" aria-label="Dev Mode">Dev: Unlock Parts</button>
+          <button class="btn secondary part-chip ${meta.devMode ? "active" : ""}" data-act="dev-toggle" aria-label="Dev Mode">Dev</button>
+          ${xClose(backAct)}
+        </div>
+          
           ${xClose(backAct)}
         </div>
         <div class="title-stats tech-stats">

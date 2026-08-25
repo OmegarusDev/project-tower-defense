@@ -53,13 +53,13 @@ export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true 
     wrap.innerHTML = isPanel ? forgeUnlockCard(st, total) : forgePreviewCard(st, total);
   }
   applyBtnTextures(root);
-  // Pitch control via vertical scroll on carousel
-  const carousel = root.querySelector(".forge-carousel");
-  if (carousel) {
-    carousel.addEventListener("wheel", (e) => {
+  // Pitch control via vertical scroll on carousel (match in-game: +deltaY * 0.09)
+  const previewWrap = root.querySelector(".forge-preview-wrap");
+  if (previewWrap) {
+    previewWrap.addEventListener("wheel", (e) => {
       if (e.deltaY !== 0) {
         e.preventDefault();
-        const pitch = Math.max(8, Math.min(58, (app.meta.settings?.cameraPitch ?? 24) - e.deltaY * 0.15));
+        const pitch = Math.max(8, Math.min(58, (app.meta.settings?.cameraPitch ?? 24) + e.deltaY * 0.09));
         app.applyPitch(pitch);
       }
     }, { passive: false });

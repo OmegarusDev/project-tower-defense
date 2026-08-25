@@ -414,6 +414,12 @@
   top: 0;
 }
 
+.meta-hero-row .btn[data-act="dev-toggle"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
 .meta-hero h1 {
   margin: 0 !important;
   font-family: var(--font-display);

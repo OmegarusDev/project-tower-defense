@@ -22,14 +22,14 @@
   scroll-snap-align: center;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   background:
     var(--tex-rust),
     linear-gradient(165deg, #3a3028 0%, #1c1814 100%);
-  border: 2px solid #c9a227;
+  border: 2px solid var(--br-clr, #c9a227);
   border-radius: 0;
   clip-path: var(--rough-clip, var(--plate-clip-rough));
-  padding: 8px;
+  padding: 6px;
   box-shadow: 0 3px 0 #14100c;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -59,8 +59,8 @@
   width: 100%;
   height: auto;
   aspect-ratio: 1 / 1;
-  max-width: 160px;
-  max-height: 160px;
+  max-width: 120px;
+  max-height: 120px;
   margin: 0 auto;
   display: block;
 }
@@ -337,8 +337,8 @@
   background:
     var(--tex-rust),
     linear-gradient(165deg, #3a3028 0%, #1c1814 100%);
-  border: 2px solid #c9a227;
-  clip-path: var(--rough-clip, var(--plate-clip-rough));
+  border: 2px solid var(--br-clr, #c9a227);
+  clip-path: var(--rough-clip, var(--plate-clip));
   box-shadow: 0 3px 0 #14100c;
   padding: 6px;
 }
