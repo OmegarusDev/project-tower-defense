@@ -215,6 +215,7 @@ const R = [
 
   // ---- forge ops ----
   { is: "forge-clear", run: (app) => app.clearForgeSlot() },
+  { is: "dev-toggle", run: (app) => app.toggleDevMode() },
   { is: "forge-unlock-slot", run: (app) => app.unlockForgeSlot() },
   {
     has: "forge-slot:",

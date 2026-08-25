@@ -653,7 +653,6 @@ function buildForgeSlotCard(state, idx, total) {
         <h3>Slot ${idx + 1} / ${total}</h3>
         ${forgeStatBars(plan)}
         <p id="forgeLoadout" class="forge-loadout-compact">${forgePlanSummaryCompact(slot)}</p>
-        <button class="btn secondary part-chip" data-act="forge-clear" style="margin-top:6px">Clear</button>
       </div>
     </div>`;
 }
@@ -721,6 +720,7 @@ export function renderForge(state) {
           <div>
             <h1>Forge</h1>
           </div>
+          <button class="btn secondary part-chip ${meta.devMode ? "active" : ""}" data-act="dev-toggle" aria-label="Dev Mode">Dev: Unlock Parts</button>
           ${xClose(backAct)}
         </div>
         <div class="title-stats tech-stats">

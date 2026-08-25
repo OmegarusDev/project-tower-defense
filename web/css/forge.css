@@ -18,7 +18,7 @@
 
 .forge-slot-card {
   flex: 0 0 auto;
-  width: clamp(240px, 60vw, 320px);
+  width: clamp(200px, 50vw, 280px);
   scroll-snap-align: center;
   display: flex;
   flex-direction: column;
@@ -26,45 +26,15 @@
   background:
     var(--tex-rust),
     linear-gradient(165deg, #3a3028 0%, #1c1814 100%);
-  border: 2px solid #8a6238;
+  border: 2px solid #c9a227;
   border-radius: 0;
-  clip-path: var(--rough-clip, var(--plate-clip));
-  padding: 10px;
+  clip-path: var(--rough-clip, var(--plate-clip-rough));
+  padding: 8px;
   box-shadow: 0 3px 0 #14100c;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 /* Unique corroded borders per slot position (0-5) — each with distinct clip-path pattern, using forge UI colors */
-.forge-pattern-0 { 
-  border-color: #c9a227; 
-  clip-path: var(--rough-clip, var(--plate-clip-rough));
-  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(201, 162, 39, 0.3); 
-}
-.forge-pattern-1 { 
-  border-color: #d4783a; 
-  clip-path: var(--rough-clip, var(--plate-clip));
-  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(212, 120, 58, 0.3); 
-}
-.forge-pattern-2 { 
-  border-color: #e8c56a; 
-  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
-  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(232, 197, 106, 0.3); 
-}
-.forge-pattern-3 { 
-  border-color: #b8860b; 
-  clip-path: var(--rough-clip, var(--plate-clip-sm));
-  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(184, 134, 11, 0.3); 
-}
-.forge-pattern-4 { 
-  border-color: #daa520; 
-  clip-path: var(--rough-clip, var(--plate-clip-rough));
-  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(218, 165, 32, 0.3); 
-}
-.forge-pattern-5 { 
-  border-color: #c9a227; 
-  clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
-  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(201, 162, 39, 0.3); 
-}
 
 /* Unique jagged border per slot index (for empty/incomplete slots) */
 .forge-slot-0 { border-color: #4f7eb0; box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(79, 126, 176, 0.3); }
@@ -204,7 +174,7 @@
   overscroll-behavior: contain;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
 .forge-part-grid > div {
@@ -363,14 +333,14 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-height: 50vh;
+  max-height: 35vh;
   background:
     var(--tex-rust),
     linear-gradient(165deg, #3a3028 0%, #1c1814 100%);
-  border: 2px solid #8a6238;
-  clip-path: var(--rough-clip, var(--plate-clip));
+  border: 2px solid #c9a227;
+  clip-path: var(--rough-clip, var(--plate-clip-rough));
   box-shadow: 0 3px 0 #14100c;
-  padding: 8px;
+  padding: 6px;
 }
 
 .forge-carousel .forge-preview-wrap {
@@ -378,8 +348,8 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
-  padding: 16px 56px; /* space for arrows on sides */
+  gap: 8px;
+  padding: 12px 48px; /* space for arrows on sides */
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -434,6 +404,14 @@
 }
 
 .forge-carousel .forge-arrow:active {
+
+.forge-carousel .btn[data-act="dev-toggle"].active,
+.forge-carousel .btn[data-act="dev-toggle"].dev-active {
+  background: linear-gradient(180deg, #e8c56a, #c9a227);
+  border-color: #e8c56a;
+  color: #1a1612;
+  box-shadow: 0 0 0 2px #e8c56a, 0 0 8px rgba(232, 197, 106, 0.4);
+}
   transform: translateY(-50%) scale(0.95);
 }
 

@@ -1,5 +1,5 @@
 /** Extracted from App — pure move, no gameplay changes. */
-import { makeSlot, forgeBuyCost, ownsPart, normalizeRoster, MAX_ROSTER_SLOTS } from "../data/parts.js";
+import { makeSlot, forgeBuyCost, ownsPart, normalizeRoster, MAX_ROSTER_SLOTS, PARTS } from "../data/parts.js";
 import {
   forgeApplyPart,
   forgeClearSlot,
@@ -52,7 +52,18 @@ export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true 
   if (wrap) {
     wrap.innerHTML = isPanel ? forgeUnlockCard(st, total) : forgePreviewCard(st, total);
   }
-  const grid = root.querySelector(".forge-part-grid");
+  applyBtnTextures(root);
+  // Pitch control via vertical scroll on carousel
+  const carousel = root.querySelector(".forge-carousel");
+  if (carousel) {
+    carousel.addEventListener("wheel", (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        const pitch = Math.max(8, Math.min(58, (app.meta.settings?.cameraPitch ?? 24) - e.deltaY * 0.15));
+        app.applyPitch(pitch);
+      }
+    }, { passive: false });
+  }
   if (grid) {
     grid.hidden = isPanel;
     if (rebuildParts && !isPanel) grid.innerHTML = forgePartGridHtml(st, slot);
@@ -226,4 +237,42 @@ export function buyPart(app, kind, id, equip = true) {
   app.status = r.status;
   refreshForgeUi(app, { rebuildParts: true });
   
+}
+
+/** Toggle dev mode — unlock all parts for testing. */
+export function toggleDevMode(app) {
+  if (!app.meta.devMode) {
+    // Enable dev mode: save current progress, unlock all parts
+    app.meta._devSavedOwned = app.meta.owned ? [...app.meta.owned] : [];
+    app.meta._devSavedForge = app.meta.forge || 0;
+    
+    // Unlock all parts
+    const allParts = [];
+    for (const [kind, parts] of Object.entries(PARTS)) {
+      for (const id of Object.keys(parts)) {
+        allParts.push({ kind, id });
+      }
+    }
+    app.meta.owned = allParts;
+    app.meta.devMode = true;
+    app.synth.play("confirm");
+    app.toast("Dev Mode: All parts unlocked");
+    app.persistMeta();
+    if (app.screen === "forge") refreshForgeUi(app, { rebuildParts: true });
+  } else {
+    // Disable dev mode: restore saved progress
+    if (app.meta._devSavedOwned) {
+      app.meta.owned = [...app.meta._devSavedOwned];
+      delete app.meta._devSavedOwned;
+    }
+    if (app.meta._devSavedForge !== undefined) {
+      app.meta.forge = app.meta._devSavedForge;
+      delete app.meta._devSavedForge;
+    }
+    app.meta.devMode = false;
+    app.synth.play("confirm");
+    app.toast("Dev Mode: Progress restored");
+    app.persistMeta();
+    if (app.screen === "forge") refreshForgeUi(app, { rebuildParts: true });
+  }
 }

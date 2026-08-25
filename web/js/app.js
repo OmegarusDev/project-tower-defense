@@ -361,6 +361,7 @@ export class App {
   paintForgePreview() { return forge.paintForgePreview(this); }
   applyForgePart(k, id) { return forge.applyForgePart(this, k, id); }
   clearForgeSlot() { return forge.clearForgeSlot(this); }
+  toggleDevMode() { return forge.toggleDevMode(this); }
   unlockForgeSlot(i) { return forge.unlockForgeSlot(this, i); }
   buyPart(k, id, e) { return forge.buyPart(this, k, id, e); }
 

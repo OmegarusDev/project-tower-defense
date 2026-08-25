@@ -55,7 +55,7 @@ function _hashStr(s) {
    crenellated edge of many small grooves. Per element: every plate is
    serrated differently and some are more eaten-away than others. */
 const LARGE_RE =
-  /(^|\s)(plate-frame|level-card|end-card|hub-card|prep-card|pause-card|compose-sheet|ttree-branch|forge-preview-wrap|ed-grid)(\s|$)/;
+  /(^|\s)(plate-frame|level-card|end-card|hub-card|prep-card|pause-card|compose-sheet|ttree-branch|forge-preview-wrap|forge-slot-card|ed-grid)(\s|$)/;
 
 function _roughClip(rand, large) {
   const r = (lo, hi) => lo + rand() * (hi - lo);
