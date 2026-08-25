@@ -644,9 +644,10 @@ function buildForgeSlotCard(state, idx, total) {
     ? buildAttackPlan(slot.base, slot.barrel, slot.payload, 1, {})
     : null;
   const active = idx === state.forgeSlot ? "active" : "";
-  const baseClass = slot?.base ? `forge-base-${slot.base}` : `forge-slot-${idx}`;
+  // Use slot index for unique border pattern, not base type
+  const patternClass = `forge-pattern-${idx % 6}`;
   return `
-    <div class="forge-slot-card ${active} ${baseClass}" data-slot="${idx}" data-act="forge-slot:${idx}">
+    <div class="forge-slot-card ${active} ${patternClass}" data-slot="${idx}" data-act="forge-slot:${idx}">
       <canvas class="forge-preview-flash" width="160" height="160" aria-label="Tower preview"></canvas>
       <div class="forge-summary">
         <h3>Slot ${idx + 1} / ${total}</h3>
