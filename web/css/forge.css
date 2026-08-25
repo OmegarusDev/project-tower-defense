@@ -34,36 +34,36 @@
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Unique corroded borders per slot position (0-5) — each with distinct clip-path pattern */
+/* Unique corroded borders per slot position (0-5) — each with distinct clip-path pattern, using forge UI colors */
 .forge-pattern-0 { 
-  border-color: #4f7eb0; 
+  border-color: #c9a227; 
   clip-path: var(--rough-clip, var(--plate-clip-rough));
-  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(79, 126, 176, 0.3); 
+  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(201, 162, 39, 0.3); 
 }
 .forge-pattern-1 { 
-  border-color: #6d746c; 
+  border-color: #d4783a; 
   clip-path: var(--rough-clip, var(--plate-clip));
-  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(109, 116, 108, 0.3); 
+  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(212, 120, 58, 0.3); 
 }
 .forge-pattern-2 { 
-  border-color: #c4783a; 
+  border-color: #e8c56a; 
   clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
-  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(196, 120, 58, 0.3); 
+  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(232, 197, 106, 0.3); 
 }
 .forge-pattern-3 { 
-  border-color: #7a5a9a; 
+  border-color: #b8860b; 
   clip-path: var(--rough-clip, var(--plate-clip-sm));
-  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(122, 90, 154, 0.3); 
+  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(184, 134, 11, 0.3); 
 }
 .forge-pattern-4 { 
-  border-color: #3d9a8e; 
+  border-color: #daa520; 
   clip-path: var(--rough-clip, var(--plate-clip-rough));
-  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(61, 154, 142, 0.3); 
+  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(218, 165, 32, 0.3); 
 }
 .forge-pattern-5 { 
-  border-color: #b86448; 
+  border-color: #c9a227; 
   clip-path: var(--rough-clip, var(--plate-clip-rough-sm));
-  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(184, 100, 72, 0.3); 
+  box-shadow: 0 3px 0 #14100c, inset 0 0 0 1px rgba(201, 162, 39, 0.3); 
 }
 
 /* Unique jagged border per slot index (for empty/incomplete slots) */
