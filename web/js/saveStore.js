@@ -58,6 +58,10 @@ export function normalizeMeta(m) {
       musicVolume: clampVol(m.settings?.musicVolume ?? 0.4),
       cameraPitch: clampPitch(m.settings?.cameraPitch),
     },
+    // Dev Mode snapshot (whitelisted so it survives save/reload). If active
+    // but the baseline is missing, drop the flag — restore must never run
+    // against nothing and wipe real progress.
+    dev: normalizeDev(m.dev),
   };
   // Carry legacy fields into migrateTechRanks via `m`; sync writes derived.
   syncTechDerived(draft);
@@ -76,7 +80,10 @@ function clampAndDerive(draft, m, owned) {
   draft.startCashBonus = Math.max(0, draft.startCashBonus | 0);
   let forgeBuys = Math.max(0, m.forgeBuys | 0);
   if (forgeBuys === 0) {
-    forgeBuys = estimateForgeBuys(owned);
+    // Dev Mode unlocks every part — price escalation must keep tracking the
+    // REAL purchase count, so backfill from the snapshot, not the dev-owned set.
+    const effOwned = draft.dev?.active && draft.dev.savedOwned ? draft.dev.savedOwned : owned;
+    forgeBuys = estimateForgeBuys(effOwned);
   }
   draft.forgeBuys = forgeBuys;
   draft.forgeCostMult = 1;
@@ -122,8 +129,27 @@ function clampRefund(v) {
   return Math.max(0.5, Math.min(0.9, n));
 }
 
-/** Part mastery ranks by part id, e.g. `{ shock: { chain: 2 }, sentry: { power: 1 } }`. */
-function normalizePartUpgrades(raw) {
+/** Dev Mode snapshot — validated, shape-corrected; null baseline drops the flag. */
+function normalizeDev(raw) {
+  const off = { active: false, savedOwned: null, savedForge: null };
+  if (!raw || typeof raw !== "object") return off;
+  // Only trust writer-shaped baselines (all three id arrays). Anything else
+  // would coerce to starter-defaults on restore and silently eat progress.
+  const so = raw.savedOwned;
+  const looksValid =
+    so && typeof so === "object" &&
+    Array.isArray(so.bases) && Array.isArray(so.barrels) && Array.isArray(so.payloads);
+  const savedForge = Number.isFinite(raw.savedForge) ? Math.max(0, raw.savedForge | 0) : null;
+  return {
+    // Boolean-coerced: looksValid can be null when the baseline is absent,
+    // and `true && null === null` would leak a non-boolean into saves.
+    active: !!(raw.active && looksValid),
+    savedOwned: looksValid ? normalizeOwned(so) : null,
+    savedForge,
+  };
+}
+
+/** Part mastery ranks by part id, e.g. `{ shock: { chain: 2 }, sentry: { power: 1 } }`. */function normalizePartUpgrades(raw) {
   const live = { ...PARTS.bases, ...PARTS.barrels, ...PARTS.payloads };
   const out = {};
   if (!raw || typeof raw !== "object") return out;

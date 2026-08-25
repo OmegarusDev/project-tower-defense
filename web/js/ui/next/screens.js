@@ -39,6 +39,20 @@ import { partIconHtml, techCategoryIcon, techNodeIconHtml } from "../partIcons.j
 export const VERSION = "0.5.0";
 export const VERSION_NAME = "Tempered";
 
+/**
+ * Escape user-authored text for HTML interpolation (attribute-safe).
+ * Editor level names persist to localStorage and re-render into innerHTML —
+ * without this, a name like `<img src=x onerror=…>` executes on repaint.
+ */
+export function esc(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /** Mirror of menuScreens.forgePlanSummary — pure (same formulas). */
 export function forgePlanSummary(slot) {
   if (!slot?.complete) return "Base · Barrel · Payload";
@@ -715,13 +729,12 @@ return `
     <div class="screen meta-shell meta-screen forge-screen meta-enter">
       <header class="meta-hero">
         <div class="meta-hero-row">
-          <button class="btn secondary part-chip ${meta.devMode ? "active" : ""}" data-act="dev-toggle" aria-label="Dev Mode">Dev</button>
+          <button class="btn secondary part-chip ${meta.dev?.active ? "active" : ""}" data-act="dev-toggle" aria-label="Dev Mode">Dev</button>
           <div>
             <h1>Forge</h1>
           </div>
           ${xClose(backAct)}
         </div>
-<div class="title-stats tech-stats">
         <div class="title-stats tech-stats">
           <span><i>Parts</i>${meta.forge}</span>
           <span><i>Æ</i>${meta.aether}</span>
@@ -838,7 +851,7 @@ export function renderEditor(state) {
         <label>Start Coin <input id="edCoin" type="number" min="20" max="300" step="5" value="${ed.coinGrant}" style="width:4.5em"/></label>
         <label>Script <select id="edScript">${scripts}</select></label>
       </div>
-      <input id="edName" type="text" value="${ed.name}" placeholder="Level name" style="width:100%;margin-bottom:8px"/>
+      <input id="edName" type="text" value="${esc(ed.name)}" placeholder="Level name" style="width:100%;margin-bottom:8px"/>
       <div class="ed-grid" style="grid-template-columns:repeat(${ed.cols},minmax(0,1fr))">${cells.join("")}</div>
       <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
         <button class="btn" data-act="ed-apply-size">Apply size</button>
@@ -851,8 +864,8 @@ export function renderEditor(state) {
         .slice(0, 6)
         .map(
           (lv, i) => `<div class="ed-slot" style="display:flex;align-items:center;gap:6px;margin-top:4px">
-            <button class="btn secondary ed-slot-load" data-act="ed-load:${i}" style="flex:1">${lv.name} · ${lv.wavesToWin}w · ${lv.coinGrant}₡</button>
-            <button class="btn danger ed-slot-del" data-act="ed-delete:${i}" title="Delete" aria-label="Delete ${lv.name}">✕</button>
+            <button class="btn secondary ed-slot-load" data-act="ed-load:${i}" style="flex:1">${esc(lv.name)} · ${lv.wavesToWin}w · ${lv.coinGrant}₡</button>
+            <button class="btn danger ed-slot-del" data-act="ed-delete:${i}" title="Delete" aria-label="Delete level ${i + 1}">✕</button>
           </div>`
         )
         .join("")}

@@ -1,5 +1,5 @@
 /** Extracted from App — pure move, no gameplay changes. */
-import { makeSlot, forgeBuyCost, ownsPart, normalizeRoster, MAX_ROSTER_SLOTS, PARTS } from "../data/parts.js";
+import { makeSlot, forgeBuyCost, ownsPart, normalizeRoster, normalizeOwned, MAX_ROSTER_SLOTS, PARTS } from "../data/parts.js";
 import {
   forgeApplyPart,
   forgeClearSlot,
@@ -243,40 +243,35 @@ export function buyPart(app, kind, id, equip = true) {
   
 }
 
-/** Toggle dev mode — unlock all parts for testing. */
+/**
+ * Dev Mode — unlock every part for testing, restore real progress on exit.
+ * The baseline lives in the whitelisted meta.dev snapshot (survives reload);
+ * owned keeps its {bases,barrels,payloads} shape at all times.
+ */
 export function toggleDevMode(app) {
-  if (!app.meta.devMode) {
-    // Enable dev mode: save current progress, unlock all parts
-    app.meta._devSavedOwned = app.meta.owned ? [...app.meta.owned] : [];
-    app.meta._devSavedForge = app.meta.forge || 0;
-    
-    // Unlock all parts
-    const allParts = [];
-    for (const [kind, parts] of Object.entries(PARTS)) {
-      for (const id of Object.keys(parts)) {
-        allParts.push({ kind, id });
-      }
-    }
-    app.meta.owned = allParts;
-    app.meta.devMode = true;
+  const dev = app.meta.dev || (app.meta.dev = { active: false, savedOwned: null, savedForge: null });
+  if (!dev.active) {
+    // Enable: snapshot real progress (shape-correct clone), then grant all.
+    dev.savedOwned = normalizeOwned(app.meta.owned);
+    dev.savedForge = app.meta.forge | 0;
+    app.meta.owned = {
+      bases: Object.keys(PARTS.bases),
+      barrels: Object.keys(PARTS.barrels),
+      payloads: Object.keys(PARTS.payloads),
+    };
+    dev.active = true;
     app.synth.play("confirm");
     app.toast("Dev Mode: All parts unlocked");
-    app.persistMeta();
-    if (app.screen === "forge") refreshForgeUi(app, { rebuildParts: true });
   } else {
-    // Disable dev mode: restore saved progress
-    if (app.meta._devSavedOwned) {
-      app.meta.owned = [...app.meta._devSavedOwned];
-      delete app.meta._devSavedOwned;
-    }
-    if (app.meta._devSavedForge !== undefined) {
-      app.meta.forge = app.meta._devSavedForge;
-      delete app.meta._devSavedForge;
-    }
-    app.meta.devMode = false;
+    // Disable: restore the snapshot exactly as it was.
+    if (dev.savedOwned) app.meta.owned = dev.savedOwned;
+    if (Number.isFinite(dev.savedForge)) app.meta.forge = dev.savedForge;
+    dev.active = false;
+    dev.savedOwned = null;
+    dev.savedForge = null;
     app.synth.play("confirm");
     app.toast("Dev Mode: Progress restored");
-    app.persistMeta();
-    if (app.screen === "forge") refreshForgeUi(app, { rebuildParts: true });
   }
+  app.persistMeta();
+  if (app.screen === "forge") refreshForgeUi(app, { rebuildParts: true });
 }

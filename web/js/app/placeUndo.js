@@ -72,8 +72,13 @@ export function onCellTap(app, cell) {
         app.synth.play("place");
         const extra = res.surcharge > 0 ? ` (+${res.surcharge} board tax)` : "";
         app.toast(`Tower placed${extra}`);
+        // Keep the owning slot selected — read the index BEFORE clearHand()
+        // nulls _handSlot (assigning null here used to make the next
+        // beginPlaceConfirm read roster[null] and toast "Compose a full
+        // triad" spuriously).
+        const keepSlot = app._handSlot;
         app.clearHand();
-        app.slot = app._handSlot; // Keep the slot selected
+        app.slot = keepSlot;
         app.renderGameChrome();
       }
       return;

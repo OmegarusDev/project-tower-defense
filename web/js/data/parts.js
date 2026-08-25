@@ -402,7 +402,7 @@ export function normalizeOwned(owned) {
   if (!owned) return d;
   const migrateList = (kind, key) => {
     const set = new Set(d[key]);
-    for (const raw of owned[key] || []) {
+    for (const raw of Array.isArray(owned[key]) ? owned[key] : []) {
       const id = migratePartId(kind, raw);
       if (id) set.add(id);
     }

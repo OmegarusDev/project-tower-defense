@@ -1,5 +1,36 @@
 /* tokens.css — split from style.css (pure move, no restyle) */
 
+/* Self-hosted fonts (OFL) — offline-first, no network font fetch.
+   Nunito is a variable font: one file serves weights 500-800. */
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/chakra-petch-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../fonts/chakra-petch-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/chakra-petch-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url("../fonts/nunito-var.woff2") format("woff2");
+}
+
 :root {
   /* Iron / stone / wood / lava — industrial, not brass steampunk */
   --bg: #12151a;
