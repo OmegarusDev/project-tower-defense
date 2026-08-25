@@ -587,18 +587,38 @@ export function drawStains(ctx, cam, palette, stains, cell) {
  * ground chain through the SAME option pool the live enemies pick from
  * (grid.groundOptions). Returns { trunk, branches }: the canonical trunk
  * plus every equally-optimal alternative branch, so the preview shows the
- * full option set the sim actually distributes over. Pure; the class keeps
- * its own revision cache.
+ * full option set the sim actually distributes over.
  */
 export function pathPoints(cam, grid, portalX, opts = {}) {
   const maxPaths = opts.maxPaths || 4;
-  const maxSteps = 120;
-  const avoid = opts.avoid || "none";
-  const start = { x: portalX, y: 0 };
   const proj = (c) => cam.projectCell(c.x, c.y);
-  const trunkCells = [];
+  const { trunkCells, branchCells } = flowCellPaths(grid, portalX, opts);
+
+  const trunk = trunkCells.map(proj);
+  const branches = branchCells.slice(0, maxPaths).map((cells) => cells.map(proj));
+  return { trunk, branches };
+}
+
+/**
+ * Board-local walk of the canonical trunk (and one alternate branch per
+ * fork), cached per grid by (revision, portalX). Cells are camera-independent;
+ * callers project per frame so pan/zoom/pitch never see stale points. This
+ * used to re-walk option pools with fresh string-keyed Sets every frame.
+ * @returns {{ trunkCells: Array<{x,y}>, branchCells: Array<Array<{x,y}>> }}
+ */
+const _flowCache = new WeakMap();
+export function flowCellPaths(grid, portalX, opts = {}) {
+  const maxSteps = opts.maxSteps || 120;
+  const avoid = opts.avoid || "none";
+  const rev = grid.revision | 0;
+  const hit = _flowCache.get(grid);
+  if (hit && hit.rev === rev && hit.portalX === portalX && hit.avoid === avoid) {
+    return hit.val;
+  }
+  const start = { x: portalX, y: 0 };
   const drawn = new Set();
-  let cell = { x: start.x, y: start.y };
+  const trunkCells = [];
+  let cell = start;
   for (let i = 0; i < maxSteps; i++) {
     const key = `${cell.x},${cell.y}`;
     if (drawn.has(key)) break;
@@ -613,20 +633,17 @@ export function pathPoints(cam, grid, portalX, opts = {}) {
       break;
     }
   }
-  const trunk = trunkCells.map(proj);
 
-  const branches = [];
-  const forkQueue = trunkCells.slice(0);
-  for (let fi = 0; fi < forkQueue.length && branches.length < maxPaths; fi++) {
-    const fc = forkQueue[fi];
+  // One alternate continuation per fork along the trunk (preview-only extra
+  // branches beyond that are rarely readable; matches old maxPaths=1 use).
+  const branchCells = [];
+  for (let fi = 0; fi < trunkCells.length && branchCells.length < (opts.maxBranches || 3); fi++) {
+    const fc = trunkCells[fi];
     const pool = grid.groundOptions(fc.x, fc.y, { avoid, flying: false });
     if (pool.length < 2) continue;
     const trunkChoice = grid.canonicalGround(fc.x, fc.y, { avoid });
-    let added = 0;
     for (const opt of pool) {
-      if (branches.length >= maxPaths) break;
       if (opt.x === trunkChoice.x && opt.y === trunkChoice.y) continue;
-      if (added >= 1) break;
       const cells = [fc, opt];
       let cur = opt;
       let guard = 0;
@@ -641,12 +658,15 @@ export function pathPoints(cam, grid, portalX, opts = {}) {
         if (grid.isExit(cur.x, cur.y)) break;
       }
       if (cells.length > 1) {
-        branches.push(cells.map(proj));
-        added++;
+        branchCells.push(cells);
+        break; // one alternate per fork
       }
     }
   }
-  return { trunk, branches };
+
+  const val = { trunkCells, branchCells };
+  _flowCache.set(grid, { rev, portalX, avoid, val });
+  return val;
 }
 
 export function strokePts(ctx, pts) {
@@ -656,7 +676,7 @@ export function strokePts(ctx, pts) {
   ctx.stroke();
 }
 
-function strokePathLayers(ctx, pts, { w, travel, pressure, warm, cell }) {
+export function strokePathLayers(ctx, pts, { w, travel, pressure, warm, cell }) {
   const c = cell;
   ctx.strokeStyle = `rgba(120, 190, 220, ${0.06 + pressure * 0.08})`;
   ctx.lineWidth = w * 1.85;
@@ -690,8 +710,9 @@ function strokePathLayers(ctx, pts, { w, travel, pressure, warm, cell }) {
 }
 
 export function drawPath(ctx, cam, grid, portalX, cell, t, enemyCount) {
-  void cam;
-  const { trunk } = pathPoints(cam, grid, portalX, { maxPaths: 1 });
+  // Cached board-local cells; projection is per-frame (camera-correct).
+  const { trunkCells } = flowCellPaths(grid, portalX, { maxPaths: 1 });
+  const trunk = trunkCells.map((c) => cam.projectCell(c.x, c.y));
   if (trunk.length < 2) return;
 
   const pressure = Math.min(1, enemyCount / 14);
@@ -857,9 +878,22 @@ export class PortalAnimator {
     this.timer = 0;
   }
 
+  /** Telegraph: seam about to migrate to e.x — agitate until the move. */
+  onUnstable(e) {
+    this.phase = 'warning';
+    this.timer = 2.5; // keep in step with sim PORTAL_WARN_TIME
+    this.bloomIntensity = 0.25;
+    this.stretch = 1.0;
+    if (e && Number.isInteger(e.x)) this.targetPortal = { x: e.x, y: 0 };
+  }
+
   update(dt) {
     if (this.timer <= 0 && this.phase !== 'idle') {
-      if (this.phase === 'stretching_out') {
+      if (this.phase === 'warning') {
+        // Warning expired with no explicit move event yet — settle calmly.
+        this.phase = 'idle';
+        this.timer = 0;
+      } else if (this.phase === 'stretching_out') {
         // Stretch out complete - instant move
         this.phase = 'moving';
         this.timer = 0;
@@ -883,8 +917,15 @@ export class PortalAnimator {
     this.timer = Math.max(0, this.timer - dt);
 
     // Interpolate visual properties based on phase
-    const t = this.timer / (this.phase === 'stretching_out' ? 0.3 : 0.25);
-    if (this.phase === 'stretching_out') {
+    const warnDenom = 2.5; // sim PORTAL_WARN_TIME (view keeps no sim imports)
+    const t = this.timer / (this.phase === 'stretching_out' ? 0.3 : this.phase === 'warning' ? warnDenom : 0.25);
+    if (this.phase === 'warning') {
+      // Anxious pulse — bloom breathes, ring leans toward the target column.
+      const urgency = 1 - t;
+      this.bloomIntensity = 0.2 + 0.18 * Math.abs(Math.sin(this.timer * 7));
+      this.stretch = 1.0 + 0.35 * urgency;
+      this.alpha = 1.0;
+    } else if (this.phase === 'stretching_out') {
       this.stretch = 1.0 + (2.5 - 1.0) * (1 - t);
       this.alpha = 1.0 - t;
       this.bloomIntensity = 0.5 * (1 - t);

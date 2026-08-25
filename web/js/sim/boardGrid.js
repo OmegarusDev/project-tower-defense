@@ -1,6 +1,4 @@
-/** Exit distance fields — ground + air. Soft tower-avoid + per-enemy tie-split. */
-
-export const INF = 1_000_000;
+  export const INF = 1_000_000;
 const DIRS = [
   [0, 1],
   [1, 0],
@@ -26,9 +24,6 @@ export class BoardGrid {
     this.towerProx = [];
     this.groundNext = [];
     this.airNext = [];
-    /** Per-portal distance maps: portalX -> { groundDist, airDist, groundNext, airNext } */
-    this.portalDists = new Map();
-    this.currentPortalX = null;
   }
 
   setup(cols, rows) {
@@ -122,48 +117,10 @@ export class BoardGrid {
   }
 
   recompute() {
-    this.revision++;
+    this.revision = (this.revision | 0) + 1;
     this._bfs(false, this.groundDist, this.groundNext);
     this._bfs(true, this.airDist, this.airNext);
     this._rebuildTowerProx();
-    // Rebuild ALL portal distance maps to reflect current grid state
-    for (const portalX of this.portalDists.keys()) {
-      this._rebuildPortalDist(portalX);
-    }
-  }
-
-  /** Ensure distance maps exist for a portal X position. */
-  _ensurePortalDist(portalX) {
-    if (this.portalDists.has(portalX)) return;
-    this._rebuildPortalDist(portalX);
-  }
-
-  /** (Re)build distance maps for a portal X position. */
-  _rebuildPortalDist(portalX) {
-    const n = this.cols * this.rows;
-    const gDist = new Int32Array(n);
-    const aDist = new Int32Array(n);
-    const gNext = new Array(n);
-    const aNext = new Array(n);
-    for (let i = 0; i < n; i++) {
-      gNext[i] = { x: i % this.cols, y: (i / this.cols) | 0 };
-      aNext[i] = { x: i % this.cols, y: (i / this.cols) | 0 };
-    }
-    this._bfs(false, gDist, gNext);
-    this._bfs(true, aDist, aNext);
-    this.portalDists.set(portalX, { groundDist: gDist, airDist: aDist, groundNext: gNext, airNext: aNext });
-  }
-
-  /** Get distance maps for a portal X (computes if needed). */
-  getPortalDist(portalX) {
-    this._ensurePortalDist(portalX);
-    return this.portalDists.get(portalX);
-  }
-
-  /** Set the current portal X for new enemies. */
-  setPortalX(x) {
-    this.currentPortalX = x;
-    this._ensurePortalDist(x);
   }
 
   /** Soft cost near towers — precomputed on place/sell, not per-enemy BFS. */
@@ -408,13 +365,14 @@ export class BoardGrid {
     return this.airNext[this.idx(x, y)];
   }
 
-  /** Per-enemy air step: shortest exit distance, no tower avoid, ignores walls. */
+  /** Per-enemy air step: shortest exit distance, no tower avoid, ignores walls.
+   *  opts.portalX is accepted and ignored — per-portal BFS maps were removed
+   *  after proving every entry a byte-identical copy of the exit-seeded field
+   *  (_bfs never read portalX). Enemy paths were never portal-dependent. */
   pickNextAir(x, y, opts = {}) {
     if (!this.inBounds(x, y)) return { x, y };
     if (this.isExit(x, y)) return { x, y };
-    const portalX = opts.portalX ?? this.currentPortalX;
-    const dists = portalX != null ? this.getPortalDist(portalX) : { airDist: this.airDist };
-    return this._pickAmong(x, y, dists.airDist, true, {
+    return this._pickAmong(x, y, this.airDist, true, {
       avoid: opts.avoid || "none",
       id: opts.id | 0,
       tick: opts.tick | 0,
@@ -425,14 +383,12 @@ export class BoardGrid {
 
   /**
    * Per-enemy ground step: shortest exit distance, soft tower avoid, fair ties.
-   * @param {{ id?: number, tick?: number, avoidTowers?: boolean, portalX?: number }} [opts]
+   * @param {{ id?: number, tick?: number, avoidTowers?: boolean }} [opts]
    */
   pickNextGround(x, y, opts = {}) {
     if (!this.inBounds(x, y)) return { x, y };
     if (this.isExit(x, y)) return { x, y };
-    const portalX = opts.portalX ?? this.currentPortalX;
-    const dists = portalX != null ? this.getPortalDist(portalX) : { groundDist: this.groundDist };
-    return this._pickAmong(x, y, dists.groundDist, false, {
+    return this._pickAmong(x, y, this.groundDist, false, {
       avoid: opts.avoid || "soft",
       id: opts.id | 0,
       tick: opts.tick | 0,

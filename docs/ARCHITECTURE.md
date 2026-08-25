@@ -32,7 +32,7 @@ PLAY.html        # thin launcher → GitHub Pages
 | `BoardGrid` | Exit BFS distance fields (ground + air); per-enemy next-step with soft tower-avoid (air unchanged). Live fork ties alternate via a per-cell round-robin counter with the decision cached on the enemy (`_pick`), so mid-glide re-picks are stable — no tick-hash jitter, no fork freezing. Canonical viz path keeps DIR-order |
 | `AttackPlan` | `(base,barrel,payload,level,opts)` → pattern/damage; auto-level + branch ranks; base×barrel range/ROF mults stack with Arsenal ranks |
 | `combat` | Targeting, projectiles (pierce / ballistic / homing coast), pulses, status, XP→auto-level + pending branch picks |
-| `waves` | Wave compose (endless themes / campaign packs), spawn pacing, **roaming seam portal** (endless dwell schedule, spawn-time reachability guard), enemy HP/speed scaling |
+| `waves` | Wave compose (endless themes / campaign packs), spawn pacing, **roaming seam portal** (rare telegraphed shifts between clumps, spawn-time reachability guard), enemy HP/speed scaling |
 | `ProcPalette` | Colors + colorblind LUT (default off) |
 | `SynthBank` | Bake SFX PCM at boot; Music/SFX buses on shared AudioContext |
 | `ScoreEngine` | Generative ambient pads + kick; reacts to wave/density/phase/speed; pause ducks Music bus |
@@ -43,16 +43,23 @@ Endless checkpoints store `phase` (`inWave` | `betweenWaves`), `earlyBonusWave`,
 ### Seam portal (spawn origin)
 
 `world.portal` is the live spawn cell. Endless: `WaveManager` builds a seeded shuffle
-cycle of back-line columns per wave (`_portalRand`, own stream — independent of the
-compose/jitter `_rand`) and relocates every `dwell(w) = clamp(8 − 0.15(w−1), 2.5, 8)` s
-while spawns remain (`portal_moved` event; `_portalIdx` advances, never re-sits on the
-last cell). Campaign: `levelPortalCell(lv)` pins one cell for the whole level — default
+cycle of back-line columns at wave 1 (`_portalRand`, own stream — independent of the
+compose/jitter `_rand`). Shifts are clump-gated and deliberately rare — `shiftsForWave`
+gives 0 before wave 8, 1 through wave 21, then +1 per 10 waves. Each shift is
+telegraphed: `pickPortalX` precomputes the target column (no RNG draws — cycle order
+only), `portal_unstable {toX}` fires with a 2.5s warning (HUD cue + portal agitation),
+then the move applies (`portal_moved`, `_portalIdx` advances, never re-sits on the last
+cell). Campaign: `levelPortalCell(lv)` pins one cell for the whole level — default
 center back line, or authored `spawnCells` (any tiles; 40+ levels may spawn mid-board);
-`bootLevel` guards against preWalls sealing the pick. Spawn-time guard in
-`WaveManager._spawnPos`: if the scheduled cell is unreachable (player walls), fall back
-to the first reachable back-line cell (deterministic scan), then canonical spawn.
-The seam row (y = 0) is never buildable (`BoardGrid.isBuildable`), so the portal always
-has a legal origin.
+`bootLevel` guards against preWalls sealing the pick. Spawn-time guard in `spawnPos`:
+if the scheduled cell is unreachable (player walls), fall back to the first reachable
+back-line cell (deterministic scan), then canonical spawn. The seam row (y = 0) is
+buildable except the spawn cell; occupied seam columns are dodged at pick time and a
+fully-walled board forces the center.
+
+Enemy pathing is portal-independent by construction: `BoardGrid._bfs` seeds from the
+exit only, so distance fields are spawn-agnostic. The former per-portalX BFS map cache
+was removed after proving every entry byte-identical to the shared field.
 
 ### In-run leveling
 

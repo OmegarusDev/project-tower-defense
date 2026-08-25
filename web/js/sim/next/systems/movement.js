@@ -98,14 +98,12 @@ function advance(state, e) {
           tick: state.tickIndex | 0,
           avoid: "none",
           entity: e,
-          portalX: e.spawnPortalX,
         })
       : g.pickNextGround(cx, cy, {
           id: e.id,
           tick: state.tickIndex | 0,
           avoid: (PATHING[e.pathing] || PATHING.shortest).avoid,
           entity: e,
-          portalX: e.spawnPortalX,
         });
     if (next.x === cx && next.y === cy) {
       if (g.isExit(cx, cy)) e.reachedExit = true;

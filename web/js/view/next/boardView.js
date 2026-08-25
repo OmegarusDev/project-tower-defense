@@ -573,7 +573,7 @@ export class BoardView {
 
     this._drawStains();
     this._drawBastion(g);
-    this._drawPath(g);
+    this._drawPath(g, dt);
     this._drawPortal(g, this.portalAnimator);
     this._emitPortalFx(g);
 
@@ -646,32 +646,49 @@ export class BoardView {
     S.drawBastion(this.ctx, this.cam, this.palette, g, this.cell, t, this._bastionFlinch);
   }
 
-  _pathPoints(g) {
-    // Flow preview starts at the live seam — the portal's current cell.
-    // Cached: the path only changes when the grid changes or the portal moves.
-    const portalX = this.sim?.portal?.x ?? g.spawn.x;
-    if (this._pathRev === g.revision && this._pathPortalX === portalX && this._pathPts) {
-      return this._pathPts;
-    }
-    const start = { x: portalX, y: 0 };
-    const pts = [this.cam.projectCell(start.x, start.y)];
-    let cell = { x: start.x, y: start.y };
-    for (let i = 0; i < 120; i++) {
-      const next = g.nextGround(cell.x, cell.y);
-      if (next.x === cell.x && next.y === cell.y) break;
-      pts.push(this.cam.projectCell(next.x, next.y));
-      if (g.isExit(next.x, next.y)) break;
-      cell = next;
-    }
-    this._pathRev = g.revision;
-    this._pathPortalX = portalX;
-    this._pathPts = pts;
-    return pts;
-  }
-
-  _drawPath(g) {
+  _drawPath(g, dt = 1 / 60) {
     const portalX = this.sim?.portal?.x ?? g.spawn.x;
     const t = performance.now() * 0.001;
+
+    // Trunk hand-off: when the seam migrates (or walls reroute the flow),
+    // keep the previous trunk on screen briefly, fading out while the new
+    // one fades in — coverage moves read as a transition, not a teleport.
+    const key = `${g.revision | 0}:${portalX}`;
+    if (this._trunkKey !== key) {
+      const prevPts = this._lastTrunkPts;
+      if (prevPts && prevPts.length > 1) {
+        this._ghostTrunk = { pts: prevPts, age: 0 };
+      }
+      this._trunkKey = key;
+      this._lastTrunkPts = null;
+    }
+    if (this._ghostTrunk) {
+      this._ghostTrunk.age += dt;
+      const a = 1 - this._ghostTrunk.age / 0.9;
+      if (a <= 0 || this._ghostTrunk.pts.length < 2) {
+        this._ghostTrunk = null;
+      } else {
+        const c = this.cell;
+        this.ctx.save();
+        this.ctx.globalAlpha = Math.max(0, a) * 0.5;
+        this.ctx.lineCap = "round";
+        this.ctx.lineJoin = "round";
+        S.strokePathLayers(this.ctx, this._ghostTrunk.pts, {
+          w: Math.max(4, c * 0.28),
+          travel: -t * c,
+          pressure: 0,
+          warm: 0,
+          cell: c,
+        });
+        this.ctx.setLineDash([]);
+        this.ctx.restore();
+      }
+    }
+
+    // Current trunk: project cached cells, remember points for the next
+    // hand-off before drawing (drawPath owns its own stroke styling).
+    const { trunkCells } = S.flowCellPaths(g, portalX, { maxPaths: 1 });
+    this._lastTrunkPts = trunkCells.map((c) => this.cam.projectCell(c.x, c.y));
     S.drawPath(this.ctx, this.cam, g, portalX, this.cell, t, this.sim?.enemies?.length || 0);
   }
 

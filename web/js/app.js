@@ -271,6 +271,13 @@ export class App {
     this.sim.on("portal_clump_start", (e) => this.portalAnimator.onClumpStart(e));
     this.sim.on("portal_clump_end", (e) => this.portalAnimator.onClumpEnd(e));
     this.sim.on("portal_move", (e) => this.portalAnimator.onMove(e));
+    // Telegraph: name the target seam column while the portal agitates.
+    this.sim.on("portal_unstable", (e) => {
+      this.portalAnimator.onUnstable(e);
+      if (!this._ghost && Number.isInteger(e.toX)) {
+        this.toast(`Seam unstable — migrating to column ${e.toX + 1}`);
+      }
+    });
   }
 
   bindUi() {

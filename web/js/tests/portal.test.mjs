@@ -1,9 +1,10 @@
 /**
- * Roaming seam portal: static w1-5, shifts w6+, shift budget, campaign pins.
+ * Roaming seam portal: static w1-7, first shift w8+ with a long named
+ * telegraph, rare shift budget, campaign pins.
  * Run: node js/tests/portal.test.mjs
  */
 import { Sim } from "../sim/next/sim.js";
-import { dwellFor, spawnPos } from "../sim/next/systems/waves.js";
+import { spawnPos, PORTAL_WARN_TIME } from "../sim/next/systems/waves.js";
 import { levelPortalCell } from "../data/campaign.js";
 
 function assert(cond, msg) {
@@ -32,24 +33,49 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   }
 }
 
-// Wave 6+: first mid-wave shift — portal_unstable fires between clumps,
-// then at most one relocation lands within the wave's shift budget.
+// Waves 6-7: no shift budget yet — portal must not move and never warn.
 {
   const w = newWorld(9, 8, 7, true);
   const s = w._s;
   let unstable = 0;
   s._listeners.set("portal_unstable", [() => { unstable++; }]);
-  // Fast-forward through waves 1-5 (static)
-  for (let i = 0; i < 5; i++) {
+  for (let wave = 1; wave <= 7; wave++) {
+    w.startWave();
+    assert(!unstable, `no portal_unstable during wave ${wave} (budget starts w8)`);
+    const before = w.portal.x;
+    s.waves.queue = Array(60).fill("mite");
+    s.waves.toSpawn = 60;
+    delete s.waves.clumpState;
+    w.setStartLives(5000, { resetCurrent: true });
+    let moved = 0;
+    let prev = w.portal.x;
+    for (let t = 0; t < 20000 && s.waves.active; t++) {
+      w.tick();
+      if (w.portal.x !== prev) { prev = w.portal.x; moved++; }
+    }
+    assert(moved === 0 && w.portal.x === before, `wave ${wave} portal pinned (shifts start w8)`);
+  }
+}
+
+// Wave 8: first mid-wave shift — warning names the target column, then the
+// move lands after PORTAL_WARN_TIME (not instantly).
+{
+  const w = newWorld(9, 8, 7, true);
+  const s = w._s;
+  const events = [];
+  s._listeners.set("portal_unstable", [(e) => events.push({ kind: "unstable", tick: e.tick, toX: e.toX })]);
+  s._listeners.set("portal_moved", [(e) => events.push({ kind: "moved", tick: e.tick, x: e.x })]);
+  // Fast-forward through waves 1-7 (static)
+  for (let i = 0; i < 7; i++) {
     w.startWave();
     s.waves.queue = Array(8).fill("mite");
     s.waves.toSpawn = 8;
     delete s.waves.clumpState;
     w.setStartLives(5000, { resetCurrent: true });
-    for (let t = 0; t < 2000; t++) w.tick();
+    for (let t = 0; t < 2500; t++) w.tick();
   }
-  w.startWave(); // wave 6 — budget = 1
-  assert(!unstable, "no portal_unstable at wave start (warning precedes the move)");
+  w.startWave(); // wave 8 — budget = 1
+  assert(!events.length, "no telegraph at wave start");
   s.waves.queue = Array(120).fill("mite");
   s.waves.toSpawn = 120;
   delete s.waves.clumpState;
@@ -58,13 +84,17 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   let moved = 0;
   for (let t = 0; t < 60000 && s.waves.active; t++) {
     w.tick();
-    if (w.portal.x !== prev) {
-      prev = w.portal.x;
-      moved++;
-    }
+    if (w.portal.x !== prev) { prev = w.portal.x; moved++; }
   }
-  assert(unstable >= 1, "wave 6 emits portal_unstable before shifting (mid-wave, between clumps)");
-  assert(moved <= 1, `wave 6 respects shift budget (moved=${moved})`);
+  const u = events.find((e) => e.kind === "unstable");
+  const m = events.find((e) => e.kind === "moved");
+  assert(u && m, "wave 8 warns then moves");
+  assert(Number.isInteger(u.toX) && u.toX >= 0 && u.toX < 9, `warning names target column (toX=${u.toX})`);
+  assert(u.toX === m.x, "moved column matches warned column");
+  const gapTicks = m.tick - u.tick;
+  const expected = Math.round(PORTAL_WARN_TIME / (1 / 60));
+  assert(Math.abs(gapTicks - expected) <= 1, `warning lasts ~2.5s (${gapTicks} ticks vs ${expected})`);
+  assert(moved <= 1, `wave 8 respects shift budget (moved=${moved})`);
 }
 
 // Determinism: same seed → same portal sequence
@@ -89,41 +119,6 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   for (let i = 0; i < 5; i++) {
     assert(a[i].x === a[0].x, `wave ${i + 1} portal stays at same position as wave 1`);
   }
-}
-
-// Clump-based relocation: portal moves between clumps (wave 7 has shift budget=1)
-{
-  const w = newWorld(9, 8, 11, true);
-  w.setStartLives(5000, { resetCurrent: true });
-  // Fast-forward through waves 1-5 (static)
-  for (let i = 0; i < 5; i++) {
-    w.startWave();
-    w._s.waves.queue = Array(20).fill("mite");
-    w._s.waves.toSpawn = 20;
-    delete w._s.waves.clumpState;
-    for (let t = 0; t < 2000; t++) w.tick();
-  }
-  w.startWave(); // wave 6 (first shift)
-  w._s.waves.queue = Array(60).fill("mite");
-  w._s.waves.toSpawn = 60;
-  delete w._s.waves.clumpState;
-  for (let t = 0; t < 3000; t++) w.tick();
-  const wave6Portal = w.portal.x;
-
-  w.startWave(); // wave 7 (budget=1 shift)
-  w._s.waves.queue = Array(60).fill("mite");
-  w._s.waves.toSpawn = 60;
-  delete w._s.waves.clumpState;
-  let prev = w.portal.x;
-  let moved = 0;
-  for (let i = 0; i < 5000; i++) {
-    w.tick();
-    if (w.portal.x !== prev) {
-      prev = w.portal.x;
-      moved++;
-    }
-  }
-  assert(moved <= 1, `wave 7 respects shift budget (moved=${moved})`);
 }
 
 // Spawn fallback: sealed portal column spawns from nearest reachable back cell
@@ -232,14 +227,6 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   assert(w.portal.x === pinned, "campaign portal never moves");
   const pos = spawnPos(w._s, "mite");
   assert(pos.x === 2.5, "campaign enemies spawn from the pinned cell");
-}
-
-// Intensity curve: dwell shrinks as waves climb, floored at 2.5
-{
-  const w = newWorld(9, 8, 1, true);
-  assert(Math.abs(dwellFor(w._s, 1) - 8) < 1e-9, "wave 1 dwell 8s");
-  assert(Math.abs(dwellFor(w._s, 20) - 5.15) < 1e-9, "wave 20 dwell ~5.15s");
-  assert(Math.abs(dwellFor(w._s, 40) - 2.5) < 1e-9, "wave 40 dwell floored");
 }
 
 console.log("portal: all assertions passed");

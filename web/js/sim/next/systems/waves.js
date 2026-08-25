@@ -17,6 +17,8 @@ const CLUMP_GAP = 0.08;              // within-clump spawn interval
 const INTER_CLUMP_DWELL_BASE = 2.5;  // base time between clumps
 const STRETCH_OUT_TIME = 0.3;        // portal stretch-out duration
 const STRETCH_IN_TIME = 0.25;        // portal stretch-in duration
+/** Portal migration warning — long enough to read the HUD cue and react. */
+export const PORTAL_WARN_TIME = 2.5;
 
 export function startNextWave(state) {
   state.waves.index = (state.waves.index | 0) + 1;
@@ -118,8 +120,6 @@ function growSouth(state, extra) {
 function spawnOne(state) {
   const w = state.waves.index;
   const kind = state.waves.queue.shift() || "mite";
-  // Set current portal X on grid for this spawn
-  if (state.portal) state.grid.setPortalX(state.portal.x);
   const e = makeEnemy(state, kind, w, {
     speedMult: state.waves.speedMult,
     pos: spawnPos(state, kind),
@@ -132,9 +132,7 @@ function spawnOne(state) {
 export function spawnPos(state, kind) {
   const g = state.grid;
   const p = state.portal || { x: g.spawn.x, y: 0 };
-  const portalX = state.portal ? state.portal.x : null;
-  const dists = portalX != null ? g.getPortalDist(portalX) : { groundDist: g.groundDist, airDist: g.airDist };
-  const dist = enemyDef(kind).flying ? dists.airDist : dists.groundDist;
+  const dist = enemyDef(kind).flying ? g.airDist : g.groundDist;
   if (g.inBounds(p.x, p.y) && dist[g.idx(p.x, p.y)] < INF) {
     return { x: p.x + 0.5, y: p.y + 0.5 };
   }
@@ -290,22 +288,6 @@ function pickPortalX(state, cycle, startIdx, lastX) {
   return { x: g.spawn.x, k: 0 };
 }
 
-function relocatePortal(state) {
-  const cycle = state.waves.portalCycle || [];
-  if (!cycle.length) return;
-  const startIdx = state.waves.portalIdx % cycle.length;
-  const { x, k } = pickPortalX(state, cycle, startIdx, state.waves.lastPortalX);
-  state.waves.portalIdx = (startIdx + k) % cycle.length;
-  state.waves.lastPortalX = x;
-  state.portal = { x, y: 0 };
-  state.grid.setPortalX(x);
-  emit(state, "portal_moved", { x, y: 0 });
-}
-
-export function dwellFor(state, w) {
-  return Math.max(2.5, Math.min(8, 8 - 0.15 * (w - 1)));
-}
-
 /**
  * Clump-based spawning state machine.
  * Waves are divided into clumps - small bursts of enemies with pauses between.
@@ -370,11 +352,16 @@ function randomPartition(total, k, rand) {
   return sizes;
 }
 
-/** How many times the portal may shift during a given wave. */
+/**
+ * How many times the portal may shift during a given wave.
+ * Deliberately rare (free shuffle retained, pressure via clumps not churn):
+ * the first shift lands at wave 8 with a long warning, then roughly one
+ * per 10 waves — coverage investments keep value for stretches at a time.
+ */
 function shiftsForWave(w) {
-  if (w < 6)  return 0;
-  if (w < 10) return 1;
-  return 2 + Math.floor((w - 10) / 10);
+  if (w < 8)  return 0;
+  if (w < 12) return 1;
+  return 1 + Math.floor((w - 12) / 10);
 }
 
 function tickClumpState(state, wv) {
@@ -410,9 +397,14 @@ function tickClumpState(state, wv) {
         const isLastClump = cs.clumpIdx >= cs.totalClumps - 1 || wv.toSpawn === 0;
         if (!isLastClump) {
           if (state.modeEndless && cs.portalShiftsUsed < cs.shiftsBudget) {
-            // Warning before portal shifts
-            emit(state, "portal_unstable", { clumpIdx: cs.clumpIdx });
-            cs.timer = 1.0; // 1 second warning
+            // Precompute the migration target NOW so the telegraph can name
+            // it (pickPortalX draws no RNG — cycle order only — so computing
+            // early is determinism-neutral). Applied when the warning ends.
+            const startIdx = wv.portalIdx % (wv.portalCycle || [0]).length;
+            const pick = pickPortalX(state, wv.portalCycle || [], startIdx, wv.lastPortalX);
+            cs.shiftTo = { x: pick.x, k: pick.k };
+            emit(state, "portal_unstable", { clumpIdx: cs.clumpIdx, toX: pick.x });
+            cs.timer = PORTAL_WARN_TIME;
             cs.phase = 'portal_shifting';
           } else {
             cs.phase = 'moving';
@@ -424,13 +416,22 @@ function tickClumpState(state, wv) {
       }
       break;
     }
-    
+
     case 'portal_shifting': {
       if (cs.timer <= 0) {
         if (cs.portalShiftsUsed < cs.shiftsBudget) {
-          relocatePortal(state);
+          // Apply the precomputed shift chosen at warning time.
+          if (cs.shiftTo) {
+            const cycleLen = (wv.portalCycle || []).length || 1;
+            const startIdx = wv.portalIdx % cycleLen;
+            wv.portalIdx = (startIdx + cs.shiftTo.k) % cycleLen;
+            wv.lastPortalX = cs.shiftTo.x;
+            state.portal = { x: cs.shiftTo.x, y: 0 };
+            emit(state, "portal_moved", { x: cs.shiftTo.x, y: 0 });
+          }
           cs.portalShiftsUsed++;
         }
+        cs.shiftTo = null;
         cs.phase = 'moving';
         cs.timer = 0;
         emit(state, "portal_move", { clumpIdx: cs.clumpIdx, x: state.portal.x });
