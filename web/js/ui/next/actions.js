@@ -302,6 +302,14 @@ function shiftForgeSlot(app, delta) {
       ? `Slot ${slotCount + 1} — locked`
       : `Editing slot ${app.forgeSlot + 1}`;
   app._refreshForgeUi();
+  // Scroll carousel to active card
+  requestAnimationFrame(() => {
+    const wrap = app.ui.querySelector(".forge-preview-wrap");
+    const activeCard = wrap?.querySelector(".forge-slot-card.active");
+    if (wrap && activeCard) {
+      activeCard.scrollIntoView({ behavior: "smooth", inline: "center" });
+    }
+  });
 }
 
 /** Ordered list of registry entries (for parity corpus introspection). */

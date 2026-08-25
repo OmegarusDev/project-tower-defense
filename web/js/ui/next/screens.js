@@ -52,6 +52,13 @@ export function forgePlanSummary(slot) {
   }${plan.pulseRadius ? ` · pulse ${plan.pulseRadius.toFixed(1)}` : ""}</span>`;
 }
 
+/** Compact single-line summary for forge carousel cards. */
+export function forgePlanSummaryCompact(slot) {
+  if (!slot?.complete) return "Base · Barrel · Payload";
+  const plan = buildAttackPlan(slot.base, slot.barrel, slot.payload, 1, {});
+  return `${partLabel(slot.base)} / ${partLabel(slot.barrel)} / ${partLabel(slot.payload)} · ${slot.placeCost} Coin · ${plan.damageType} · r${plan.rangeCells.toFixed(1)} · ${plan.damage.toFixed(0)} dmg${plan.chainJumps ? ` · chain ${plan.chainJumps}` : ""}${plan.pulseRadius ? ` · pulse ${plan.pulseRadius.toFixed(1)}` : ""}`;
+}
+
 /** Mirror of gameChrome.rosterSlotButtons — pure over state. */
 export function rosterSlotButtonsHtml(state, mode) {
   const meta = state.meta;
@@ -631,7 +638,7 @@ export function forgeStatBars(plan) {
     .join("")}</div>`;
 }
 
-/** The preview card: canvas + slot line + stat bars + loadout. */
+/** The preview card: canvas + slot line + compact stats + clear. */
 function buildForgeSlotCard(state, idx, total) {
   const slot = state.meta.roster?.[idx] || makeSlot();
   const plan = slot?.complete
@@ -643,9 +650,9 @@ function buildForgeSlotCard(state, idx, total) {
       <canvas class="forge-preview-flash" width="160" height="160" aria-label="Tower preview"></canvas>
       <div class="forge-summary">
         <h3>Slot ${idx + 1} / ${total}</h3>
-        ${forgeStatBars(plan)}
-        <p id="forgeLoadout">${forgePlanSummary(slot)}</p>
-        <button class="btn secondary part-chip" data-act="forge-clear" style="margin-top:8px">Clear slot</button>
+        ${plan ? forgeStatBars(plan) : ""}
+        <p id="forgeLoadout" class="forge-loadout-compact">${forgePlanSummaryCompact(slot)}</p>
+        <button class="btn secondary part-chip" data-act="forge-clear" style="margin-top:6px">Clear</button>
       </div>
     </div>`;
 }
