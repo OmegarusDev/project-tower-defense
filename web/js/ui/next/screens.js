@@ -55,8 +55,7 @@ export function forgePlanSummary(slot) {
 /** Compact single-line summary for forge carousel cards. */
 export function forgePlanSummaryCompact(slot) {
   if (!slot?.complete) return "Base · Barrel · Payload";
-  const plan = buildAttackPlan(slot.base, slot.barrel, slot.payload, 1, {});
-  return `${partLabel(slot.base)} / ${partLabel(slot.barrel)} / ${partLabel(slot.payload)} · ${slot.placeCost} Coin · ${plan.damageType} · r${plan.rangeCells.toFixed(1)} · ${plan.damage.toFixed(0)} dmg${plan.chainJumps ? ` · chain ${plan.chainJumps}` : ""}${plan.pulseRadius ? ` · pulse ${plan.pulseRadius.toFixed(1)}` : ""}`;
+  return `${partLabel(slot.base)} / ${partLabel(slot.barrel)} / ${partLabel(slot.payload)} · ${slot.placeCost} Coin`;
 }
 
 /** Mirror of gameChrome.rosterSlotButtons — pure over state. */
