@@ -61,6 +61,9 @@ await page.goto("http://127.0.0.1:8123/", { waitUntil: "networkidle" });
 await page.evaluate(() => { try { localStorage.removeItem("ptd_meta_v1"); localStorage.removeItem("ptd_endless_v1"); } catch (_) {} });
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(800);
+// Boot lands on the splash gate — tap through so keyboard flows start on Main.
+await page.click("[data-act='splash-start']");
+await page.waitForTimeout(800);
 
 // ── Flow 1: Endless ──
 step("title focusable acts", await page.evaluate(() =>

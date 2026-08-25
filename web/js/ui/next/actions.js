@@ -312,8 +312,3 @@ function shiftForgeSlot(app, delta) {
     }
   });
 }
-
-/** Ordered list of registry entries (for parity corpus introspection). */
-export function registrySize() {
-  return R.length;
-}

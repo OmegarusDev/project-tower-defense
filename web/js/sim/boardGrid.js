@@ -354,17 +354,6 @@ export class BoardGrid {
     return pool[h % pool.length];
   }
 
-  /** Viz / legacy: precomputed DIR-order next without per-enemy avoid. */
-  nextGround(x, y) {
-    if (!this.inBounds(x, y)) return { x, y };
-    return this.groundNext[this.idx(x, y)];
-  }
-
-  nextAir(x, y) {
-    if (!this.inBounds(x, y)) return { x, y };
-    return this.airNext[this.idx(x, y)];
-  }
-
   /** Per-enemy air step: shortest exit distance, no tower avoid, ignores walls.
    *  opts.portalX is accepted and ignored — per-portal BFS maps were removed
    *  after proving every entry a byte-identical copy of the exit-seeded field

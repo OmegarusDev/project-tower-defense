@@ -1,5 +1,5 @@
 /** Extracted from App — pure move, no gameplay changes. */
-import { makeSlot, forgeBuyCost, ownsPart, normalizeRoster, normalizeOwned, MAX_ROSTER_SLOTS, PARTS } from "../data/parts.js";
+import { makeSlot, ownsPart, normalizeRoster, normalizeOwned, MAX_ROSTER_SLOTS, PARTS } from "../data/parts.js";
 import {
   forgeApplyPart,
   forgeClearSlot,
@@ -77,20 +77,8 @@ export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true 
     }
   }
 
-  if (flashPreview) flashForgePreview(app);
-  else paintForgePreview(app);
-  
-}
-
-function flashForgePreview(app) {
-  if (app.screen !== "forge") return;
-  // The carousel renders one canvas per slot card; flash the active card's
-  // canvas (the old #forgePreview id is no longer emitted by any renderer).
-  const canvas = app.ui.querySelector(".forge-slot-card.active .forge-preview-flash");
-  if (!canvas) return;
-  canvas.classList.remove("forge-preview-flash");
-  void canvas.offsetWidth;
-  canvas.classList.add("forge-preview-flash");
+  // `flashPreview` is kept as an option name for call-site readability, but
+  // no CSS animation exists for the preview class — both paths just repaint.
   paintForgePreview(app);
 }
 
@@ -132,11 +120,6 @@ function _applyForge(app, html) {
   requestAnimationFrame(() => {
     app.ui.querySelector(".forge-screen")?.classList.remove("meta-enter");
   });
-}
-
-export function forgeCost(app, kind, id) {
-  return forgeBuyCost(kind, id, app.meta);
-  
 }
 
 export function paintForgePreview(app) {

@@ -35,17 +35,17 @@ function assert(cond, msg) {
 const g = new BoardGrid();
 g.setup(7, 9);
 assert(g.hasGroundPath(), "empty path");
-let cell = { ...g.spawn };
-for (let i = 0; i < 64; i++) {
-  const n = g.nextGround(cell.x, cell.y);
-  if (n.x === g.exit.x && n.y === g.exit.y) {
+// Canonical walk (same primitive the flow preview uses) reaches the exit.
+{
+  let cell = { ...g.spawn };
+  for (let i = 0; i < 64; i++) {
+    if (g.isExit(cell.x, cell.y)) break;
+    const n = g.canonicalGround(cell.x, cell.y, { avoid: "none" });
+    assert(!(n.x === cell.x && n.y === cell.y), "stuck");
     cell = n;
-    break;
   }
-  assert(!(n.x === cell.x && n.y === cell.y), "stuck");
-  cell = n;
+  assert(g.isExit(cell.x, cell.y), "reach exit");
 }
-assert(cell.x === g.exit.x && cell.y === g.exit.y, "reach exit");
 
 const g2 = new BoardGrid();
 g2.setup(5, 6);

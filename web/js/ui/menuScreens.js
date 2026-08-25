@@ -5,11 +5,9 @@
  * (re-exported from the next renderers).
  */
 
-import { VIEW25 } from "../view/view25.js";
 import { saveMeta } from "../saveStore.js";
 import { paintLevelThumb } from "./metaUi.js";
 import { getCampaignLevel } from "../data/campaign.js";
-export { forgePlanSummary } from "./next/screens.js";
 
 export function wireSettings(app) {
   const save = () => saveMeta(app.meta);
@@ -54,7 +52,6 @@ export function wireSettings(app) {
     const lab = app.ui.querySelector("#pitchLabel");
     if (lab) lab.textContent = `${Math.round(v)}°`;
   });
-  void VIEW25;
 }
 
 export function paintCampaignThumbs(app) {

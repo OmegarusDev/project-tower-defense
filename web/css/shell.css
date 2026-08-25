@@ -172,20 +172,6 @@ body::after {
   transform: scale(0.94);
 }
 
-#forgePreview {
-  width: 112px;
-  height: 112px;
-  background: #1a1c18;
-  clip-path: var(--rough-clip, var(--plate-clip));
-  flex: 0 0 auto;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #forgePreview.forge-preview-flash {
-    animation: none;
-  }
-}
-
 .upgrade-row .info {
   min-width: 0;
 }

@@ -1,5 +1,5 @@
 /** Extracted from App — pure move, no gameplay changes. */
-import { makeSlot, ownsPart, partLabel, MAX_ROSTER_SLOTS, XP_TO_POINT } from "../data/parts.js";
+import { makeSlot, ownsPart, MAX_ROSTER_SLOTS } from "../data/parts.js";
 
 import { renderTowerNext } from "../view/next/renderTower.js";
 import { chromeState } from "../ui/next/stateOf.js";
@@ -7,8 +7,7 @@ import { chromeHtml, composeSheetHtml, syncHud } from "../ui/next/chrome.js";
 import { rosterSlotButtonsHtml } from "../ui/next/screens.js";
 import { applyBtnTextures } from "../ui/next/registry.js";
 
-/** Always show S1–S6; locked slots stay visible until Roster tech unlocks them. */
-  /** Live place quote for a roster index (game only). */
+/** Live place quote for a roster index (game only). */
 export function gameSlotQuote(app, i) {
   const s = app.sim?.roster?.[i];
   if (!s?.complete) {

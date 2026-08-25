@@ -87,17 +87,7 @@ function finishQuit(app, fromEditor, campaign) {
 export function renderPauseSheet(app) {
   if (!app.sim || app.screen !== "game") return;
   app.ui.querySelector("#pauseSheet")?.remove();
-  const endless = !!app.sim.modeEndless;
-  const wave = app.sim.waveIndex | 0;
-  const quitLabel = endless ? "Endless Menu" : "Campaign Menu";
-  const between = endless && !app.waveBusy();
-  const note = app.playtestFromEditor
-    ? "Editor playtest"
-    : endless
-      ? between
-        ? `Between waves — board saved. Continue keeps towers; Call starts wave ${wave + 1}.`
-        : `Mid-wave — Continue rolls back to the start of wave ${wave}.`
-      : `Campaign level ${app.sim.campaignLevelId}`;
+  // Copy lives in chrome.pauseSheetHtml via pauseState(app) — no locals here.
   const sheet = document.createElement("div");
   sheet.id = "pauseSheet";
   sheet.className = "pause-sheet";

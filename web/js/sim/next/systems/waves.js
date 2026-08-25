@@ -189,7 +189,6 @@ export function makeEnemy(state, kind, wave, opts = {}) {
     splitKind: def.splitKind || "mite",
     regen: def.regen || 0,
     spawns: def.spawns || 0,
-    spawnPortalX: state.portal ? state.portal.x : null,
     spawnEvery: def.spawnEvery || 7,
     spawnKind: def.spawnKind || "mite",
     aura: def.aura ? { ...def.aura } : null,
