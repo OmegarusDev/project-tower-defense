@@ -644,7 +644,7 @@ function buildForgeSlotCard(state, idx, total) {
     ? buildAttackPlan(slot.base, slot.barrel, slot.payload, 1, {})
     : null;
   const active = idx === state.forgeSlot ? "active" : "";
-  const baseClass = slot?.base ? `forge-base-${slot.base}` : "";
+  const baseClass = slot?.base ? `forge-base-${slot.base}` : `forge-slot-${idx}`;
   return `
     <div class="forge-slot-card ${active} ${baseClass}" data-slot="${idx}" data-act="forge-slot:${idx}">
       <canvas class="forge-preview-flash" width="160" height="160" aria-label="Tower preview"></canvas>
@@ -686,11 +686,13 @@ export function forgeUnlockCard(state, total) {
   const slotCount = state.meta.slotCount | 0;
   const unlock = state.nextUnlock;
   return `
-    <div class="forge-unlock plate">
-      <p class="forge-unlock-k">Slot ${slotCount + 1} / ${total}</p>
-      <h3>Unlock Slot ${slotCount + 1}?</h3>
-      <p class="forge-unlock-cost">${unlock ? formatTechCost(unlock.cost) : "—"}</p>
-      <button class="btn title-cta" data-act="forge-unlock-slot" ${unlock ? "" : "disabled"}>Unlock</button>
+    <div class="forge-slot-card unlock-card forge-slot-${slotCount}" data-slot="${slotCount}" data-act="forge-unlock-slot">
+      <div class="forge-unlock-content">
+        <p class="forge-unlock-k">Slot ${slotCount + 1} / ${total}</p>
+        <h3>Unlock Slot ${slotCount + 1}?</h3>
+        <p class="forge-unlock-cost">${unlock ? formatTechCost(unlock.cost) : "—"}</p>
+        <button class="btn title-cta" data-act="forge-unlock-slot" ${unlock ? "" : "disabled"}>Unlock</button>
+      </div>
     </div>`;
 }
 
