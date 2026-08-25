@@ -14,12 +14,12 @@
  */
 
 export const BASE_VISUALS = {
-  sentry: [
-    ["cyl", { x: 0, y: -0.02, rx: 0.31, rise: 0.055, top: "sideDark", side: "sideDeep", bottom: "rim" }],
-    ["cyl", { x: 0, y: 0.08, rx: 0.19, rise: 0.12, top: "top", side: "side", bottom: "sideDark", roundedBottom: true }],
+sentry: [
+    ["cyl", { x: 0, y: -0.06, rx: 0.31, rise: 0.055, top: "sideDark", side: "sideDeep", bottom: "rim", roundedBottom: true }],
+    ["cyl", { x: 0, y: 0.08, rx: 0.25, rise: 0.12, top: "top", side: "side", bottom: "sideDark", roundedBottom: true }],
     ["vents", { xs: [-0.16, 0.16], y0: 0.04, y1: 0.12, color: "sideDeep", w: 0.02 }],
     ["ring", { y: 0.1, rx: 0.22, color: "rim", alpha: 0.55 }],
-    ["cyl", { x: 0, y: 0.14, rx: 0.16, rise: 0.06, top: "topHi", side: "accent", bottom: "sideDark" }],
+    ["cyl", { x: 0, y: 0.15, rx: 0.16, rise: 0.06, top: "topHi", side: "accent", bottom: "sideDark", roundedBottom: true }],
     ["ellipseStroke", { y: 0.14, rx: 0.14, color: "topHi", alpha: 0.55 }],
     ["rivets", { y: 0.14, rx: 0.12, n: 6, color: "rim" }],
   ],

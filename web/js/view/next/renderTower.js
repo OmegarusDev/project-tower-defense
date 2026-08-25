@@ -14,7 +14,7 @@ const BARREL_SCALE = 0.8;
 
 /** Hub lift above the pad for a given sprite size + base (pixel units). */
 const BASE_CROWN = {
-  sentry: 0.26,
+  sentry: 0.22,
   bulwark: 0.26,
   spire: 0.34,
   aerie: 0.2,
