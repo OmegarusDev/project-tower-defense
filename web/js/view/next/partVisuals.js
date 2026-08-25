@@ -15,7 +15,7 @@
 
 export const BASE_VISUALS = {
   sentry: [
-    ["cyl", { x: 0, y: -0.02, rx: 0.3, rise: 0.05, top: "sideDark", side: "sideDeep", bottom: "rim" }],
+    ["cyl", { x: 0, y: -0.02, rx: 0.31, rise: 0.055, top: "sideDark", side: "sideDeep", bottom: "rim" }],
     ["cyl", { x: 0, y: 0.08, rx: 0.25, rise: 0.12, top: "top", side: "side", bottom: "sideDark", roundedBottom: true }],
     ["vents", { xs: [-0.16, 0.16], y0: 0.04, y1: 0.12, color: "sideDeep", w: 0.02 }],
     ["ring", { y: 0.1, rx: 0.22, color: "rim", alpha: 0.55 }],
@@ -44,7 +44,7 @@ export const BASE_VISUALS = {
     ],
   ],
   spire: [
-    ["cyl", { x: 0, y: 0.02, rx: 0.28, rise: 0.04, top: "sideDark", side: "sideDeep", bottom: "rim" }],
+    ["cyl", { x: 0, y: 0.02, rx: 0.29, rise: 0.045, top: "sideDark", side: "sideDeep", bottom: "rim" }],
     ["rivets", { y: 0.02, rx: 0.22, n: 8, color: "rim" }],
     ["frustum", { y: 0.14, rxBot: 0.22, rxTop: 0.13, rise: 0.12, top: "top", side: "side", dark: "sideDark" }],
     ["ring", { y: 0.16, rx: 0.15, color: "accent", alpha: 0.65 }],

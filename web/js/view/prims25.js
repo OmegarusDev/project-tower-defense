@@ -17,14 +17,18 @@ export function cyl25(ctx, cx, topY, rx, rise, topCol, sideCol, bottomCol, opts 
   const ry = deckRy(rx);
   const bottomY = topY + rise;
   const useRoundedBottom = opts.roundedBottom === true;
-  const effectiveBottomCol = bottomCol || shade(sideCol, -0.15);
+  const rimCol = bottomCol || shade(sideCol, -0.15);
 
   ctx.fillStyle = sideCol;
   ctx.fillRect(cx - rx, topY, rx * 2, Math.max(1, rise));
 
-  ctx.fillStyle = effectiveBottomCol;
   ctx.beginPath();
   ctx.ellipse(cx, bottomY, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = rimCol;
+  ctx.beginPath();
+  ctx.ellipse(cx, bottomY, rx, ry, 0, 0.15, Math.PI - 0.15);
   ctx.fill();
 
   if (useRoundedBottom) {
@@ -33,11 +37,6 @@ export function cyl25(ctx, cx, topY, rx, rise, topCol, sideCol, bottomCol, opts 
     ctx.ellipse(cx, bottomY, rx, ry, 0, Math.PI, 0, true);
     ctx.fill();
   }
-
-  ctx.fillStyle = effectiveBottomCol;
-  ctx.beginPath();
-  ctx.ellipse(cx, bottomY, rx, ry, 0, 0.15, Math.PI - 0.15);
-  ctx.fill();
 
   ctx.fillStyle = topCol;
   ctx.beginPath();

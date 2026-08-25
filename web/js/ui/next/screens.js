@@ -649,7 +649,7 @@ function buildForgeSlotCard(state, idx, total) {
       <canvas class="forge-preview-flash" width="160" height="160" aria-label="Tower preview"></canvas>
       <div class="forge-summary">
         <h3>Slot ${idx + 1} / ${total}</h3>
-        ${plan ? forgeStatBars(plan) : ""}
+        ${forgeStatBars(plan)}
         <p id="forgeLoadout" class="forge-loadout-compact">${forgePlanSummaryCompact(slot)}</p>
         <button class="btn secondary part-chip" data-act="forge-clear" style="margin-top:6px">Clear</button>
       </div>
