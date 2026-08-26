@@ -14,6 +14,7 @@ import { FxSystem } from "./view/fx.js";
 import { SynthBank } from "./audio/synthBank.js";
 import { ScoreEngine } from "./audio/scoreEngine.js";
 import { loadMeta } from "./saveStore.js";
+import { createInteraction } from "./app/interaction.js";
 
 /** Screens that tick/draw the animated title backdrop (allocated once). */
 const META_BACKDROP_SCREENS = new Set([
@@ -42,6 +43,7 @@ import * as pause from "./app/pauseSettings.js";
 
 export class App {
   constructor() {
+    this._interaction = createInteraction();
     this.canvas = document.getElementById("game");
     this.ui = document.getElementById("ui");
     this.palette = new ProcPalette();
@@ -57,22 +59,15 @@ export class App {
     setPitch(this.meta.settings?.cameraPitch ?? 24);
     this.sim = null;
     this.screen = "main";
-    this.tool = "tower";
-    this.slot = -1;
     this.forgeSlot = 0;
     this.forgeReturn = "main";
     this.forgeAim = -Math.PI / 2;
-    this.selectedTowerId = -1;
-    this.selectedWallId = -1;
     this.techSelectedId = null;
     this.techTreeTab = "foundations";
     this.paused = false;
     this.speed = 1;
     this.accum = 0;
     this.status = "";
-    this.placeConfirm = null;
-    this.liveCompose = false;
-    this.undoStack = [];
     this.editor = null;
     this.prepLevelId = 0;
     this.prepSlot = 0;
@@ -81,7 +76,6 @@ export class App {
     this._ghostEndSim = null;
     this._raf = 0;
     this._last = 0;
-    this._handSlot = null; // slot index in hand, null = nothing in hand
 
     this.synth.setVolume(this.meta.settings?.sfxVolume ?? 0.35);
     this.synth.setMusicVolume(this.meta.settings?.musicVolume ?? 0.4);
@@ -117,6 +111,27 @@ export class App {
       }
     });
   }
+
+  // Interaction/selection state is delegated to this._interaction (app/interaction.js)
+  // so the state lives in one module while delegate code keeps using app.<field>.
+  get tool() { return this._interaction.tool; }
+  set tool(v) { this._interaction.tool = v; }
+  get slot() { return this._interaction.slot; }
+  set slot(v) { this._interaction.slot = v; }
+  get selectedTowerId() { return this._interaction.selectedTowerId; }
+  set selectedTowerId(v) { this._interaction.selectedTowerId = v; }
+  get selectedWallId() { return this._interaction.selectedWallId; }
+  set selectedWallId(v) { this._interaction.selectedWallId = v; }
+  get placeConfirm() { return this._interaction.placeConfirm; }
+  set placeConfirm(v) { this._interaction.placeConfirm = v; }
+  get liveCompose() { return this._interaction.liveCompose; }
+  set liveCompose(v) { this._interaction.liveCompose = v; }
+  get undoStack() { return this._interaction.undoStack; }
+  set undoStack(v) { this._interaction.undoStack = v; }
+  get _handSlot() { return this._interaction._handSlot; }
+  set _handSlot(v) { this._interaction._handSlot = v; }
+  get slotPreviewAim() { return this._interaction.slotPreviewAim; }
+  set slotPreviewAim(v) { this._interaction.slotPreviewAim = v; }
 
   start() {
     this.showSplash();
