@@ -8,7 +8,7 @@ do not start the identity pass.
 
 ## Definition of done (the release bar)
 
-1. All 10 gates green on the release commit (`verify` 16 tests, sim traces,
+1. All 10 gates green on the release commit (`verify` 17 tests, sim traces,
    ladder, fuzz, render 194, board, ui, chrome, actions, smoke walk).
 2. The four user-reported items are resolved (music tempo, portal spawn rule,
    twin-barrel proportions, fresh-run balance).

@@ -20,7 +20,7 @@ function parseArgs(argv) {
 const { preset, seed } = parseArgs(process.argv.slice(2));
 const base = scenarioByName(preset);
 
-// instrument via SimWorld subclass events — runSim already fires wave_cleared/leak/game_over
+// instrument via Sim subclass events — runSim already fires wave_cleared/leak/game_over
 const simEvents = [];
 const origRun = runSim;
 // easier: replicate runSim with listeners

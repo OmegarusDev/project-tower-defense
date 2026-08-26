@@ -95,7 +95,7 @@ export function on(state, type, fn) {
 }
 
 export function emit(state, type, data = {}) {
-  // Mirrors SimWorld.emit exactly: kind listeners AND "*" listeners, both
+  // Mirrors the Sim facade's emit exactly: kind listeners AND "*" listeners, both
   // receiving { kind, tick, ...payload }.
   const e = { kind: type, tick: state.tickIndex, ...data };
   const list = state._listeners.get(type);

@@ -10,14 +10,20 @@ web/
   css/           # tokens, shell, title, forge, tech, game-hud, meta, editor
   js/
     main.js app.js saveStore.js
-    app/         # metaSync, runLifecycle, simBridge, gameChrome, placeUndo, input, pauseSettings
-    ui/          # menuScreens, forge/tech/end screens, bindActions, editor, replay
-    data/        # parts, techTree, campaign
-    sim/         # BoardGrid, AttackPlan, combat, waves, economy, simWorld
-    balance/     # headless Monte Carlo runner + greedy bot (no DOM)
-    view/        # palette, board, tower paint, title, fx, camera
+    app/         # metaSync, runLifecycle, simBridge, gameChrome, placeUndo, input, pauseSettings,
+                 # endsLogic, forgeLogic, techLogic, undoLogic
+    ui/          # menuScreens, forgeScreen, techScreen, endScreens, levelEditor, metaUi,
+                 # partIcons, replay, xClose
+    ui/next/     # actions (runAction), screens, registry (mountScreen), chrome, modal, stateOf
+    data/        # parts, techTree, campaign, enemies, waveScripts, endlessGrid, rules
+    sim/         # boardGrid, attackPlan, rng
+    sim/next/    # state, sim (Sim facade), systems/{combat,economy,movement,towers,waves},
+                 # combat/{status,synergy}
+    balance/     # headless runSim + greedyBot + scenarios (no DOM)
+    view/        # palette, drawUtil, prims25, fx, titleView, view25 (camera)
+    view/next/   # boardScene, boardView, enemyVisuals, partVisuals, renderEnemy, renderTower
     audio/       # SynthBank SFX+Music buses; ScoreEngine generative ambient
-    tests/       # node smoke tests
+    tests/       # node smoke tests (17 files, run via verify.mjs)
 docs/            # GDD + prompts + legacy notes
 PLAY.html        # thin launcher → GitHub Pages
 .github/         # Pages deploy (uploads web/)
@@ -104,9 +110,7 @@ parts (migrated as paid).
 > frost×shock (+15% shock into slowed targets; chains leap 1.4× from a slowed
 > source). Enemy identity: kilns spawn up to 4 wave-scaled mites (7s cadence);
 > ward shells project +1 armor flat to enemies within 1.6 cells while alive
-> (`_refreshEnemyAuras`, O(n²) — fine at current pack sizes). The tower-side
-> aura scaffolding (`providesAura`, `_rebuildAuras`) remains dead code — keep
-> until a tower-aura design lands.
+> (`_refreshEnemyAuras`, O(n²) — fine at current pack sizes).
 
 ## Run
 
@@ -121,3 +125,28 @@ cd web && python3 -m http.server 8080
 cd web
 for f in js/tests/*.mjs; do node "$f"; done
 ```
+
+## Invariants & maintenance
+
+These are enforced by CI (`.github/workflows/parity.yml`) and must not regress:
+
+- **Parity contract**: `simParity` (byte-exact bot-ladder traces) and all browser
+  parity gates are required merge gates. `campaignLadder` is intentionally
+  non-blocking (balance signal). See `docs/DEV.md`.
+- **Save schema/version**: all persistence shapes + forward-migration live in
+  `web/js/saveStore.js` — `normalizeMeta`/`saveMeta` (`META_V`),
+  `normalizeEndless`/`saveEndless`/`loadEndless` (`ENDLESS_V=1`), and the editor list
+  in `levelEditor.js`. Migration helpers `migratePartId` (`data/parts.js`) and
+  `migrateTechRanks` (`data/techTree.js`) are called from the save path. Never
+  clobber a vault with a stale checkpoint.
+- **No stray debug logging**: `console.log` / `console.debug` / `debugger` are
+  forbidden in `web/js` (CI grep guard). Two intentional calls are allowlisted:
+  `main.js:8` (`console.info` boot banner) and `saveStore.js:179` (`console.warn`
+  on quota failure).
+- **Zero assets / no build**: no frameworks, npm at runtime, or art/SFX packs.
+  `playwright` is dev-only (CI parity).
+- **Live code layout**: `sim/next`, `ui/next`, `view/next` are the current code (not
+  legacy). A folder rename is deferred until a true blank-slate rebuild.
+- **Docs accuracy**: CI greps `docs/` for references to removed modules (the old
+  action-binding shim and the former Sim-world wrapper); keep references accurate.
+  Historical plans live in `docs/history/`.

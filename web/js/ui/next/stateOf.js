@@ -1,6 +1,6 @@
 /**
  * State adapters — the next renderers take a plain state; these adapters
- * extract it from the app runtime (the swap's bridge). The renderers never
+ * extract it from the app runtime (the app→renderer bridge). The renderers never
  * see `app`.
  */
 import { VIEW25 } from "../../view/view25.js";

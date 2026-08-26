@@ -5,8 +5,13 @@
 data-driven visuals, screen registry), smaller and more robust. Never true 3D — the
 faux-3D illusion IS the product (two-factor camera).
 
-**Status:** Phase 0 ✓ · Phase 1 ✓ (sim core) · Phase 2a/2b ✓ (status + synergy registries) ·
-2c deferred to swap (see below) · Phase 3 in progress (render) · 4–6 pending.
+> **STATUS: COMPLETE.** The behavioral-parity port is finished — every phase below
+> landed and the game now runs on the `sim/next` / `ui/next` / `view/next` implementation
+> (oracle-free). This file is kept as a historical record of that effort; see `git log`
+> for the actual changes.
+
+**Status:** Phase 0 ✓ · Phase 1 ✓ · Phase 2a/2b ✓ · Phase 3 ✓ · Phase 4 ✓ · Phase 5 ✓ ·
+Phase 6 ✓ (swap) · Oracle-free ✓. All acceptance criteria met.
 
 ---
 
@@ -20,7 +25,8 @@ faux-3D illusion IS the product (two-factor camera).
 3. **Interaction identity** — DOM corpus + every flow unchanged; saves normalize identically.
 4. **Zero value changes** — no balance numbers, part stats, palette colors, content.
    Architecture only.
-5. **Smaller** — beat the baseline: **470,777 bytes** (web/js, measured at Phase 0).
+5. **Smaller** — beat the Phase-0 baseline of **470,777 bytes** (`web/js`); the port
+   shipped leaner (the current tree is ~16k LOC across 65 files).
 6. **More robust** — fuzz (random seeds never crash/stall), all tests, parse gate, parity suite.
 7. **Discipline** — mechanical ports, draw-order preservation, NO opportunistic fixes
    (log them; apply deliberately post-parity).
@@ -29,10 +35,11 @@ faux-3D illusion IS the product (two-factor camera).
 
 - Tag `replica-oracle` + branch `oracle` (force-push blocked, deletions blocked, PR review
   required, admins enforced) — the frozen reference.
-- The live GitHub Pages game deploys `web/` only; the port lives in `web/js/sim/next/` and
-  `web/js/view/next/` (additive, unreachable from the app) until Phase 6 flips the entry point.
-- `git diff replica-oracle main -- web/` must show ONLY additions under `sim/next`, `view/next`
-  and tooling until the swap.
+- The live GitHub Pages game deploys `web/` only; the port was built additively in
+   `web/js/sim/next/` and `web/js/view/next/` (unreachable from the app) and Phase 6 flipped
+   the entry point to it.
+- `git diff replica-oracle main -- web/` showed ONLY additions under `sim/next`, `view/next`
+   and tooling prior to the swap.
 
 ## The new sim architecture (`web/js/sim/next/`)
 
@@ -54,15 +61,15 @@ draw sequences. Do not "improve the math while in there." `running` is owned by 
 ## Verification gates (run before any commit)
 
 ```bash
-node verify.mjs                              # parse gate + all 12 test files
-node tools/corpus/simParity.mjs              # oracle vs new sim, greedy bot, full games
+node verify.mjs                              # parse gate + all 17 test files
+node tools/corpus/simParity.mjs              # new sim vs committed traces, greedy bot, full games
 node tools/corpus/ladderParity.mjs           # runSim ladder + 12 campaign levels + checkpoints
 node tools/corpus/capture.mjs                # (re)capture goldens/DOM — frozen time + seeded Math.random
 node tools/corpus/renderParity.mjs           # Phase 3: new renderer vs goldens
 cd web && python3 -m http.server 8123        # serve for playwright tools (CORPUS_URL)
 ```
 Green = byte-identical events/state/logs (sim), metrics identical (ladder), pixels within
-tolerance (render). The live game must remain the oracle throughout.
+tolerance (render). The live game is the new implementation throughout.
 
 ## Known traps (found the hard way — do not reintroduce)
 
@@ -103,7 +110,7 @@ tolerance (render). The live game must remain the oracle throughout.
   (data-act → handler table, exact order), gated by
   `tools/corpus/actionsParity.mjs` (60-act vocabulary × 5 state variants,
   spy call traces identical). The app.js class-shell decomposition lands in
-  Phase 6 (the oracle runtime stays untouched until the swap).
+   Phase 6 (the old runtime was retired at the swap).
 - **Phase 5 (done):** CI — `.github/workflows/parity.yml` runs verify + every
   parity gate (sim/ladder/fuzz/render/board/ui/chrome/actions/oracle-enemies)
   on push+PR. Sim fuzz: `tools/corpus/simFuzz.mjs` — seeded random-action
@@ -128,7 +135,7 @@ tolerance (render). The live game must remain the oracle throughout.
   lastTheme/lastEvent/speedMult) so app/test writes behave exactly like the
   oracle's single-field world.
 
-## Post-parity list (deliberate improvements, applied after the swap certifies)
+## Post-parity list (deliberate improvements, applied after the swap certified)
 
 - Twin-barrel proportions polish.
 - Any aesthetic tweaks found during eyeballing (user's eyes are the final arbiter).

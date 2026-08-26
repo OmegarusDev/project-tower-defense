@@ -4,20 +4,24 @@ Status: BETA prep is its own plan — see BETA_PLAN.md (the self-contained
 execution plan for the first public beta; identity + aspect-ratio work is
 explicitly deferred). Below is the architectural roadmap.
 
-Status: the Oracle is FROZEN as a design document — it is no longer the gold
-standard. The corpus (committed traces/baselines/goldens) is a re-baseline
-tool, not a standard: every deliberate change re-baselines after review. The
-new gold standard = ultra efficient, robust, beautiful architecture; the
-verification gates enforce it.
+Status: the reference prototype (`OmegarusDev/project-tower-defense-oracle`) is
+frozen as a historical design document — it is no longer the gold standard. The
+corpus (committed traces/baselines/goldens) is a re-baseline tool, not a
+standard: every deliberate change re-baselines after review. The new gold
+standard = ultra efficient, robust, beautiful architecture; the verification
+gates enforce it.
 
-Strategic take-stock (where we stand vs the Oracle):
+Strategic take-stock (where we stand vs the reference prototype):
 - Sim (pure state + systems + facade, deterministic, fuzz-tested): better.
 - Rendering (data-driven visuals, one two-factor projection): better.
 - Board scene (pure renderers): better. UI shell (registry + pure fns): better.
-- Pathing (single source of truth): better. Verification (10 gates): better.
-- ONE GAP: the app's behavioral logic modules (forge/tech/end/undo/input/
-  simBridge/metaSync/runLifecycle) are still old-style and app-coupled.
-  Completing them IS the final step of the new gold standard (Phase C).
+- Pathing (single source of truth): better. Verification gates: better.
+- Structural refactor (Phase 0–4): **complete.** The app's behavioral logic
+  modules (forge/tech/end/undo/input/simBridge/metaSync/runLifecycle) were
+  extracted into `app/*` + `ui/next/*` pure modules; `runAction` centralizes
+  all `data-act` dispatch and the save layer is versioned/guarded. The remaining
+  roadmap below (Phase A pathing tiers + the skulk) is **gameplay**, not a
+  structural gap.
 
 ---
 
@@ -194,7 +198,7 @@ same `"none"` mode for the preview).
   4. Tests: pool membership per mode, hard-avoid monotonicity + exit
      reachability, skulk-vs-basic lane split around a tower.
   5. Re-baseline the corpus (traces + ladder) — a DELIBERATE, reviewed
-     re-capture; the oracle standard no longer applies.
+     re-capture; the reference-prototype standard no longer applies.
 - **Phase B — UI boot polish** (synchronous first paint + canvas bg +
   static-layer cache) — small, quick win.
 - **Phase C — app-logic gold-standard completion**: port the remaining

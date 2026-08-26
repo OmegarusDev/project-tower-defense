@@ -47,6 +47,29 @@ jobs:
             echo "native dialog call found — use ui/next/modal.js" && exit 1
           fi
 
+      - name: No stray debug logging
+        run: |
+          # Forbid debug noise; allowlist the two intentional calls:
+          #   main.js:8         console.info  (boot banner)
+          #   saveStore.js:179  console.warn  (quota failure)
+          # Skip comment lines so JSDoc mentions don't false-positive.
+          hits=$(grep -rnE "console\.(log|debug)|debugger" web/js --include='*.js' \
+            | grep -v /dev/ | grep -v tests \
+            | grep -vE ':[0-9]+:[[:space:]]*(\*|//|/\*)' || true)
+          if [ -n "$hits" ]; then
+            echo "$hits"
+            echo "stray debug logging (console.log/debug/debugger) found — see M0.1" && exit 1
+          fi
+
+      - name: Docs reference no deleted identifiers
+        run: |
+          # Guard against doc rot: fail if docs mention deleted code.
+          hits=$(grep -rnE "bindActions|simWorld" docs/ || true)
+          if [ -n "$hits" ]; then
+            echo "$hits"
+            echo "docs reference deleted identifiers (bindActions/simWorld)" && exit 1
+          fi
+
       - name: Sim parity (bot ladder traces)
         run: node tools/corpus/simParity.mjs
 

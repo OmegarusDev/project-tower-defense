@@ -19,7 +19,7 @@ import { ENDLESS_GRID } from "../data/endlessGrid.js";
  * @param {number} [opts.startLives]
  * @param {number} [opts.maxWaves]
  * @param {number} [opts.maxTicks]
- * @param {{ act:(sim:SimWorld, phase:'betweenWaves'|'inWave')=>void }} [opts.bot]
+ * @param {{ act:(sim:Sim, phase:'betweenWaves'|'inWave')=>void }} [opts.bot]
  * @returns {object} metrics
  */
 export function runSim(opts = {}) {

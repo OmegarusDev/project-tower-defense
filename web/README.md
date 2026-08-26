@@ -37,14 +37,17 @@ web/
   css/            # tokens → shell → title → forge → tech → game-hud → meta → editor
   js/
     main.js app.js saveStore.js
-    app/          # run / chrome / input modules (take `app`)
-    ui/           # menu + forge/tech/end screens, bindActions
-    data/         # parts, techTree, campaign
-    sim/          # BoardGrid, AttackPlan, combat, waves, economy
-    balance/      # headless Monte Carlo + greedy bot
-    view/         # palette, board, painters, title, fx
+    app/          # run / chrome / input / ends / forge / tech / undo modules (take `app`)
+    ui/           # menuScreens, forgeScreen, techScreen, endScreens, levelEditor, metaUi
+    ui/next/      # actions (runAction), screens, registry, chrome, modal, stateOf
+    data/         # parts, techTree, campaign, enemies, waveScripts, endlessGrid, rules
+    sim/          # BoardGrid, AttackPlan, rng
+    sim/next/     # state, sim (Sim facade), systems/*, combat/*
+    balance/      # headless runSim + greedyBot + scenarios
+    view/         # palette, drawUtil, prims25, fx, titleView, view25 (camera)
+    view/next/    # boardScene, boardView, enemyVisuals, partVisuals, renderEnemy, renderTower
     audio/        # Web Audio SFX + generative ambient
-    tests/        # node smoke tests
+    tests/        # node smoke tests (run via verify.mjs)
 ```
 
 ## Tests

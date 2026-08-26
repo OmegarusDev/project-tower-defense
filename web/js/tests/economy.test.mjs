@@ -18,7 +18,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-// Wave-clear rewards (bonusCoin = 2nd arg, bonusParts = 3rd, like the oracle)
+// Wave-clear rewards (bonusCoin = 2nd arg, bonusParts = 3rd) — matches the documented wave-clear contract
 {
   const r = (wave, bonusCoin, bonusParts) => {
     const eco = makeEconomy();
