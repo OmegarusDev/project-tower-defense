@@ -281,7 +281,7 @@ export function syncBuildDock(container, state) {
     wallBtn.title = `Wall · ${wallCost} Coin`;
   }
   const slotLine = container.querySelector("#slotline");
-  if (slotLine) slotLine.innerHTML = slotLineHtml(state);
+  if (slotLine) setHtmlIfChanged(slotLine, slotLineHtml(state));
 }
 
 /** Tower/wall card sync (syncTowerOverlay) — DOM sync incl. positioning. */
@@ -342,8 +342,18 @@ export function syncTowerOverlay(container, state) {
 
   const c = state.board.cellScreenCenter(cell.x, cell.y);
   const pad = 8;
-  const w = overlay.offsetWidth || 148;
-  const h = overlay.offsetHeight || 96;
+  // offsetWidth/Height force synchronous layout — only remeasure when the
+  // card's text content (the thing that drives its size) actually changed.
+  const sig = `${meta?.textContent}|${xpEl?.textContent}|${
+    overlay.querySelector('[data-act="sell"]')?.textContent || ""
+  }`;
+  if (overlay._sizeSig !== sig) {
+    overlay._sizeSig = sig;
+    overlay._w = overlay.offsetWidth || 148;
+    overlay._h = overlay.offsetHeight || 96;
+  }
+  const w = overlay._w;
+  const h = overlay._h;
   const appW = state.uiWidth;
   const appH = state.uiHeight;
   let left = c.x;
@@ -363,10 +373,19 @@ export function syncGhostBar(container, state) {
 }
 
 /** Full HUD sync (mirror of refreshHud) — DOM sync over the mounted chrome. */
+function setHtmlIfChanged(el, html) {
+  // Per-frame callers rebuild these strings constantly; skipping identical
+  // writes avoids HTML reparse + node churn + layout on every tick.
+  if (el._lastHtml !== html) {
+    el._lastHtml = html;
+    el.innerHTML = html;
+  }
+}
+
 export function syncHud(container, state) {
   const chips = container.querySelector("#statChips");
   if (!chips) return;
-  chips.innerHTML = statChipsHtml(state);
+  setHtmlIfChanged(chips, statChipsHtml(state));
   syncWaveAndStatus(container, state);
   syncBuildDock(container, state);
   syncGhostBar(container, state);

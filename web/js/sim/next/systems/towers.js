@@ -99,6 +99,7 @@ export function tryPlaceTower(state, x, y, slotIndex) {
     aimAngle: -Math.PI / 2,
   };
   state.towers.push(tower);
+  state.towersById.set(tower.id, tower);
   state.grid.setTower(x, y, true);
   state.grid.recompute();
   logAction(state, "place_tower", { x, y, slot: slotIndex });
@@ -116,6 +117,7 @@ export function trySellTower(state, id) {
   state.grid.setBlocked(t.cell.x, t.cell.y, false);
   state.grid.setTower(t.cell.x, t.cell.y, false);
   state.towers.splice(i, 1);
+  state.towersById.delete(t.id);
   state.grid.recompute();
   logAction(state, "sell_tower", { id });
   emit(state, "tower_sold", { id, refund });

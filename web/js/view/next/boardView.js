@@ -61,6 +61,10 @@ export class BoardView {
     this._hasHandTower = false;
     this._wallPreview = null;
     this.recoil = new Map();
+    // Per-frame scratch buffers (painter's-order sorts) + cached DPR.
+    this._scratchTowers = [];
+    this._scratchEnemies = [];
+    this._dprCache = null;
     this.atmosphereId = "default";
     this._handOffT = 0;
     this._themePulse = 0;
@@ -111,6 +115,15 @@ export class BoardView {
     this._themePulse = 0;
     this.palette?.setAtmosphere?.(this.atmosphereId);
     this._staticDirty = true;
+  }
+
+  /** DPR cap — cached; the UA regex ran twice per frame before. */
+  _resolveDpr() {
+    if (this._dprCache == null) {
+      const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+      this._dprCache = Math.min(isMobile ? 1.5 : 2, window.devicePixelRatio || 1);
+    }
+    return this._dprCache;
   }
 
   setSim(sim) {
@@ -256,8 +269,7 @@ export class BoardView {
     const g = this.sim.grid;
     const cssW = this.canvas.clientWidth || 360;
     const cssH = this.canvas.clientHeight || 640;
-    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-    const dpr = Math.min(isMobile ? 1.5 : 2, window.devicePixelRatio || 1);
+    const dpr = this._resolveDpr();
     const key = [
       cssW | 0,
       cssH | 0,
@@ -544,8 +556,7 @@ export class BoardView {
     const g = this.sim.grid;
     const cssW = this.canvas.clientWidth;
     const cssH = this.canvas.clientHeight;
-    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-    const dpr = Math.min(isMobile ? 1.5 : 2, window.devicePixelRatio || 1);
+    const dpr = this._resolveDpr();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssW, cssH);
 
@@ -577,9 +588,17 @@ export class BoardView {
     this._drawPortal(g, this.portalAnimator);
     this._emitPortalFx(g);
 
-    const towers = [...this.sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
+    // Painter's-order sort without per-frame array allocation — scratch
+    // buffers are reused; Array#sort runs in place on them.
+    const towers = this._scratchTowers;
+    towers.length = 0;
+    for (const t of this.sim.towers) towers.push(t);
+    towers.sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
     for (const t of towers) this._drawTower(t);
-    const enemies = [...this.sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
+    const enemies = this._scratchEnemies;
+    enemies.length = 0;
+    for (const e of this.sim.enemies) enemies.push(e);
+    enemies.sort((a, b) => a.pos.y - b.pos.y);
     for (const e of enemies) this._drawEnemy(e);
     for (const p of this.sim.projectiles) this._drawProjectile(p);
 

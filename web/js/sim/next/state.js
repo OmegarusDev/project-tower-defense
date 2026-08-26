@@ -79,6 +79,9 @@ export function createState(opts = {}) {
     // combat cache
     plans: new Map(),
     altToggle: new Map(),
+    // id -> tower (projectile hits resolve their shooter O(1); maintained by
+    // tryPlaceTower / trySellTower / loadCheckpoint)
+    towersById: new Map(),
     auraApplied: false,
 
     // event bus (thin, same semantics as the oracle)

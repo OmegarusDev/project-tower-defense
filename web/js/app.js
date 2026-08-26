@@ -14,6 +14,13 @@ import { FxSystem } from "./view/fx.js";
 import { SynthBank } from "./audio/synthBank.js";
 import { ScoreEngine } from "./audio/scoreEngine.js";
 import { loadMeta } from "./saveStore.js";
+
+/** Screens that tick/draw the animated title backdrop (allocated once). */
+const META_BACKDROP_SCREENS = new Set([
+  "main", "hub", "campaign", "prep", "settings",
+  "victory", "gameover", "forge", "upgrade",
+]);
+
 import { getCampaignLevel } from "./data/campaign.js";
 import { wireSettings, paintCampaignThumbs } from "./ui/menuScreens.js";
 import { LevelEditor, loadEditorLevels } from "./ui/levelEditor.js";
@@ -124,10 +131,7 @@ export class App {
   }
 
   _metaBackdropScreens() {
-    return new Set([
-      "main", "hub", "campaign", "prep", "settings",
-      "victory", "gameover", "forge", "upgrade",
-    ]);
+    return META_BACKDROP_SCREENS;
   }
 
   tick(dt) {

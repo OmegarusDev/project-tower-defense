@@ -15,6 +15,21 @@ export function invalidatePlans(state) {
   state.plans.clear();
 }
 
+/**
+ * Status payloads are plain two-level objects ({burn:{duration,dps,every}},
+ * {slow:{amount,duration}}, …) — a hand-rolled copy is byte-identical to
+ * structuredClone for these shapes and far cheaper per projectile.
+ */
+function cloneStatus(status) {
+  if (!status) return {};
+  const out = {};
+  for (const k in status) {
+    const v = status[k];
+    out[k] = typeof v === "object" && v !== null ? { ...v } : v;
+  }
+  return out;
+}
+
 export function tickCombat(state) {
   refreshEnemyAuras(state);
   for (const t of state.towers) tickTower(state, t);
@@ -154,7 +169,7 @@ function fireProjectiles(state, t, plan, target) {
       homing: ballistic ? false : plan.homing,
       aoeRadius: plan.aoeRadius,
       aoeFalloff: plan.aoeFalloff,
-      status: structuredClone(plan.status),
+      status: cloneStatus(plan.status),
       chainJumps: plan.chainJumps,
       chainFalloff: plan.chainFalloff,
       chainRange: plan.chainRange,
@@ -300,7 +315,7 @@ function detonateAt(state, p, pos) {
     armorPierce: p.armorPierce || 0,
     emp: !!p.emp,
   };
-  const tower = state.towers.find((t) => t.id === p.towerId);
+  const tower = state.towersById.get(p.towerId) || null;
   if ((plan.aoeRadius || 0) <= 0) return;
   for (const e of state.enemies) {
     if (e.flying && !plan.airCapable) continue;
@@ -337,7 +352,7 @@ export function onHit(state, p, target) {
     armorPierce: p.armorPierce || 0,
     emp: !!p.emp,
   };
-  const tower = state.towers.find((t) => t.id === p.towerId);
+  const tower = state.towersById.get(p.towerId) || null;
   applyHit(state, target, p.damage, plan, tower, { pressure: false });
 
   if (plan.aoeRadius > 0) {
@@ -546,64 +561,68 @@ export function grantXp(state, tower, amount) {
 }
 
 function selectTarget(state, t, plan) {
+  // Fused range + doctrine scan — no candidate array, no filter pass.
+  // Iteration order (state.enemies) and strict-`>` tie-breaking are identical
+  // to the previous two-pass version, so the winner is byte-for-byte the
+  // same; parity traces depend on it.
   const doctrine = plan.doctrine || PARTS.bases[t.base]?.doctrine || "first";
-  const candidates = targetsInRange(state, t, plan);
-  if (!candidates.length) return null;
-  if (doctrine === "flying") {
-    const air = candidates.filter((e) => e.flying);
-    return bestByDoctrine(state, air.length ? air : candidates, t, "first");
-  }
-  return bestByDoctrine(state, candidates, t, doctrine);
-}
-
-function targetsInRange(state, t, plan) {
   const ox = t.cell.x + 0.5;
   const oy = t.cell.y + 0.5;
-  const out = [];
+  let best = null;
+  let bestScore = -Infinity;
+  let bestAir = null;
+  let bestAirScore = -Infinity;
   for (const e of state.enemies) {
     if (e.hp <= 0) continue;
     if (e.flying && !plan.airCapable) continue;
     const dist = Math.hypot(e.pos.x - ox, e.pos.y - oy);
     if (dist > plan.rangeCells) continue;
-    out.push(e);
-  }
-  return out;
-}
-
-function bestByDoctrine(state, list, t, doctrine) {
-  const ox = t.cell.x + 0.5;
-  const oy = t.cell.y + 0.5;
-  let best = null;
-  let bestScore = -1e9;
-  for (const e of list) {
-    const dist = Math.hypot(e.pos.x - ox, e.pos.y - oy);
-    let score = 0;
-    switch (doctrine) {
-      case "last":
-        // furthest from exit among path (rear of pack / leak side)
-        score = e.flying
-          ? state.grid.airDist[state.grid.idx(e.cell.x, e.cell.y)]
-          : state.grid.groundDistance(e.cell.x, e.cell.y);
-        break;
-      case "strongest":
-        score = e.hp;
-        break;
-      case "weakest":
-        score = -e.hp;
-        break;
-      case "closest":
-        score = -dist;
-        break;
-      case "first":
-      default:
-        score = e.flying
-          ? -state.grid.airDist[state.grid.idx(e.cell.x, e.cell.y)]
-          : -state.grid.groundDistance(e.cell.x, e.cell.y);
+    if (doctrine === "flying") {
+      if (e.flying) {
+        const s =
+          -state.grid.airDist[state.grid.idx(e.cell.x, e.cell.y)];
+        if (!bestAir || s > bestAirScore) {
+          bestAir = e;
+          bestAirScore = s;
+        }
+      }
+      // Fallback doctrine is "first" over all in-range candidates.
+      const s = e.flying
+        ? -state.grid.airDist[state.grid.idx(e.cell.x, e.cell.y)]
+        : -state.grid.groundDistance(e.cell.x, e.cell.y);
+      if (!best || s > bestScore) {
+        best = e;
+        bestScore = s;
+      }
+    } else {
+      let s = 0;
+      switch (doctrine) {
+        case "last":
+          // furthest from exit among path (rear of pack / leak side)
+          s = e.flying
+            ? state.grid.airDist[state.grid.idx(e.cell.x, e.cell.y)]
+            : state.grid.groundDistance(e.cell.x, e.cell.y);
+          break;
+        case "strongest":
+          s = e.hp;
+          break;
+        case "weakest":
+          s = -e.hp;
+          break;
+        case "closest":
+          s = -dist;
+          break;
+        case "first":
+        default:
+          s = e.flying
+            ? -state.grid.airDist[state.grid.idx(e.cell.x, e.cell.y)]
+            : -state.grid.groundDistance(e.cell.x, e.cell.y);
+      }
+      if (!best || s > bestScore) {
+        best = e;
+        bestScore = s;
+      }
     }
-    if (!best || score > bestScore) {
-      best = e;
-      bestScore = score;
-    }
   }
-  return best;
+  return doctrine === "flying" ? (bestAir || best) : best;
 }

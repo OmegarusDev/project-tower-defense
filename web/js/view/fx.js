@@ -8,6 +8,21 @@ export class FxSystem {
     this.floats = [];
   }
 
+  /** Hard caps — heavy waves could push hundreds of particles per second;
+   *  overflow drops the OLDEST so bursts degrade instead of accumulating. */
+  static MAX_ITEMS = 350;
+  static MAX_FLOATS = 80;
+
+  _pushItem(item) {
+    if (this.items.length >= FxSystem.MAX_ITEMS) this.items.shift();
+    this.items.push(item);
+  }
+
+  _pushFloat(f) {
+    if (this.floats.length >= FxSystem.MAX_FLOATS) this.floats.shift();
+    this.floats.push(f);
+  }
+
   clear() {
     this.items.length = 0;
     this.floats.length = 0;
@@ -23,7 +38,7 @@ export class FxSystem {
     else this._kineticScrap(x, y);
 
     if (type !== "kinetic") {
-      this.items.push({
+      this._pushItem({
         kind: "ring",
         x,
         y,
@@ -39,7 +54,7 @@ export class FxSystem {
   muzzle(x, y, angle, type = "kinetic") {
     const c = Math.cos(angle);
     const s = Math.sin(angle);
-    this.items.push({
+    this._pushItem({
       kind: "flash",
       x: x + c * 0.35,
       y: y + s * 0.35,
@@ -52,7 +67,7 @@ export class FxSystem {
       const spread = (Math.random() - 0.5) * 0.7;
       const a = angle + spread;
       const sp = 1.6 + Math.random() * 1.4;
-      this.items.push({
+      this._pushItem({
         kind: "spark",
         x: x + c * 0.3,
         y: y + s * 0.3,
@@ -68,7 +83,7 @@ export class FxSystem {
 
   damageNumber(x, y, amount, type = "kinetic") {
     if (!(amount > 0)) return;
-    this.floats.push({
+    this._pushFloat({
       x: x + (Math.random() - 0.5) * 0.25,
       y: y - 0.15,
       text: amount >= 10 ? String(Math.round(amount)) : amount.toFixed(1),
@@ -80,7 +95,7 @@ export class FxSystem {
   }
 
   chain(x0, y0, x1, y1) {
-    this.items.push({
+    this._pushItem({
       kind: "bolt",
       x0,
       y0,
@@ -95,7 +110,7 @@ export class FxSystem {
   }
 
   statusPuff(x, y, type) {
-    this.items.push({
+    this._pushItem({
       kind: "puff",
       x: x + (Math.random() - 0.5) * 0.22,
       y: y + (Math.random() - 0.5) * 0.22,
@@ -114,7 +129,7 @@ export class FxSystem {
   death(x, y, kind = "soft", armorKind = "none") {
     const armored = armorKind === "plate" || armorKind === "insulated" || kind === "hauler" || kind === "claim" || kind === "kiln";
     const energy = armorKind === "energy" || kind === "ward_volt";
-    this.items.push({
+    this._pushItem({
       kind: "ring",
       x,
       y,
@@ -128,7 +143,7 @@ export class FxSystem {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
       const sp = 1.1 + Math.random() * (armored || energy ? 2.8 : 1.8);
-      this.items.push({
+      this._pushItem({
         kind: armored ? "scrap" : energy ? "shard" : "spark",
         x,
         y,
@@ -142,7 +157,7 @@ export class FxSystem {
       });
     }
     if (!armored) {
-      this.items.push({
+      this._pushItem({
         kind: "puff",
         x,
         y,
@@ -158,7 +173,7 @@ export class FxSystem {
     const a = Math.random() * Math.PI * 2;
     const sp = 0.25 + Math.random() * 0.55;
     const inward = Math.random() > 0.45;
-    this.items.push({
+    this._pushItem({
       kind: "spark",
       x: x + Math.cos(a) * (inward ? 0.28 : 0.08),
       y: y + Math.sin(a) * (inward ? 0.2 : 0.06),
@@ -175,7 +190,7 @@ export class FxSystem {
     for (let i = 0; i < count; i++) {
       const a = Math.random() * Math.PI * 2;
       const sp = 0.35 + Math.random() * 0.75;
-      this.items.push({
+      this._pushItem({
         kind: "spark",
         x: x + Math.cos(a) * (inward ? 0.22 : 0.04),
         y: y + Math.sin(a) * (inward ? 0.18 : 0.03),
@@ -193,7 +208,7 @@ export class FxSystem {
     for (let i = 0; i < 6; i++) {
       const a = Math.random() * Math.PI * 2;
       const sp = 1.2 + Math.random() * 2.4;
-      this.items.push({
+      this._pushItem({
         kind: "scrap",
         x,
         y,
@@ -212,7 +227,7 @@ export class FxSystem {
     for (let i = 0; i < 9; i++) {
       const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.4;
       const sp = 0.6 + Math.random() * 1.8;
-      this.items.push({
+      this._pushItem({
         kind: "spark",
         x: x + (Math.random() - 0.5) * 0.15,
         y: y + (Math.random() - 0.5) * 0.1,
@@ -229,7 +244,7 @@ export class FxSystem {
   _shockBurst(x, y) {
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2 + Math.random() * 0.4;
-      this.items.push({
+      this._pushItem({
         kind: "bolt",
         x0: x,
         y0: y,
@@ -245,7 +260,7 @@ export class FxSystem {
     for (let i = 0; i < 5; i++) {
       const a = Math.random() * Math.PI * 2;
       const sp = 1.5 + Math.random() * 2;
-      this.items.push({
+      this._pushItem({
         kind: "spark",
         x,
         y,
@@ -263,7 +278,7 @@ export class FxSystem {
     for (let i = 0; i < 7; i++) {
       const a = Math.random() * Math.PI * 2;
       const sp = 0.8 + Math.random() * 1.6;
-      this.items.push({
+      this._pushItem({
         kind: "shard",
         x,
         y,
@@ -280,7 +295,7 @@ export class FxSystem {
 
   _acidDrip(x, y) {
     for (let i = 0; i < 6; i++) {
-      this.items.push({
+      this._pushItem({
         kind: "drip",
         x: x + (Math.random() - 0.5) * 0.2,
         y: y - 0.05,
@@ -297,7 +312,7 @@ export class FxSystem {
   _poisonWisp(x, y) {
     for (let i = 0; i < 6; i++) {
       const a = Math.random() * Math.PI * 2;
-      this.items.push({
+      this._pushItem({
         kind: "puff",
         x: x + Math.cos(a) * 0.1,
         y: y + Math.sin(a) * 0.08,

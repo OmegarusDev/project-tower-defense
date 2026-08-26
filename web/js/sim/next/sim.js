@@ -366,6 +366,7 @@ export class Sim {
     }
     s.towers = blob.towers || [];
     s.walls = blob.walls || [];
+    s.towersById = new Map(s.towers.map((tw) => [tw.id, tw]));
     if (s.grid.towerMask?.length === s.grid.cols * s.grid.rows) {
       s.grid.towerMask.fill(0);
     }
