@@ -167,8 +167,9 @@ do not start the identity pass.
 - **Corpus workflow**: any deliberate change re-captures goldens/traces
   (`--capture` modes) and the diff is REVIEWED, never blind. Screens/
   board artifacts are non-gated capture output (churn expected).
-- **The museum**: `OmegarusDev/project-tower-defense-oracle` + branches
-  `oracle`/`oracle-current` + tag `replica-oracle` — do not touch.
+- **Reference (retired)**: `OmegarusDev/project-tower-defense-oracle` + branches
+  `oracle`/`oracle-current` + tag `replica-oracle` were retired on 2026-08-26; this
+  repo no longer references any external prototype.
 - **Docs hierarchy**: BETA_PLAN.md (this file) → DESIGN.md (identity/UX
   specs) → PLAN.md (architectural phases). Read DESIGN §1-5 before touching
   UI copy or UX.

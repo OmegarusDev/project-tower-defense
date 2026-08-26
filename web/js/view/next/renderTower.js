@@ -1,7 +1,7 @@
 /**
  * Generic tower renderer — interprets partVisuals over the unified two-factor
  * basis (groundBasis / capEllipse / prims25 / hubLiftFor / crownFactorFor).
- * Produces the ORACLE painter's exact pixels (golden-verified); the only
+ * Produces the reference painter's exact pixels (golden-verified); the only
  * per-part knowledge lives in the visual data.
  */
 import { VIEW25, deckRy, groundBasis, capEllipse } from "../view25.js";

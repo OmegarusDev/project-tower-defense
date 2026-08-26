@@ -10,7 +10,6 @@ Design brief for the **web-native** game (no engine, no npm).
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Implemented pipelines (sim / paint / audio) |
 | [LEGACY_NOTES.md](LEGACY_NOTES.md) | Salvaged ideas from removed Godot scaffold |
 
-**Pygame prototype (read-only, other folder):** `/Users/toby/cursorthings/ONGOING/Tower Defense`  
 **This project:** `web/` is the entire product.
 
 ```bash

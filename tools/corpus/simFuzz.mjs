@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Random-action sim fuzz — drives the oracle and next sims with IDENTICAL
+ * Random-action sim fuzz — drives the reference and next sims with IDENTICAL
  * seeded action streams (place/sell walls & towers, level branches, wave
  * calls with random timing) and asserts identical state hashes, event
  * streams and action results at every checkpoint. Never diverges: that's

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Render parity — the NEW data-driven renderer vs the oracle goldens.
+ * Render parity — the NEW data-driven renderer vs the reference goldens.
  * Renders the sentry x single x kinetic tiles at pitches 24 and 58 (the
  * proof subset) and requires byte-identical pixels with the committed
  * goldens. Same canvas geometry as the gallery capture (200px tiles,

@@ -31,15 +31,16 @@ Phase 6 ✓ (swap) · Oracle-free ✓. All acceptance criteria met.
 7. **Discipline** — mechanical ports, draw-order preservation, NO opportunistic fixes
    (log them; apply deliberately post-parity).
 
-## Oracle protection
+## Reference (retired)
 
-- Tag `replica-oracle` + branch `oracle` (force-push blocked, deletions blocked, PR review
-  required, admins enforced) — the frozen reference.
+- The original prototype (`OmegarusDev/project-tower-defense-oracle`) and its `oracle`/
+  `oracle-current` branches + `replica-oracle` tag were **retired on 2026-08-26**. This
+  repository is now the sole, definitive source of truth and references no external repo.
 - The live GitHub Pages game deploys `web/` only; the port was built additively in
    `web/js/sim/next/` and `web/js/view/next/` (unreachable from the app) and Phase 6 flipped
    the entry point to it.
-- `git diff replica-oracle main -- web/` showed ONLY additions under `sim/next`, `view/next`
-   and tooling prior to the swap.
+- `git diff replica-oracle main -- web/` (historical) showed ONLY additions under `sim/next`,
+   `view/next` and tooling prior to the swap.
 
 ## The new sim architecture (`web/js/sim/next/`)
 
@@ -122,11 +123,10 @@ tolerance (render). The live game is the new implementation throughout.
 - **Oracle-free (done):** nothing imports the oracle anymore — the live game,
   the unit tests, the balance tooling and every gate run on the next
   implementation. The oracle is COMPLETELY OUT of the game's codebase: the
-  original implementation lives in the museum repository
-  `OmegarusDev/project-tower-defense-oracle` (browseable, never runs), and the
-  pre-swap snapshots are preserved in this repo's git refs — branch `oracle`
-  (original snapshot), branch `oracle-current` + tag `replica-oracle`
-  (pre-swap main, all gates green). Gates are now corpus/golden-based: simParity (committed
+   original implementation lived in the museum repository
+   `OmegarusDev/project-tower-defense-oracle` (browseable, never runs). Its
+   `oracle`/`oracle-current` branches + `replica-oracle` tag were retired on
+   2026-08-26; this repo no longer preserves or references them. Gates are now corpus/golden-based: simParity (committed
   traces), ladderParity (committed baselines), simFuzz (robustness +
   determinism), boardParity (committed goldens), ui/chrome/actions (committed
   goldens), renderParity (committed goldens), smokeWalk (live app). The sim

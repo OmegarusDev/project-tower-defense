@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Ladder + campaign + checkpoint regression — the aggregate gates against
- * committed goldens (captured from the oracle-verified next sim; refresh
+ * committed goldens (captured from the reference-verified next sim; refresh
  * with --capture when the game deliberately changes).
  *
  *  LADDER:    runSim (the real balance harness) across presets x seeds;

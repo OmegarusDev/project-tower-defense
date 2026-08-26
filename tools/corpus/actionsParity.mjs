@@ -2,7 +2,7 @@
 /**
  * Actions dispatch regression — runAction's call traces vs committed
  * goldens over the full act vocabulary × 5 state variants (--capture to
- * refresh). The trace format is the SAME the oracle-vs-next gate used.
+ * refresh). The trace format is the SAME the reference-vs-next gate used.
  *
  *   node tools/corpus/actionsParity.mjs [--capture]
  */

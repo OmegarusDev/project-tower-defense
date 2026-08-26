@@ -99,11 +99,11 @@
       checkpoint: null,
     };
     const nextHtml = NEXT[name](state);
-    const oracleHtml = app.ui.innerHTML;
+    const referenceHtml = app.ui.innerHTML;
     const nextBox = document.createElement("div");
     nextBox.innerHTML = nextHtml;
     if (name === "forge") {
-      // Mirror the oracle's post-mount paintForgePreview resize (css 112, dpr 1)
+      // Mirror the reference's post-mount paintForgePreview resize (css 112, dpr 1)
       const cv = nextBox.querySelector("#forgePreview");
       if (cv) {
         cv.width = 112;
@@ -112,9 +112,9 @@
     }
     const nextNorm = nextBox.innerHTML;
     return {
-      oracle: oracleHtml,
+      reference: referenceHtml,
       next: nextNorm,
-      match: oracleHtml === nextNorm,
+      match: referenceHtml === nextNorm,
       screenHtml: app.ui.querySelector(".screen")?.outerHTML || "",
     };
   };

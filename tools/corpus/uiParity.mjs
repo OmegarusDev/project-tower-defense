@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * UI (meta screens) regression — the pure screen renderers vs committed
- * golden HTML (the corpus becomes the oracle post-swap; re-capture with
+ * golden HTML (the corpus becomes the reference post-swap; re-capture with
  * --capture when screens deliberately change). Frozen time + seeded RNG,
  * fresh meta.
  *

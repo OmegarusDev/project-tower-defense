@@ -70,6 +70,18 @@ jobs:
             echo "docs reference deleted identifiers (bindActions/simWorld)" && exit 1
           fi
 
+      - name: No oracle/pygame references (severed)
+        run: |
+          # This repo is the sole source of truth; the original prototype/oracle
+          # and Pygame references are retired. Fail if any remain in living code/docs.
+          hits=$(grep -rnEi --exclude-dir=history --exclude-dir=node_modules \
+            'oracle|pygame|cursorthings|project-tower-defense-oracle' \
+            docs/ web/ tools/ AGENTS.md README.md PLAY.md 2>/dev/null || true)
+          if [ -n "$hits" ]; then
+            echo "$hits"
+            echo "oracle/pygame/cursorthings reference found — must be severed" && exit 1
+          fi
+
       - name: Sim parity (bot ladder traces)
         run: node tools/corpus/simParity.mjs
 

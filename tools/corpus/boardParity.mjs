@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Board scene regression — the next board renderers vs committed goldens
- * (--capture to refresh; goldens were captured from oracle-verified output).
+ * (--capture to refresh; goldens were captured from reference-verified output).
  * Frozen time + seeded RNG.
  *
  *   node tools/corpus/boardParity.mjs [--capture]

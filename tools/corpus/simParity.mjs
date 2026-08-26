@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Sim regression — the next Sim vs the committed behavioral corpus
- * (sim-traces.json, originally captured from the oracle: same seeds, same
+ * (sim-traces.json, originally captured from the reference: same seeds, same
  * greedy-bot actions, full event streams + rounded state hashes). Regenerate
  * the corpus with simTrace.mjs when the game deliberately changes.
  *

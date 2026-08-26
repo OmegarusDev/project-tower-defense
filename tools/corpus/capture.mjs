@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Render + DOM corpus capture (oracle). Uses headless chromium with FROZEN
+ * Render + DOM corpus capture (reference). Uses headless chromium with FROZEN
  * performance.now (cosmetic animations pin to one phase) and a SEEDED
  * Math.random (motes/stains reproducible) so the same conditions can be
  * reproduced exactly against the ported build.

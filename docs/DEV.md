@@ -58,9 +58,9 @@ gates green. This safety net is what makes maintenance safe — do not weaken it
 
 - Keep the `v0-pre-rebuild-baseline` tag and `baseline-archive` branch intact
   (historical snapshots).
-- The external reference repo (`OmegarusDev/project-tower-defense-oracle`) and its
-  preserved branches/tags (`oracle`, `oracle-current`, `replica-oracle`) are sacred
-  — never modify or delete.
+- The repository is self-contained: no external prototype or reference repo is
+  referenced. The legacy prototype branches/tags were retired (2026-08-26) when
+  this repo became the sole source of truth.
 - Planning docs (`PORT_PLAN.md`, `PLAN.md`, `BETA_PLAN.md`) live under
   `docs/history/` and are historical; `AGENTS.md` + `docs/GDD.md` +
   `docs/ARCHITECTURE.md` are the canonical living docs.

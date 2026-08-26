@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Sim trace corpus — the oracle's behavioral fingerprint.
+ * Sim trace corpus — the reference's behavioral fingerprint.
  * For each (preset × seed): drives the run with the greedy bot and records
  * the full event stream plus a rounded state hash. The parity runner later
  * replays the same seeds/actions against the ported sim and requires an

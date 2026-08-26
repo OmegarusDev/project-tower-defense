@@ -11,7 +11,7 @@ You are building **Project Tower Defense** — vanilla web only (`web/`).
 
 ## Sacred rules
 
-1. Do **not** modify or delete `/Users/toby/cursorthings/ONGOING/Tower Defense` (Pygame prototype — reference only).
+1. This repository (`web/`) is the single, definitive source of truth for the game. No external prototype or reference repository is required or referenced. This codebase may itself serve as the reference prototype for any future greenfield rebuild.
 2. All game code lives under `web/`. No Godot, no npm, no bundler, no frameworks.
 3. Zero external art/SFX packs. Code-generated graphics; bake SFX at boot. Music is stubbed until a later ambient pass.
 4. Portrait-first, adaptive UI. Offline. Local saves. English only.
