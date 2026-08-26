@@ -1,12 +1,13 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { saveMeta, saveEndless } from "../saveStore.js";
+import { RULES } from "../data/rules.js";
 import { confirmSheet } from "../ui/next/modal.js";
 import { pauseSheetHtml as renderPauseSheetHtml } from "../ui/next/chrome.js";
 import { pauseState } from "../ui/next/stateOf.js";
 
 /** Persist camera pitch from Settings or the in-game slider. */
 export function applyPitch(app, deg, { save = true } = {}) {
-  const v = Math.max(8, Math.min(58, Number(deg) || 24));
+  const v = Math.max(RULES.PITCH_MIN, Math.min(RULES.PITCH_MAX, Number(deg) || RULES.PITCH_DEFAULT));
   app.meta.settings = app.meta.settings || {};
   app.meta.settings.cameraPitch = Math.round(v);
   app.board.setPitchDeg(v);

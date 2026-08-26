@@ -28,7 +28,7 @@ import { mountScreen } from "./ui/next/registry.js";
 import { screenState, chromeState } from "./ui/next/stateOf.js";
 import { syncTowerOverlay, syncWaveAndStatus } from "./ui/next/chrome.js";
 import { paintLevelThumb } from "./ui/metaUi.js";
-import { handleUiAction } from "./ui/bindActions.js";
+import { runAction } from "./ui/next/actions.js";
 import * as ends from "./ui/endScreens.js";
 import * as forge from "./ui/forgeScreen.js";
 import * as tech from "./ui/techScreen.js";
@@ -290,7 +290,7 @@ export class App {
     this.ui.addEventListener("click", (ev) => {
       const el = ev.target.closest?.("[data-act]");
       if (!el || !this.ui.contains(el)) return;
-      handleUiAction(this, el.getAttribute("data-act"), ev);
+      runAction(this, el.getAttribute("data-act"), ev);
     });
   }
 
@@ -358,7 +358,7 @@ export class App {
 
   backScreen() {
     const x = this.ui.querySelector(".x-close");
-    if (x) handleUiAction(this, x.getAttribute("data-act"));
+    if (x) runAction(this, x.getAttribute("data-act"));
   }
 
   // Delegates keep App method names for data-act / hotkeys / cross-module app.* calls

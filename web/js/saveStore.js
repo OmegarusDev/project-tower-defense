@@ -7,6 +7,7 @@ import {
   MIN_ROSTER_SLOTS,
   MAX_ROSTER_SLOTS,
 } from "./data/parts.js";
+import { RULES } from "./data/rules.js";
 import {
   migrateTechRanks,
   syncTechDerived,
@@ -15,8 +16,8 @@ import {
   MAX_LEVEL_CAP,
 } from "./data/techTree.js";
 
-const META_KEY = "ptd_meta_v1";
-const ENDLESS_KEY = "ptd_endless_v1";
+export const META_KEY = "ptd_meta_v1";
+export const ENDLESS_KEY = "ptd_endless_v1";
 /** Bump on schema changes; normalizeMeta migrates older saves forward. */
 const META_VERSION = 1;
 
@@ -101,8 +102,8 @@ function clampAndDerive(draft, m, owned) {
 
 function clampPitch(v) {
   const n = Number(v);
-  if (!Number.isFinite(n)) return 24;
-  return Math.max(8, Math.min(58, n));
+  if (!Number.isFinite(n)) return RULES.PITCH_DEFAULT;
+  return Math.max(RULES.PITCH_MIN, Math.min(RULES.PITCH_MAX, n));
 }
 
 function clampVol(v) {
@@ -166,7 +167,18 @@ function normalizeDev(raw) {
 }
 
 export function saveMeta(meta) {
-  localStorage.setItem(META_KEY, JSON.stringify(normalizeMeta(meta)));
+  setItemGuarded(META_KEY, JSON.stringify(normalizeMeta(meta)));
+}
+
+/** localStorage.setItem that never throws mid-gameplay (quota/private mode). */
+function setItemGuarded(key, json) {
+  try {
+    localStorage.setItem(key, json);
+    return true;
+  } catch (err) {
+    console.warn(`[saves] write failed for ${key}:`, err?.name || err);
+    return false;
+  }
 }
 
 export function hasEndless() {
@@ -174,17 +186,82 @@ export function hasEndless() {
 }
 
 export function saveEndless(blob) {
-  localStorage.setItem(ENDLESS_KEY, JSON.stringify(blob));
+  // Versioned envelope — future schema changes migrate off `v`.
+  const stamped = { ...blob, v: ENDLESS_VERSION };
+  if (setItemGuarded(ENDLESS_KEY, JSON.stringify(stamped))) return;
+  // Quota fallback: retry without the replay log (post-continue ghost
+  // replay degrades) rather than losing the whole checkpoint.
+  setItemGuarded(ENDLESS_KEY, JSON.stringify({ ...stamped, actionLog: [] }));
 }
 
 export function loadEndless() {
   try {
-    return JSON.parse(localStorage.getItem(ENDLESS_KEY) || "null");
+    return normalizeEndless(JSON.parse(localStorage.getItem(ENDLESS_KEY) || "null"));
   } catch (_) {
     return null;
   }
 }
 
+const ENDLESS_VERSION = 1;
+
+/**
+ * Boundary validation for checkpoints. sim.loadCheckpoint trusts shapes and
+ * dereferences cell coords — a truncated/corrupted blob used to throw there,
+ * leaving a half-built sim behind the hub screen. Bad ENTRIES are dropped;
+ * only hopeless blobs return null.
+ */
+function normalizeEndless(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const int = (v, lo, hi, dflt) => {
+    const n = Math.trunc(Number(v));
+    return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
+  };
+  const cellOk = (c) =>
+    c && typeof c === "object" &&
+    Number.isFinite(c.x) && Number.isFinite(c.y) &&
+    c.x >= 0 && c.y >= 0;
+
+  const towers = Array.isArray(raw.towers)
+    ? raw.towers.filter(
+        (t) => t && typeof t === "object" && cellOk(t.cell) && typeof t.base === "string"
+      )
+    : [];
+  const walls = Array.isArray(raw.walls)
+    ? raw.walls.filter((w) => w && typeof w === "object" && cellOk(w.cell))
+    : [];
+  // Roster entries go through makeSlot on load — null/garbage would crash it.
+  const roster = Array.isArray(raw.roster)
+    ? raw.roster.filter((s) => s && typeof s === "object")
+    : undefined;
+
+  const cols = int(raw.cols, 5, 40, 11);
+  const rows = int(raw.rows, 5, 40, 14);
+  return {
+    ...(typeof raw === "object" ? raw : {}),
+    v: typeof raw.v === "number" ? raw.v : 0,
+    wave: int(raw.wave, 0, 1e9, 0),
+    phase: raw.phase === "betweenWaves" ? "betweenWaves" : "inWave",
+    earlyBonusWave: int(raw.earlyBonusWave, 0, 1e9, 0),
+    lives: int(raw.lives, 0, 1e6, 3),
+    battle: int(raw.battle, 0, 1e9, 100),
+    forge: int(raw.forge, 0, 1e9, 0),
+    aether: int(raw.aether, 0, 1e9, 0),
+    seed: int(raw.seed, 0, 0xffffffff, 1) >>> 0,
+    runSeed: int(raw.runSeed ?? raw.seed, 0, 0xffffffff, 1) >>> 0,
+    cols,
+    rows,
+    towers,
+    walls,
+    roster,
+    blocked: Array.isArray(raw.blocked) && raw.blocked.length === cols * rows
+      ? raw.blocked
+      : undefined,
+    actionLog: Array.isArray(raw.actionLog) ? raw.actionLog : [],
+  };
+}
+
 export function clearEndless() {
-  localStorage.removeItem(ENDLESS_KEY);
+  try {
+    localStorage.removeItem(ENDLESS_KEY);
+  } catch (_) {}
 }

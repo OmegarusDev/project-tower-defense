@@ -5,7 +5,7 @@ import { renderTowerNext } from "../view/next/renderTower.js";
 import { chromeState } from "../ui/next/stateOf.js";
 import { chromeHtml, composeSheetHtml, syncHud } from "../ui/next/chrome.js";
 import { rosterSlotButtonsHtml } from "../ui/next/screens.js";
-import { applyBtnTextures } from "../ui/next/registry.js";
+import { applyBtnTextures, swapWithExitAnim } from "../ui/next/registry.js";
 
 /** Live place quote for a roster index (game only). */
 export function gameSlotQuote(app, i) {
@@ -51,19 +51,7 @@ export function renderGameChrome(app) {
   if (!app.sim) return;
   const existing = app.ui.firstElementChild;
   const onGame = !!(existing && existing.classList.contains("game-chrome"));
-  if (!onGame && existing && existing.classList.contains("meta-enter")) {
-    existing.classList.remove("meta-enter");
-    existing.classList.add("meta-exit");
-    const onEnd = () => {
-      existing.removeEventListener("animationend", onEnd);
-      _applyChrome(app, true);
-    };
-    existing.addEventListener("animationend", onEnd, { once: true });
-    setTimeout(() => {
-      if (app.ui.firstElementChild === existing) _applyChrome(app, true);
-    }, 250);
-    return;
-  }
+  if (!onGame && swapWithExitAnim(app.ui, () => _applyChrome(app, true))) return;
   _applyChrome(app, !onGame);
 }
 

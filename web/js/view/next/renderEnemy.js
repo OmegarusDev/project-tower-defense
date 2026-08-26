@@ -1,6 +1,6 @@
 /**
  * Generic enemy renderer — interprets ENEMY_VISUALS over the shared 2.5D
- * primitives with the oracle painter's exact wrapper (animation transform,
+ * primitives with a shared wrapper (animation transform,
  * brass rivets, energy veil). Golden-verified per kind.
  */
 import { deckRy } from "../view25.js";

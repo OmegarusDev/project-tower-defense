@@ -2,7 +2,7 @@
  * Save hygiene: normalize/migrate/clamp round-trips (node-safe — no DOM).
  * Run: node js/tests/saveStore.test.mjs
  */
-import { normalizeMeta, saveMeta, loadMeta } from "../saveStore.js";
+import { normalizeMeta, saveMeta, loadMeta, saveEndless, loadEndless } from "../saveStore.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -68,6 +68,56 @@ function assert(cond, msg) {
   assert(loaded.aether === 33 && loaded.forge === 7, "round trip keeps currencies");
   assert(loaded.bestWave === 12, "round trip keeps bestWave");
   assert(loaded.owned.bases.includes("spire"), "round trip keeps owned parts");
+}
+
+// Endless checkpoint envelope: versioning, validation, corruption tolerance
+{
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => store.get(k) ?? null,
+    setItem: (k, v) => store.set(k, String(v)),
+    removeItem: (k) => store.delete(k),
+  };
+
+  saveEndless({ wave: 4, phase: "inWave", towers: [], walls: [], cols: 9, rows: 8 });
+  const good = loadEndless();
+  assert(good.v === 1, "checkpoint stamped with envelope version");
+  assert(good.wave === 4 && good.phase === "inWave", "checkpoint fields round-trip");
+
+  // Corrupted entries are dropped, not fatal
+  store.set(
+    "ptd_endless_v1",
+    JSON.stringify({
+      wave: 6,
+      cols: 9,
+      rows: 8,
+      towers: [
+        { id: 1, cell: { x: 2, y: 3 }, base: "sentry", barrel: "single", payload: "kinetic" },
+        null,
+        { id: 2 },
+        { id: 3, cell: { x: "NaN", y: 1 } },
+      ],
+      walls: [{ id: 9, cell: { x: 1, y: 1 }, paid: 12 }, "junk"],
+      roster: [null, { base: "sentry", barrel: "single", payload: "kinetic" }],
+      blocked: new Array(72).fill(0),
+    })
+  );
+  const fixed = loadEndless();
+  assert(fixed.towers.length === 1, "corrupt tower entries dropped");
+  assert(fixed.walls.length === 1, "corrupt wall entries dropped");
+  assert(fixed.roster.length === 1, "null roster slots dropped");
+  assert(fixed.blocked?.length === 72, "right-length blocked kept");
+  assert(fixed.phase === "inWave", "missing phase defaults inWave");
+
+  // Wrong-length blocked is dropped (loadCheckpoint requires exact match)
+  store.set("ptd_endless_v1", JSON.stringify({ wave: 1, blocked: [0, 1] }));
+  assert(loadEndless().blocked === undefined, "wrong-length blocked dropped");
+
+  // Hopeless garbage → null (never throws)
+  store.set("ptd_endless_v1", "{truncated");
+  assert(loadEndless() === null, "unparseable blob returns null");
+  store.set("ptd_endless_v1", "42");
+  assert(loadEndless() === null, "non-object blob returns null");
 }
 
 // version < current triggers the (no-op) migration path

@@ -1,7 +1,7 @@
 /**
- * Enemy movement system — ported verbatim from SimWorld._tickEnemies and
- * _advance: death/splits/kiln spawns in array order, regen, gliding, leaks,
- * game-over. The iteration order and float sequence are the parity contract.
+ * Enemy movement system — death/splits/kiln spawns in array order, regen,
+ * gliding, leaks, game-over. The iteration order and float sequence are the
+ * parity contract (simParity.mjs).
  */
 import { ballastSlowFactor } from "../../../data/enemies.js";
 import { emit } from "../state.js";
@@ -78,7 +78,7 @@ const PATHING = {
   evade: { avoid: "hard" },
 };
 
-/** Ported verbatim from SimWorld._advance (float sequence is the contract). */
+/** Glide advance — float sequence is the parity contract. */
 function advance(state, e) {
   const slowRaw = Math.min(1, e.slowAmount || 0);
   const slow = Math.min(1, slowRaw * ballastSlowFactor(e.ballast || "mid"));

@@ -190,3 +190,28 @@ function _swap(container, id, state, animate) {
   if (!animate) container.firstElementChild?.classList.remove("meta-enter");
   applyBtnTextures(container);
 }
+
+/**
+ * Meta-screen exit/enter hand-off shared by every screen renderer. If the
+ * current screen is mid-enter-animation, play its exit, then run `apply`
+ * (which mounts the next screen). The 250ms timeout is the animationend
+ * fallback for reduced-motion. Returns true when an exit anim was played.
+ */
+export function swapWithExitAnim(container, apply) {
+  const existing = container.firstElementChild;
+  if (!existing || !existing.classList.contains("meta-enter")) {
+    apply();
+    return false;
+  }
+  existing.classList.remove("meta-enter");
+  existing.classList.add("meta-exit");
+  const onEnd = () => {
+    existing.removeEventListener("animationend", onEnd);
+    apply();
+  };
+  existing.addEventListener("animationend", onEnd, { once: true });
+  setTimeout(() => {
+    if (container.firstElementChild === existing) apply();
+  }, 250);
+  return true;
+}

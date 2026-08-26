@@ -4,6 +4,7 @@ import {
   clearEndless,
 } from "../saveStore.js";
 import { partLabel } from "../data/parts.js";
+import { RULES } from "../data/rules.js";
 import { exportReplayBlob, applyReplayAction } from "../ui/replay.js";
 
 export function onSimEvent(app, e) {
@@ -183,12 +184,12 @@ export function onCampaignVictory(app) {
   }
   app.syncMetaProgress();
   if (first && id > 0) {
-    app.meta.aether = (app.meta.aether | 0) + 8;
+    app.meta.aether = (app.meta.aether | 0) + RULES.FIRST_CLEAR_AETHER;
     app.sim.economy.injectMeta(app.meta.forge, app.meta.aether);
   }
   app.persistMeta();
   app.score.fadeStop(1.5);
-  app.status = first && id > 0 ? "First clear · +8 Aether" : "Level cleared";
+  app.status = first && id > 0 ? `First clear · +${RULES.FIRST_CLEAR_AETHER} Aether` : "Level cleared";
   app.showVictory({ firstClear: first && id > 0 });
   
 }
@@ -209,7 +210,7 @@ export function callEarly(app) {
   }
   app.clearPlaceConfirm();
   app.paused = false;
-  const earlyBonus = 4 + Math.floor(app.sim.waveIndex * 0.5);
+  const earlyBonus = RULES.CALL_EARLY_BASE + Math.floor(app.sim.waveIndex * RULES.CALL_EARLY_PER_WAVE);
   const res = app.sim.startWave({ earlyBonus });
   app.synth.play("wave");
   app.score.setWave(app.sim.waveIndex);

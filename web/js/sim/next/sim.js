@@ -1,7 +1,6 @@
 /**
- * Pure sim facade — mirrors the oracle SimWorld's public surface so the bot,
- * the parity harness, and eventually the app drive it identically. The state
- * stays plain data; systems do the work; this object only adapts.
+ * Sim facade — the app/bot/harness entry point over plain-data state;
+ * systems functions do the work, this class only adapts and guards.
  */
 import { createState, on, emit, logAction } from "./state.js";
 import { BASE_START_LIVES } from "../../data/techTree.js";
@@ -72,8 +71,8 @@ export class Sim {
     this.wavesToWin = 0;
     this.campaignLevelId = 0;
     this.actionLog = [];
-    // Write-through mirrors (exactly like the oracle's single-field world):
-    // the facade's lives/waveIndex/... ARE the internal state's fields.
+    // Write-through property mirrors: the facade's lives/waveIndex/... ARE
+    // the internal state's fields (one source of truth, two spellings).
     const init = {
       lives: this.lives,
       startLives: this.startLives,

@@ -1,6 +1,6 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { ENDLESS_GRID } from "../data/endlessGrid.js";
-import { Sim as SimWorld } from "../sim/next/sim.js"; // swapped: next facade (SimWorld alias kept for call-site parity)
+import { Sim } from "../sim/next/sim.js";
 import { confirmSheet } from "../ui/next/modal.js";
 import { BASE_START_CASH } from "../data/techTree.js";
 import {
@@ -34,7 +34,7 @@ export function newRun(app, seed, { skipConfirm = false } = {}) {
 function startNewRun(app, seed) {
   clearEndless();
   const runSeed = (seed >>> 0) || ((Math.random() * 0xffffffff) | 1);
-  app.sim = new SimWorld();
+  app.sim = new Sim();
   app.sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, runSeed, true);
   app.sim.runSeed = runSeed;
   app._applyRunTech(app.sim, { battleBase: BASE_START_CASH });
@@ -64,7 +64,7 @@ app.wireSim();
 export function continueRun(app) {
   const blob = loadEndless();
   if (!blob) return app.showEndlessHub();
-  app.sim = new SimWorld();
+  app.sim = new Sim();
   app.sim.loadCheckpoint(blob);
   const savedWave = blob.wave | 0;
   const phase = blob.phase === "betweenWaves" ? "betweenWaves" : "inWave";
@@ -129,7 +129,7 @@ export function playtestEditorLevel(app, lv) {
 }
 
 function bootLevel(app, lv) {
-  app.sim = new SimWorld();
+  app.sim = new Sim();
   app.sim.setup(lv.cols, lv.rows, lv.seed || 1, false);
   app.sim.runSeed = (lv.seed || 1) >>> 0;
   app.sim.campaignLevelId = lv.id || 0;

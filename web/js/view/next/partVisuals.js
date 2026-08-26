@@ -3,7 +3,7 @@
  * look as primitives; renderTower.js instantiates them over the unified
  * two-factor basis. Adding a part = adding data, never painter code.
  *
- * Conventions (matching the oracle painter EXACTLY):
+ * Conventions (shared across tower/enemy painters):
  *  - base positions: y = the vz factor above the deck line (deckY - vz(s, y))
  *  - x = fraction of the part scale s (× s), centered at cx
  *  - colors name material slots resolved from matsFrom(palette color):

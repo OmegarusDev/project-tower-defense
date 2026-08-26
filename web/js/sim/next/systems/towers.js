@@ -1,6 +1,6 @@
 /**
  * Towers & walls — placement, sell, branch picks, stall guard, preWalls.
- * Ported verbatim from SimWorld; the tower object shape is identical.
+ * The tower object shape is save-format: loadCheckpoint rebuilds from it.
  */
 import { XP_TO_POINT } from "../../../data/parts.js";
 import { INF } from "../../boardGrid.js";

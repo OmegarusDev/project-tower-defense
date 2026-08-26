@@ -1,9 +1,8 @@
 /**
- * Status registry — the four statuses are data instances of two shared
- * shapes (dot = damage-over-time, timed = decaying amount), with identical
- * math to the oracle. Adding a new status = one data entry, not code.
- * Enemy fields keep the oracle's exact names/shape (burnT/burnDps/...),
- * so the state hash and parity are unaffected.
+ * Status registry — statuses are data instances of two shared shapes
+ * (dot = damage-over-time, timed = decaying amount). Adding a status =
+ * one data entry, not code. Enemy field names (burnT/burnDps/...) are
+ * part of the state-hash contract — renaming breaks parity traces.
  */
 import { emit } from "../state.js";
 import { SYNERGIES, burnTickDamped } from "./synergy.js";
@@ -13,7 +12,7 @@ export const STATUSES = {
     kind: "dot",
     fxType: "fire",
     fxEvery: 0.12,
-    /** Per-tick multiplier — the oracle's fire rules (soft bonus, plate block). */
+    /** Per-tick multiplier — soft bonus, plate block. */
     tickMult(e, tick) {
       const kind = e.armorKind || "none";
       if (kind === "none") return tick * 1.35;
@@ -56,7 +55,7 @@ const DPS_FIELD = { burn: "burnDps", poison: "poisonDps" };
 const EVERY_FIELD = { burn: "burnEvery", poison: "poisonEvery" };
 const ACC_FIELD = { burn: "burnAcc", poison: "poisonAcc" };
 
-/** Ported verbatim from the oracle's _applyStatus — write order preserved. */
+/** Apply order is the parity contract — do not reorder the kind checks. */
 export function applyStatus(state, e, status) {
   if (status.burn) dotApply(e, "burn", status.burn);
   if (status.poison) dotApply(e, "poison", status.poison);
@@ -77,7 +76,7 @@ function timedApply(e, kind, def) {
   else e[meta.amountField] = Math.max(e[meta.amountField] || 0, def.amount || 0);
 }
 
-/** Ported verbatim from the oracle's _tickStatus — same order, same floats. */
+/** Tick order + float sequence are the parity contract — do not reorder. */
 export function tickStatus(state) {
   const dt = state.dt;
   for (const e of state.enemies) {

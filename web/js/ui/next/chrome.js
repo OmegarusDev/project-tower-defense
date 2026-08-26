@@ -1,8 +1,7 @@
 /**
- * Game chrome — the HUD as pure renderers + transcribed sync mutations,
- * mirroring gameChrome.js / pauseSettings.js EXACTLY. chromeHtml + the
+ * Game chrome — HUD templates + DOM sync functions. chromeHtml + the
  * sync helpers take a plain state; the chrome parity gate compares the
- * full mounted+synced DOM byte-identically against the oracle.
+ * full mounted+synced DOM byte-identically against the chrome golden gate.
  */
 import {
   makeSlot,

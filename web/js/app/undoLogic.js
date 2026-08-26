@@ -1,3 +1,5 @@
+import { RULES } from "../data/rules.js";
+
 /**
  * Undo logic — PURE sim mutations over (sim, stack, entry). No app, no DOM,
  * no synth, no toasts. Each op returns { ok, msg? } and performs the sim
@@ -82,5 +84,5 @@ export function undoStep(sim, stack) {
 
 export function pushUndoEntry(stack, entry) {
   stack.push(entry);
-  if (stack.length > 24) stack.shift();
+  if (stack.length > RULES.UNDO_STACK_CAP) stack.shift();
 }

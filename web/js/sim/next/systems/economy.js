@@ -1,6 +1,6 @@
 /**
- * Economy — ported verbatim from the oracle's Economy class, as methods on
- * the state's plain economy object. Same math, same rounding, same order.
+ * Economy — math/rounding helpers over the state's plain economy object.
+ * Rounding mode and operation order are pinned by unit tests.
  */
 
 export function makeEconomy(battle = 0) {
@@ -65,7 +65,7 @@ export function addBattle(eco, n) {
   eco.battle += n;
 }
 
-/** Ported verbatim from Economy.applyWaveClear + waveClearRewards. */
+/** Per-wave-clear payouts (Coin always; Parts every 3rd; Aether every 5th). */
 export function applyWaveClear(eco, wave) {
   const w = Math.max(1, wave | 0);
   const coin = 10 + (w - 1) + (eco.waveCoinBonus | 0);

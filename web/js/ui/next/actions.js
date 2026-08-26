@@ -1,13 +1,25 @@
 /**
- * Action registry — the data-act dispatch as a table, transcribed branch
- * for branch from bindActions.handleUiAction. Order matters (exact matches
- * first, mirrors the oracle's if/else chain). The parity gate
- * (actionsParity.mjs) replays the full act vocabulary through a spy app on
- * both sides and requires identical call traces.
+ * Action registry — the data-act dispatch as a flat table. Order matters:
+ * exact matches (`is`) are checked before prefixed families (`has`), so e.g.
+ * `prep-slot:` must precede any `prep` family it would otherwise shadow.
+ * Params ride the act string as colon-separated args; handlers parse via
+ * tail()/args() — no hardcoded offsets. The parity gate (actionsParity.mjs)
+ * replays the full act vocabulary through a spy app and pins call traces.
  */
 import { loadEditorLevels } from "../levelEditor.js";
 import { MAX_ROSTER_SLOTS } from "../../data/parts.js";
+import { META_KEY, ENDLESS_KEY } from "../../saveStore.js";
 import { confirmSheet, holdConfirmSheet } from "./modal.js";
+
+/** Remainder of an act after its prefix: tail("slot:3", "slot:") → "3". */
+function tail(act, prefix) {
+  return act.slice(prefix.length);
+}
+
+/** Colon-separated args after a prefix: args("buy:barrel:rail", "buy:") → ["barrel","rail"]. */
+function args(act, prefix) {
+  return tail(act, prefix).split(":");
+}
 
 const R = [
   // ---- splash ----
@@ -28,17 +40,17 @@ const R = [
   { is: "editor", run: (app) => app.showEditor() },
 
   // ---- prep ----
-  { has: "prep:", run: (app, act) => app.showPrep(+act.slice(5)) },
+  { has: "prep:", run: (app, act) => app.showPrep(+tail(act, "prep:")) },
   {
     has: "prep-slot:",
     run: (app, act) => {
-      app.prepSlot = +act.slice(10) | 0;
+      app.prepSlot = +tail(act, "prep-slot:") | 0;
       if (app.screen === "prep" && app.prepLevelId) app.showPrep(app.prepLevelId);
     },
   },
   { is: "prep-slot-prev", run: (app) => shiftPrepSlot(app, -1) },
   { is: "prep-slot-next", run: (app) => shiftPrepSlot(app, 1) },
-  { has: "start-level:", run: (app, act) => app.startCampaignLevel(+act.slice(12)) },
+  { has: "start-level:", run: (app, act) => app.startCampaignLevel(+tail(act, "start-level:")) },
 
   // ---- meta reset ----
   {
@@ -53,8 +65,8 @@ const R = [
       }).then((yes) => {
         if (!yes) return;
         try {
-          localStorage.removeItem("ptd_meta_v1");
-          localStorage.removeItem("ptd_endless_v1");
+          localStorage.removeItem(META_KEY);
+          localStorage.removeItem(ENDLESS_KEY);
         } catch (_) {}
         location.reload();
       });
@@ -103,7 +115,7 @@ const R = [
   {
     has: "ed-delete:",
     run: (app, act) => {
-      const i = +act.slice(10) | 0;
+      const i = +tail(act, "ed-delete:") | 0;
       app.editor?.deleteLevel(i);
       app.toast("Saved level removed");
       app.showEditor();
@@ -113,14 +125,14 @@ const R = [
     has: "ed-load:",
     run: (app, act) => {
       const list = loadEditorLevels();
-      const lv = list[+act.slice(8)];
+      const lv = list[+tail(act, "ed-load:")];
       if (lv) app.playtestEditorLevel(lv);
     },
   },
   {
     has: "ed-cell:",
     run: (app, act) => {
-      const [, xs, ys] = act.split(":");
+      const [xs, ys] = args(act, "ed-cell:");
       if (!app.editor.toggle(+xs, +ys)) app.toast("Would seal the path");
       app.showEditor();
     },
@@ -138,7 +150,7 @@ const R = [
   {
     has: "compose-part:",
     run: (app, act) => {
-      const [, kind, id] = act.split(":");
+      const [kind, id] = args(act, "compose-part:");
       app.applyLiveComposePart(kind, id);
     },
   },
@@ -147,7 +159,7 @@ const R = [
   { is: "ghost-replay", run: (app) => app.startGhostReplay() },
   {
     has: "ghost-speed:",
-    run: (app, act) => app.ghostSetSpeed(+act.slice(12)),
+    run: (app, act) => app.ghostSetSpeed(+tail(act, "ghost-speed:")),
   },
   { is: "ghost-skip", run: (app) => app.ghostSkip() },
   { is: "newrun", run: (app) => app.newRun() },
@@ -183,25 +195,25 @@ const R = [
 
   // ---- tech ----
   { is: "tech-close", run: (app) => app.closeTechOverlay() },
-  { has: "tech-tab:", run: (app, act) => app.setTechTreeTab(act.slice(9)) },
-  { has: "tech-select:", run: (app, act) => app.selectTechNode(act.slice(12)) },
+  { has: "tech-tab:", run: (app, act) => app.setTechTreeTab(tail(act, "tech-tab:")) },
+  { has: "tech-select:", run: (app, act) => app.selectTechNode(tail(act, "tech-select:")) },
   {
     has: "tech-unlock-part:",
     run: (app, act) => {
-      const [, kind, id] = act.split(":");
+      const [kind, id] = args(act, "tech-unlock-part:");
       app.unlockPartFromTech(kind, id);
     },
   },
-  { has: "tech-buy:", run: (app, act) => app.buyTechNode(act.slice(9)) },
+  { has: "tech-buy:", run: (app, act) => app.buyTechNode(tail(act, "tech-buy:")) },
 
   // ---- game controls ----
   { is: "pause", run: (app) => app.openPause() },
   { is: "resume", run: (app) => app.resumeGame() },
   { is: "quit-run", run: (app) => app.quitToMenu() },
   { is: "sell", run: (app) => app.sellSelected() },
-  { has: "level-branch:", run: (app, act) => app.chooseLevelBranchSelected(act.slice("level-branch:".length)) },
+  { has: "level-branch:", run: (app, act) => app.chooseLevelBranchSelected(tail(act, "level-branch:")) },
   { is: "undo", run: (app) => app.undoLast() },
-  { has: "speed:", run: (app, act) => app.setSpeed(+act.slice(6)) },
+  { has: "speed:", run: (app, act) => app.setSpeed(+tail(act, "speed:")) },
   {
     is: "tool:wall",
     run: (app) => {
@@ -220,7 +232,7 @@ const R = [
   {
     has: "forge-slot:",
     run: (app, act) => {
-      const i = +act.slice(11);
+      const i = +tail(act, "forge-slot:");
       app.forgeSlot = i;
       app.status = `Editing slot ${i + 1}`;
       app._refreshForgeUi();
@@ -231,21 +243,21 @@ const R = [
   {
     has: "forge-part:",
     run: (app, act) => {
-      const [, kind, id] = act.split(":");
+      const [kind, id] = args(act, "forge-part:");
       app.applyForgePart(kind, id);
     },
   },
   {
     has: "buy:",
     run: (app, act) => {
-      const [, kind, id] = act.split(":");
+      const [kind, id] = args(act, "buy:");
       app.buyPart(kind, id);
     },
   },
   {
     has: "slot-locked:",
     run: (app, act) => {
-      const i = +act.slice(12) | 0;
+      const i = +tail(act, "slot-locked:") | 0;
       if (app.screen === "forge") {
         app.unlockForgeSlot(i);
         return;
@@ -257,7 +269,7 @@ const R = [
   {
     has: "slot:",
     run: (app, act) => {
-      const i = +act.slice(5);
+      const i = +tail(act, "slot:");
       const unlocked = app.meta.slotCount | 0;
       if (!app.sim || i < 0 || i >= unlocked) {
         app.toast(`Unlock Slot ${i + 1} in Tech Tree → Roster`);

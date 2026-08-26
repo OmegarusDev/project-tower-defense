@@ -1,7 +1,7 @@
 /**
- * Combat — ported VERBATIM from the oracle CombatSystem, as pure functions
- * over state. Iteration order, float sequences, plan cache and alt-toggle
- * live on state exactly as the oracle had them.
+ * Combat — pure functions over state. Iteration order, float sequences,
+ * plan cache and alt-toggle live ON STATE: they are the determinism
+ * contract the parity traces pin (simParity.mjs). Do not reorder.
  */
 import { PARTS, XP_TO_POINT } from "../../../data/parts.js";
 import { ballastPressureFactor, isConductive } from "../../../data/enemies.js";

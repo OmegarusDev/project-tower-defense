@@ -94,7 +94,7 @@ function drawGroundShadow(ctx, cx, groundY, s) {
   ctx.fill();
 }
 
-/** Interpret a base's visual list with the oracle painter's exact calls. */
+/** Interpret a base's visual list (call order pinned by render goldens). */
 function drawBaseVisuals(ctx, cx, groundY, s, base, m) {
   const deckY = groundY - vz(s, 0.02);
   const list = BASE_VISUALS[base] || [];
@@ -450,7 +450,7 @@ function tubeBody(ctx, metal, tip, length, th, payload, b, ox, oy) {
   }
 }
 
-/** Rail/flak housing — aim-aligned quads (segQuad port; t is RAW like the oracle). */
+/** Rail/flak housing — aim-aligned quads (t is RAW seconds, unphased). */
 function housingQuad(ctx, b, e, s, metal) {
   const fill = shade(metal, e.shade);
   const dy = e.dy * s;

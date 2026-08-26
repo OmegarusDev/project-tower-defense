@@ -1,6 +1,6 @@
 /**
- * Board scene renderers — the pure drawing half of boardView, transcribed
- * EXACTLY from the oracle (same calls, same order, same constants). All
+ * Board scene renderers — the pure drawing half of boardView (no state,
+ * no input). Same call order and constants as the pixel goldens pin; all
  * functions take (ctx, cam, palette, …) and read the shared camera. The
  * stateful half (input, camera glide, static-layer caching, stains/recoil
  * bookkeeping, fx, shake) stays in BoardView until the Phase 6 swap.

@@ -3,7 +3,7 @@ import { TECH_TREES, getTechNode } from "../data/techTree.js";
 import { techBuyNode, techUnlockPart } from "../app/techLogic.js";
 import { renderTech, techTreeHtml } from "./next/screens.js";
 import { techState } from "./next/stateOf.js";
-import { applyBtnTextures } from "./next/registry.js";
+import { applyBtnTextures, swapWithExitAnim } from "./next/registry.js";
 
 export function showUpgrade(app, returnTo) {
   const wasUpgrade = app.screen === "upgrade";
@@ -22,20 +22,7 @@ export function showUpgrade(app, returnTo) {
   else if (app.upgradeReturn === "prep") backAct = `prep:${app.prepLevelId || 1}`;
   else if (app.upgradeReturn === "forge") backAct = "forge";
   const html = renderTech(techState(app));
-  const existing = app.ui.firstElementChild;
-  if (existing && !wasUpgrade && existing.classList.contains("meta-enter")) {
-    existing.classList.remove("meta-enter");
-    existing.classList.add("meta-exit");
-    const onEnd = () => {
-      existing.removeEventListener("animationend", onEnd);
-      _applyUpgrade(app, html, true, scrollTop);
-    };
-    existing.addEventListener("animationend", onEnd, { once: true });
-    setTimeout(() => {
-      if (app.ui.firstElementChild === existing) _applyUpgrade(app, html, true, scrollTop);
-    }, 250);
-    return;
-  }
+  if (!wasUpgrade && swapWithExitAnim(app.ui, () => _applyUpgrade(app, html, true, scrollTop))) return;
   _applyUpgrade(app, html, !wasUpgrade, scrollTop);
 }
 

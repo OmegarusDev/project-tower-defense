@@ -1,5 +1,6 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { makeSlot, ownsPart, normalizeRoster, normalizeOwned, MAX_ROSTER_SLOTS, PARTS } from "../data/parts.js";
+import { RULES } from "../data/rules.js";
 import {
   forgeApplyPart,
   forgeClearSlot,
@@ -10,7 +11,7 @@ import { renderTowerNext } from "../view/next/renderTower.js";
 import { forgePartGridHtml, forgePreviewCard, forgeUnlockCard } from "./next/screens.js";
 import { renderForge } from "./next/screens.js";
 import { forgeState } from "./next/stateOf.js";
-import { applyBtnTextures } from "./next/registry.js";
+import { applyBtnTextures, swapWithExitAnim } from "./next/registry.js";
 
 /** Patch the open Forge screen without wiping scroll / replaying enter anim. */
 export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true } = {}) {
@@ -58,7 +59,8 @@ export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true 
       wrap.addEventListener("wheel", (e) => {
         if (e.deltaY !== 0) {
           e.preventDefault();
-          const pitch = Math.max(8, Math.min(58, (app.meta.settings?.cameraPitch ?? 24) + e.deltaY * 0.09));
+          const cur = app.meta.settings?.cameraPitch ?? RULES.PITCH_DEFAULT;
+          const pitch = Math.max(RULES.PITCH_MIN, Math.min(RULES.PITCH_MAX, cur + e.deltaY * 0.09));
           app.applyPitch(pitch);
         }
       }, { passive: false });
@@ -95,21 +97,7 @@ export function showForge(app, returnTo) {
   const total = slotCount + (slotCount < MAX_ROSTER_SLOTS ? 1 : 0);
   if ((app.forgeSlot | 0) >= total) app.forgeSlot = 0;
   const html = renderForge(forgeState(app));
-  const existing = app.ui.firstElementChild;
-  if (existing && existing.classList.contains("meta-enter")) {
-    existing.classList.remove("meta-enter");
-    existing.classList.add("meta-exit");
-    const onEnd = () => {
-      existing.removeEventListener("animationend", onEnd);
-      _applyForge(app, html);
-    };
-    existing.addEventListener("animationend", onEnd, { once: true });
-    setTimeout(() => {
-      if (app.ui.firstElementChild === existing) _applyForge(app, html);
-    }, 250);
-    return;
-  }
-  _applyForge(app, html);
+  swapWithExitAnim(app.ui, () => _applyForge(app, html));
 }
 
 function _applyForge(app, html) {

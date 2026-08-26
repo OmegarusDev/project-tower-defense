@@ -1,8 +1,8 @@
 /**
  * Pure sim core — plain state, no classes. Every system is a function over
- * this state; all RNG streams and transient fields live here explicitly, in
- * the exact draw order the oracle uses (parity is byte-exact, not just
- * "seeded the same").
+ * this state; all RNG streams and transient fields live here explicitly.
+ * Draw order across systems is the parity contract (simParity.mjs pins it
+ * byte-exactly, not just "seeded the same").
  */
 import { BoardGrid } from "../boardGrid.js";
 import { mulberry32 } from "../rng.js";
@@ -39,8 +39,8 @@ export function createState(opts = {}) {
     globalMods: { damage: 1, range: 1, rof: 1 },
     runLevelCap: 1,
     earlyBonusWave: 0,
-    // checkpointPhase intentionally undefined until set — the oracle's
-    // checkpoint() treats missing as "inWave" (runSync sets it explicitly).
+    // checkpointPhase intentionally undefined until set — checkpoint()
+    // treats missing as "inWave".
     metaAppliedGains: { parts: 0, aether: 0 },
     _nextId: 1,
 
@@ -54,7 +54,7 @@ export function createState(opts = {}) {
     // economy (plain data — the facade exposes the method view)
     economy: makeEconomy(BASE_START_CASH),
 
-    // action log (event-sourced runs — the oracle's logAction)
+    // action log (event-sourced runs — feeds ghost replays + traces)
     actionLog: [],
 
     // wave manager state (RNG streams live here — draw order is the contract)
@@ -84,7 +84,7 @@ export function createState(opts = {}) {
     towersById: new Map(),
     auraApplied: false,
 
-    // event bus (thin, same semantics as the oracle)
+    // event bus (kind listeners + "*" wildcard)
     _listeners: new Map(),
   };
 }

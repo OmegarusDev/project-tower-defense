@@ -5,6 +5,7 @@
  * Width tapers with depth; row spacing uses the integrated width-scale so far
  * cells read shorter than near ones (same model as the title backdrop).
  */
+import { RULES } from "../data/rules.js";
 
 export const VIEW25 = {
   /**
@@ -38,7 +39,7 @@ export const VIEW25 = {
 };
 
 export function setPitch(deg) {
-  VIEW25.pitchDeg = Math.max(8, Math.min(58, deg));
+  VIEW25.pitchDeg = Math.max(RULES.PITCH_MIN, Math.min(RULES.PITCH_MAX, deg));
   syncCamera();
 }
 

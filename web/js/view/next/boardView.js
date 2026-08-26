@@ -1,8 +1,8 @@
 /**
- * The next BoardView — the oracle class (state, input, camera glide,
- * static-layer caching) with every _draw* method routed through the pure
- * boardScene renderers (view/next/boardScene.js). Golden/parity-verified
- * against the oracle BoardView; this file replaces boardView.js at the swap.
+ * BoardView — canvas host: sim binding, pointer/zoom/pitch input, camera
+ * glide, static-layer caching, painter's-order draw over the pure
+ * boardScene renderers (view/next/boardScene.js). Pixel gates:
+ * renderParity.mjs + boardParity.mjs.
  */
 import { buildAttackPlan, planOptsFromParts } from "../../sim/attackPlan.js";
 import { XP_TO_POINT } from "../../data/parts.js";

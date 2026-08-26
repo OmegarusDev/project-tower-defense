@@ -1,6 +1,6 @@
 /**
- * Enemy visuals — the Cinder silhouettes as data, transcribed EXACTLY
- * from the oracle enemyPainter. yTop = s-factor above cy; alpha may be a
+ * Enemy visuals — the Cinder silhouettes as data. yTop = s-factor above cy;
+ * alpha may be a
  * pure function of the frozen animation phase t.
  */
 

@@ -1,8 +1,7 @@
 /**
- * Wave system — compose, spawn pacing, roaming portal. Mirrors the oracle's
- * operation order EXACTLY: same RNG stream setup per wave, same draw order
- * (compose → portal cycle), same jitter draws after each spawn, same dwell
- * curve. This is the determinism contract — do not reorder.
+ * Wave system — compose, spawn pacing, roaming portal. RNG stream setup
+ * per wave, draw order (compose → portal cycle) and jitter draws after
+ * each spawn are the determinism contract — do not reorder.
  */
 import { ENDLESS_GRID } from "../../../data/endlessGrid.js";
 import { composeEndlessWave, resolveCampaignWave } from "../../../data/waveScripts.js";
@@ -128,7 +127,7 @@ function spawnOne(state) {
   emit(state, "enemy_spawned", { enemy: e });
 }
 
-/** Spawn point — live portal cell with reachability fallback (oracle parity). */
+/** Spawn point — live portal cell with reachability fallback. */
 export function spawnPos(state, kind) {
   const g = state.grid;
   const p = state.portal || { x: g.spawn.x, y: 0 };
@@ -142,7 +141,7 @@ export function spawnPos(state, kind) {
   return { x: g.spawn.x + 0.5, y: 0.5 };
 }
 
-/** Ported verbatim from WaveManager.makeEnemy (HP curve + endless speed ramp). */
+/** Enemy factory — HP curve + endless speed ramp (tunable constants inline, GDD §17). */
 export function makeEnemy(state, kind, wave, opts = {}) {
   const id = resolveEnemyKind(kind);
   const def = enemyDef(id);

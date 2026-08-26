@@ -1,8 +1,8 @@
 /**
  * Screen registry renderers — the meta screens as PURE functions of an
- * explicit state object, transcribed EXACTLY from the oracle modules
+ * explicit state object via the adapters in stateOf.js
  * (menuScreens / endScreens / forgeScreen / techScreen). Each returns the
- * same innerHTML the oracle writes; the DOM parity gate (uiParity.mjs)
+ * rendered HTML is pinned by the DOM golden gate (uiParity.mjs);
  * compares them byte-identically. Pure helpers (threatTagsForLevel,
  * rosterPeekHtml, prepSlotButtonsHtml, partIcons, xClose) are reused as-is
  * — they never touch app.

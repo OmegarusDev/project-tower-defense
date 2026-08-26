@@ -1,7 +1,7 @@
 /**
  * Synergy registry — the game's documented cross-status rules as data.
  * Combat and status systems consult these tables; adding a synergy is a
- * data entry. The predicates/multipliers encode the oracle's exact math.
+ * data entry. The predicates/multipliers are pinned by combatSynergy tests.
  */
 export const SYNERGIES = {
   /** Cooked Toxin — burning targets take +50% poison tick damage. */
