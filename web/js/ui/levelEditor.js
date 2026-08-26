@@ -1,20 +1,8 @@
 import { BoardGrid } from "../sim/boardGrid.js";
 import { mulberry32 } from "../sim/rng.js";
+import { loadEditorLevels, saveEditorLevels } from "../saveStore.js";
 
-const EDITOR_KEY = "ptd_editor_levels_v1";
-
-export function loadEditorLevels() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(EDITOR_KEY) || "[]");
-    return Array.isArray(raw) ? raw : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-function saveEditorLevels(list) {
-  localStorage.setItem(EDITOR_KEY, JSON.stringify(list.slice(0, 24)));
-}
+export { loadEditorLevels, saveEditorLevels };
 
 /** Minimal local level editor state machine. */
 export class LevelEditor {

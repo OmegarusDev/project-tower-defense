@@ -9,17 +9,35 @@ import {
 } from "./data/parts.js";
 import { RULES } from "./data/rules.js";
 import {
-  migrateTechRanks,
   syncTechDerived,
   IRON_GUARD_LIVES,
   MIN_LEVEL_CAP,
   MAX_LEVEL_CAP,
 } from "./data/techTree.js";
+import { migrateTechRanks } from "./saveStore.migrations.js";
+
+// Single import surface for all save migrations (bodies live in their data modules).
+export { migratePartId, migrateTechRanks } from "./saveStore.migrations.js";
 
 export const META_KEY = "ptd_meta_v1";
 export const ENDLESS_KEY = "ptd_endless_v1";
-/** Bump on schema changes; normalizeMeta migrates older saves forward. */
-const META_VERSION = 1;
+export const EDITOR_KEY = "ptd_editor_levels_v1";
+
+/** Schema versions — bump + add a branch in the matching normalize* when a shape changes. */
+export const META_VERSION = 1;
+export const ENDLESS_VERSION = 1;
+export const EDITOR_VERSION = 1;
+
+/**
+ * Persisted save shapes — the contract. Each has a localStorage key, a version,
+ * and a normalizer that validates + forward-migrates. Migrations live in
+ * saveStore.migrations.js; this table is the index.
+ */
+export const SAVE_SHAPES = {
+  meta: { key: META_KEY, version: META_VERSION, normalize: normalizeMeta },
+  endless: { key: ENDLESS_KEY, version: ENDLESS_VERSION, normalize: normalizeEndless },
+  editor: { key: EDITOR_KEY, version: EDITOR_VERSION, normalize: normalizeEditorLevel },
+};
 
 export function loadMeta() {
   let raw = null;
@@ -202,8 +220,6 @@ export function loadEndless() {
   }
 }
 
-const ENDLESS_VERSION = 1;
-
 /**
  * Boundary validation for checkpoints. sim.loadCheckpoint trusts shapes and
  * dereferences cell coords — a truncated/corrupted blob used to throw there,
@@ -264,4 +280,38 @@ export function clearEndless() {
   try {
     localStorage.removeItem(ENDLESS_KEY);
   } catch (_) {}
+}
+
+// --- Editor level persistence (owned here so saveStore is the single source of truth) ---
+
+export function loadEditorLevels() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(EDITOR_KEY) || "[]");
+    const list = Array.isArray(raw) ? raw : [];
+    return list.map(normalizeEditorLevel).filter(Boolean);
+  } catch (_) {
+    return [];
+  }
+}
+
+export function saveEditorLevels(list) {
+  const safe = Array.isArray(list) ? list : [];
+  return setItemGuarded(EDITOR_KEY, JSON.stringify(safe.slice(0, 24).map(stripEditorLevel)));
+}
+
+function normalizeEditorLevel(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  if (typeof raw.name !== "string" || !raw.name) return null;
+  return raw;
+}
+
+function stripEditorLevel(def) {
+  return { ...def, v: EDITOR_VERSION };
+}
+
+/** Single dispatch point for the blob-shaped saves (meta + endless). */
+export function migrateSave(raw, kind) {
+  if (kind === "meta") return normalizeMeta(raw || {});
+  if (kind === "endless") return normalizeEndless(raw);
+  return null;
 }

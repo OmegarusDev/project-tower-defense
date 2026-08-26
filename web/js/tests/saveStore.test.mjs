@@ -2,7 +2,16 @@
  * Save hygiene: normalize/migrate/clamp round-trips (node-safe — no DOM).
  * Run: node js/tests/saveStore.test.mjs
  */
-import { normalizeMeta, saveMeta, loadMeta, saveEndless, loadEndless } from "../saveStore.js";
+import {
+  normalizeMeta,
+  saveMeta,
+  loadMeta,
+  saveEndless,
+  loadEndless,
+  saveEditorLevels,
+  loadEditorLevels,
+  migrateSave,
+} from "../saveStore.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -124,6 +133,49 @@ function assert(cond, msg) {
 {
   const m = normalizeMeta({ version: 0, aether: 5 });
   assert(m.version === 1 && m.aether === 5, "old save migrates forward");
+}
+
+// Legacy tech migration: old node ids → condensed tech ranks (migrateTechRanks)
+{
+  const m = normalizeMeta({
+    levelCap: 5,
+    slotCount: 6,
+    startLives: 9,
+    tech: { shock_edge: 2, cap5: 1, slot6: 1, lives: 2 },
+  });
+  assert(m.tech.shock_power >= 2, "shock_edge → shock_power rank");
+  assert(m.tech.level_cap === 4, "legacy cap5 → level_cap rank 4");
+  assert(m.tech.roster_slots >= 3, "legacy slot6 → roster_slots rank");
+  assert(m.tech.lives >= 1, "legacy lives rank migrated");
+}
+
+// Legacy part-id migration: old payload id normalizes through owned (migratePartId)
+{
+  const m = normalizeMeta({ owned: { bases: ["sentry"], barrels: ["single"], payloads: ["pellet"] } });
+  assert(m.owned.payloads.includes("kinetic"), "legacy payload 'pellet' → 'kinetic'");
+}
+
+// Editor levels round-trip through the saveStore API
+{
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => store.get(k) ?? null,
+    setItem: (k, v) => store.set(k, String(v)),
+    removeItem: (k) => store.delete(k),
+  };
+  saveEditorLevels([{ name: "Yard A", cols: 8, rows: 8 }]);
+  const list = loadEditorLevels();
+  assert(list.length === 1 && list[0].name === "Yard A", "editor level round-trips");
+  assert(list[0].v === 1, "editor level stamped with version");
+}
+
+// migrateSave dispatch routes by kind
+{
+  const meta = migrateSave({ aether: 9 }, "meta");
+  assert(meta && meta.version === 1 && meta.aether === 9, "migrateSave meta");
+  const end = migrateSave({ wave: 3, cols: 9, rows: 8 }, "endless");
+  assert(end && end.wave === 3, "migrateSave endless");
+  assert(migrateSave({}, "nope") === null, "migrateSave unknown kind → null");
 }
 
 console.log("ALL saveStore tests passed");

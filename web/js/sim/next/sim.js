@@ -4,7 +4,8 @@
  */
 import { createState, on, emit, logAction } from "./state.js";
 import { BASE_START_LIVES } from "../../data/techTree.js";
-import { defaultSlots, makeSlot, migratePartId } from "../../data/parts.js";
+import { defaultSlots, makeSlot } from "../../data/parts.js";
+import { migratePartId } from "../../saveStore.migrations.js";
 import { startNextWave, tickWaves } from "./systems/waves.js";
 import { tickCombat, invalidatePlans } from "./systems/combat.js";
 import { tickEnemies } from "./systems/movement.js";
