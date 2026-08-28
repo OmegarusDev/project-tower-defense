@@ -1,8 +1,11 @@
-# Project Tower Defense — Agent Instructions
+# Cursor Prompt — Project Tower Defense
 
-Obey this file and [`docs/GDD.md`](docs/GDD.md). If they conflict, stop and ask.
+> **SUPERSEDED (2026-08-13):** Workflow migrated to opencode. The live brief is
+> [`AGENTS.md`](../AGENTS.md). This file is kept as history.
 
-This is a vanilla web-only project (`web/`). No npm, no bundler, no frameworks.
+**Final implementation brief.** Obey this file and [`GDD.md`](GDD.md). If they conflict, stop and ask.
+
+You are building **Project Tower Defense** — vanilla web only (`web/`).
 
 ---
 
@@ -25,18 +28,16 @@ This is a vanilla web-only project (`web/`). No npm, no bundler, no frameworks.
 ```text
 Project Tower Defense/
   web/           # entire product
-  docs/          # design docs (GDD, ARCHITECTURE, CURSOR_PROMPT, ...)
+  docs/
   PLAY.html      # Pages launcher
   .github/       # Pages deploy
 ```
-
-Design docs: `docs/GDD.md` (spec), `docs/ARCHITECTURE.md` (code), `docs/DEV.md` (process), `docs/DESIGN.md` (identity/copy). Future vision is `docs/SIDEQUEL.md` + `docs/REWRITE_PLAN.md` (both on hold — may become a different game). Prior brief `docs/CURSOR_PROMPT.md` and `docs/history/PLAN.md` threads are superseded (archived).
 
 ---
 
 ## Modes
 
-**Endless:** infinite waves; live compose **without** pausing; wave-start checkpoint (**inWave** Continue = start of that wave) plus **betweenWaves** save on clear/quit-between so Continue keeps the post-clear board; starts 9×8 and grows south every 5 waves (cap 22 rows); pan/scroll the board; pinch to zoom, two-finger vertical drag to tilt (⌘/Ctrl+scroll zoom, Shift+scroll pan, plain scroll pitch on desktop); in-game Pitch slider for foreshortening; base start **3 HP / 50 Coin**; no pre-walls; Forge/Aether meta not mid-run (delta-merge run gains into meta — never clobber vault with stale checkpoint).
+**Endless:** infinite waves; live compose **without** pausing; wave-start checkpoint (**inWave** Continue = start of that wave) plus **betweenWaves** save on clear/quit-between so Continue keeps the post-clear board; starts 9×8 and grows south every 5 waves (cap 22 rows); pan/scroll the board; pinch (or ⌘/Ctrl+scroll) to zoom; in-game Pitch slider for foreshortening; base start **3 HP / 50 Coin**; no pre-walls; Forge/Aether meta not mid-run (delta-merge run gains into meta — never clobber vault with stale checkpoint).
 
 **Campaign:** **shipped slice = 7 linear Act I levels**; future PINNED 5/10/25 × 3 campaigns. Prep = compose+Forge+Aether (untimed); in-level roster frozen (no compose/meta); predefined map seeds + valid pre-walls; victory per level data (waves and/or boss).
 
@@ -52,8 +53,8 @@ Design docs: `docs/GDD.md` (spec), `docs/ARCHITECTURE.md` (code), `docs/DEV.md` 
 | forge | Wave clear; full-campaign bonus | Parts buy/upgrade | Meta |
 | battle | Start grant; enemy drops; Call Early | Place; walls | Run / campaign-level |
 
-Start grant = **Battle only**. Free starter parts: **sentry + single + kinetic** (slot 1 pre-filled).
-Sell tower/wall = Salvager **50%/60%/75%** of **recorded** Battle paid for that instance.
+Start grant = **Battle only**. Free starter parts: **sentry + single + kinetic** (slot 1 pre-filled).  
+Sell tower/wall = Salvager **50%/60%/75%** of **recorded** Battle paid for that instance.  
 **No** Battle spending on tower levels. Call Early Coin is claimed once per wave (checkpointed — no Continue double-dip).
 
 ---
@@ -92,12 +93,13 @@ basic, heavy, fast, flying, shielded, splitter, boss (+ data). Leak by type. For
 
 ---
 
-## Verification
+## Vertical slice done when
 
-Node smoke tests live under `web/js/tests/` — keep them green:
+1. Endless: place wall+tower → Call Early → ground enemy shortest-paths  
+2. Wave checkpoint / Continue works  
+3. Campaign Prep → frozen level → Victory/GO → Prep  
+4. Currencies + starter triad behave per tables  
+5. Node smoke tests under `web/js/tests/` stay green  
+6. Procedural draw + baked UI/SFX clicks (music optional later)  
 
-```bash
-for f in web/js/tests/*.test.mjs; do node "$f"; done
-```
-
-Re-read `docs/GDD.md` before inventing behavior.
+Re-read `GDD.md` before inventing behavior.
