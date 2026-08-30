@@ -566,19 +566,38 @@ export function drawBastion(ctx, cam, palette, grid, cell, t, flinch) {
   ctx.lineWidth = 1;
 }
 
+// Stain sprites: per-damage-type cached radial gradient (32×32), tinted via drawImage + alpha.
+// Avoids createRadialGradient per stain per frame (capped 80, every draw).
+const _stainCache = new Map();
+function _stainSprite(col) {
+  const key = col;
+  if (_stainCache.has(key)) return _stainCache.get(key);
+  const S = 32;
+  const c = document.createElement("canvas");
+  c.width = S; c.height = S;
+  const g = c.getContext("2d");
+  const grad = g.createRadialGradient(S/2, S/2, 0, S/2, S/2, S/2);
+  grad.addColorStop(0, col);
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, S, S);
+  _stainCache.set(key, c);
+  return c;
+}
+
 export function drawStains(ctx, cam, palette, stains, cell) {
   if (!stains.length) return;
   for (const s of stains) {
     const p = cam.project(s.x * cell, s.y * cell);
     const col = palette.dmg(s.type);
     const r = s.r * cell * p.s;
-    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-    g.addColorStop(0, withAlpha(col, s.a));
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(p.x, p.y, r, deckRy(r), 0, 0, Math.PI * 2);
-    ctx.fill();
+    const ry = deckRy(r);
+    const sprite = _stainSprite(col);
+    const a = ctx.globalAlpha;
+    ctx.globalAlpha = a * s.a;
+    // Sprite is 32×32 circle; stretch to ellipse r × ry.
+    ctx.drawImage(sprite, p.x - r, p.y - ry, r * 2, ry * 2);
+    ctx.globalAlpha = a;
   }
 }
 
@@ -1007,10 +1026,14 @@ export function drawProjectile(ctx, cam, palette, p, cell) {
   const type = p.damageType || "kinetic";
   const col = palette.dmg(type);
   const r = (type === "frost" ? 2.6 : type === "fire" ? 3.6 : 3.2) * sp.s;
-  const trail = p._trail || (p._trail = []);
-  trail.push({ x: p.pos.x, y: p.pos.y });
+  // Reuse point objects — no per-frame {x,y} alloc + no per-shift discard.
   const maxTrail = type === "fire" || type === "poison" ? 8 : 6;
-  if (trail.length > maxTrail) trail.shift();
+  const trail = p._trail || (p._trail = []);
+  let pt;
+  if (trail.length >= maxTrail) pt = trail.shift();
+  else { pt = p._trailPool && p._trailPool.pop(); if (!pt) pt = { x: 0, y: 0 }; }
+  pt.x = p.pos.x; pt.y = p.pos.y;
+  trail.push(pt);
   for (let i = 0; i < trail.length - 1; i++) {
     const a = (i + 1) / trail.length;
     const t0 = cam.project(trail[i].x * cell, trail[i].y * cell);

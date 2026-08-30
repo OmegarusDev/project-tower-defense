@@ -395,7 +395,8 @@ export function onHit(state, p, target) {
 
 export function doChain(state, fromEnemy, damage, plan, tower, hit, jumps) {
   let dmg = damage;
-  let from = { ...fromEnemy.pos };
+  let fromX = fromEnemy.pos.x;
+  let fromY = fromEnemy.pos.y;
   let left = jumps;
   // Frost x shock (synergy table): chains leap further from a slowed enemy
   const maxChain =
@@ -410,8 +411,10 @@ export function doChain(state, fromEnemy, damage, plan, tower, hit, jumps) {
       if (e.hp <= 0) continue;
       if (e.flying && !plan.airCapable) continue;
       if (e.armorKind === "insulated") continue;
-      const d = Math.hypot(e.pos.x - from.x, e.pos.y - from.y);
-      if (d > maxChain) continue;
+      const dx = e.pos.x - fromX;
+      const dy = e.pos.y - fromY;
+      if (dx * dx + dy * dy > maxChain * maxChain) continue;
+      const d = Math.hypot(dx, dy);
       // Prefer conductive plate for shock chains
       let score = maxChain - d;
       if (isConductive(e)) score += 1.5;
@@ -423,13 +426,14 @@ export function doChain(state, fromEnemy, damage, plan, tower, hit, jumps) {
     if (!best) break;
     hit.add(best.id);
     emit(state, "chain_arc", {
-      x0: from.x,
-      y0: from.y,
+      x0: fromX,
+      y0: fromY,
       x1: best.pos.x,
       y1: best.pos.y,
     });
     applyHit(state, best, dmg, plan, tower);
-    from = { ...best.pos };
+    fromX = best.pos.x;
+    fromY = best.pos.y;
   }
 }
 

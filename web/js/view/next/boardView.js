@@ -567,13 +567,14 @@ export class BoardView {
     ctx.fillStyle = this.palette.void;
     ctx.fillRect(0, 0, cssW, cssH);
 
-    const shake =
-      this._shakeT > 0
-        ? {
-            x: (Math.random() - 0.5) * this._shakeMag * (this._shakeT / 0.18),
-            y: (Math.random() - 0.5) * this._shakeMag * (this._shakeT / 0.18),
-          }
-        : { x: 0, y: 0 };
+    // Reuse shake scratch — avoids {x,y} alloc every frame.
+    if (!this._shakeScratch) this._shakeScratch = { x: 0, y: 0 };
+    if (this._shakeT > 0) {
+      const s = this._shakeMag * (this._shakeT / 0.18);
+      this._shakeScratch.x = (Math.random() - 0.5) * s;
+      this._shakeScratch.y = (Math.random() - 0.5) * s;
+    } else { this._shakeScratch.x = 0; this._shakeScratch.y = 0; }
+    const shake = this._shakeScratch;
     ctx.save();
     ctx.translate(shake.x, shake.y);
 
@@ -616,7 +617,8 @@ export class BoardView {
     for (const p of this.sim.projectiles) this._drawProjectile(p);
 
     if (this.fx) {
-      this.fx.drawProjected(ctx, this.cam, (type) => this.palette.dmg(type));
+      if (!this._dmgForType) this._dmgForType = (type) => this.palette.dmg(type);
+      this.fx.drawProjected(ctx, this.cam, this._dmgForType);
     }
 
     if (this._ghostPlan) this._drawPlanGhost(this._ghostPlan.plan, this._ghostPlan.cell);

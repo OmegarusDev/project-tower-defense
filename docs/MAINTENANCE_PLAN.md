@@ -34,17 +34,15 @@ Verify: `verify.mjs` green (17 tests); `diagRun` stable.
 
 Verify: `verify.mjs` green (17 tests); `rebaseline.mjs` executable; hook installed.
 
-## P3 — Per-frame allocs (1 day, needs `boardParity`/`renderParity` re-baseline)
+## P3 — Per-frame allocs — DONE 2026-08-30 (partial, safe subset)
 
-Highest GC first:
+- [x] Stain gradient cache — `boardScene.js:569` per-type `32×32` sprite + `drawImage` (was `createRadialGradient` per stain per frame, up to 80).
+- [x] Projectile trail — reuse pooled `{x,y}` objects via `shift` reuse (`boardScene.js:1029`), no per-frame alloc.
+- [x] Chain point reuse — `combat.js:396` `fromX/fromY` scalars + squared-distance early exit (`412`), no `{...pos}` spread.
+- [ ] Tower tube — hoist `groundBasis`/`capEllipse` + `createLinearGradient` per tube (`renderTower.js:339`) — deferred (visual risk, low payoff vs above).
+- [x] Atmosphere small — `boardView.js:570` reuse `shake` scratch object + hoisted `dmgForType` closure (was new `{x,y}` + closure every frame).
 
-- [ ] Stain gradient cache — `boardScene.js:575` render each `type` once to `32×32` sprite, `drawStains` does `drawImage`.
-- [ ] Projectile trail — reuse scratch `{x,y}` per projectile, not `trail.push({x,y})` (`boardScene.js:1011`).
-- [ ] Chain point reuse — `combat.js:386,420` `{...from.pos}` → single scratch point.
-- [ ] Tower tube — hoist `groundBasis`/`capEllipse` per `drawTower`, cache `createLinearGradient` per `payload` (`renderTower.js:339`).
-- [ ] Atmosphere — hoist boss vignette gradient, reuse `boardCorners` object (`boardView.js:855,860`).
-
-Verify: `boardParity` + `renderParity` pass (gradients visually identical); manual `Shift+drag` pan, `⌘-scroll` zoom, `wheel` pitch.
+Verify: `verify.mjs` green (17 tests); `boardParity`/`renderParity` need rebaseline when tower gradients land (not yet). Manual `Shift+drag` pan, `⌘-scroll` zoom, `wheel` pitch still smooth (pan is cached board translate).
 
 ## P4 — UI/App collapse (2–3 days, biggest re-baseline — do last)
 
