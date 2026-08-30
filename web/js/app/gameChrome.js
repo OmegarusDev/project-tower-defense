@@ -71,16 +71,16 @@ function _applyChrome(app, animate) {
 
 export function toggleLiveCompose(app) {
   if (!app.sim?.modeEndless) return;
-  app.liveCompose = !app.liveCompose;
+  app.interaction.liveCompose = !app.interaction.liveCompose;
   renderGameChrome(app);
   
 }
 export function applyLiveComposePart(app, kind, id) {
   if (!app.sim?.modeEndless) return;
   if (!ownsPart(app.meta.owned, kind, id)) return;
-  const s = app.meta.roster[app.slot] || makeSlot("", "", "", app.meta.levelCap);
+  const s = app.meta.roster[app.interaction.slot] || makeSlot("", "", "", app.meta.levelCap);
   s[kind] = id;
-  app.meta.roster[app.slot] = makeSlot(s.base, s.barrel, s.payload, app.meta.levelCap);
+  app.meta.roster[app.interaction.slot] = makeSlot(s.base, s.barrel, s.payload, app.meta.levelCap);
   app.persistMeta();
   app._syncSimFromMeta(app.sim);
   app.synth.play("ui", 1, 0.4);
@@ -94,7 +94,7 @@ export function paintSlotPreviews(app, force = false) {
   // The previews rotate on a slow flourish — repaint at ~10fps, not 60.
   // force (pitch drag) paints immediately for real-time feedback.
   if (!force && (app._previewTick = (app._previewTick | 0) + 1) % 6 !== 0) return;
-  const aim = app.slotPreviewAim || -Math.PI / 2;
+  const aim = app.interaction.slotPreviewAim || -Math.PI / 2;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const css = 40;
   for (let i = 0; i < MAX_ROSTER_SLOTS; i++) {

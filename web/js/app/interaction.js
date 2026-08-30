@@ -6,7 +6,7 @@
  * delegate (place/input/chrome/...). They now live in one object, created here.
  *
  * App re-exposes them as thin getters/setters (see app.js) so delegate code
- * keeps calling `app.tool` / `app.selectedTowerId` unchanged — the state is
+ * keeps calling `app.interaction.tool` / `app.interaction.selectedTowerId` unchanged — the state is
  * extracted without touching every call site.
  */
 export function createInteraction() {

@@ -1,6 +1,11 @@
 /**
- * Thin App orchestrator — class, ctor, start/tick, wireSim, bindUi;
- * screens / run / chrome live in js/app/* and js/ui/*.
+ * App orchestrator — thin, explicit.
+ * Interaction state lives in `this.interaction` (plain object, explicit — no proxy getters).
+ * Dispatch is via `ui/next/actions.js` which calls screens/logic directly;
+ * App owns navigation + tick + wiring. Legacy `app.*` delegates remain as
+ * deprecated compat shims (one-liners forwarding to modules) so existing
+ * callers keep working; new code should call `chrome.*(app)`, `place.*(app)`,
+ * `app.interaction.tool` etc. directly.
  */
 
 import { buildAttackPlan, planOptsFromParts } from "./sim/attackPlan.js";
@@ -30,9 +35,9 @@ import { screenState, chromeState } from "./ui/next/stateOf.js";
 import { syncTowerOverlay, syncWaveAndStatus } from "./ui/next/chrome.js";
 import { paintLevelThumb } from "./ui/metaUi.js";
 import { runAction } from "./ui/next/actions.js";
-import * as ends from "./ui/endScreens.js";
 import * as forge from "./ui/forgeScreen.js";
 import * as tech from "./ui/techScreen.js";
+import * as ends from "./ui/endScreens.js";
 import * as metaSync from "./app/metaSync.js";
 import * as life from "./app/runLifecycle.js";
 import * as bridge from "./app/simBridge.js";
@@ -43,7 +48,7 @@ import * as pause from "./app/pauseSettings.js";
 
 export class App {
   constructor() {
-    this._interaction = createInteraction();
+    this.interaction = createInteraction();
     this.canvas = document.getElementById("game");
     this.ui = document.getElementById("ui");
     this.palette = new ProcPalette();
@@ -82,21 +87,21 @@ export class App {
     this.score.setEnabled(this.meta.settings?.music !== false);
     this.score.setMusicVolume(this.meta.settings?.musicVolume ?? 0.4);
 
-    this.board.onTap = (cell) => this.onCellTap(cell);
+    this.board.onTap = (cell) => place.onCellTap(this, cell);
     this.board.onPanStart = () => {
-      if (this.placeConfirm) this.cancelPlaceConfirm();
+      if (this.interaction.placeConfirm) place.cancelPlaceConfirm(this);
       this.clearHand();
       this.board.hover = null;
       this._syncGhostPlan();
     };
-    this.board.onPitchChange = (deg) => this.applyPitch(deg);
+    this.board.onPitchChange = (deg) => pause.applyPitch(this, deg);
     window.addEventListener("resize", () => this.board._fit(true));
-    window.addEventListener("keydown", (e) => this.onKeyDown(e));
-    window.addEventListener("keyup", (e) => this.onKeyUp(e));
+    window.addEventListener("keydown", (e) => input.onKeyDown(this, e));
+    window.addEventListener("keyup", (e) => input.onKeyUp(this, e));
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         if (this.screen === "game" && this.sim && !this.paused) {
-          this.openPause();
+          pause.openPause(this);
         }
         this.score.stop();
       } else if (this.screen === "game" && this.sim && !this.paused) {
@@ -105,33 +110,12 @@ export class App {
     });
     // Right-click anywhere clears hand
     document.addEventListener("contextmenu", (e) => {
-      if (this.screen === "game" && this._handSlot != null) {
+      if (this.screen === "game" && this.interaction._handSlot != null) {
         e.preventDefault();
         this.clearHand();
       }
     });
   }
-
-  // Interaction/selection state is delegated to this._interaction (app/interaction.js)
-  // so the state lives in one module while delegate code keeps using app.<field>.
-  get tool() { return this._interaction.tool; }
-  set tool(v) { this._interaction.tool = v; }
-  get slot() { return this._interaction.slot; }
-  set slot(v) { this._interaction.slot = v; }
-  get selectedTowerId() { return this._interaction.selectedTowerId; }
-  set selectedTowerId(v) { this._interaction.selectedTowerId = v; }
-  get selectedWallId() { return this._interaction.selectedWallId; }
-  set selectedWallId(v) { this._interaction.selectedWallId = v; }
-  get placeConfirm() { return this._interaction.placeConfirm; }
-  set placeConfirm(v) { this._interaction.placeConfirm = v; }
-  get liveCompose() { return this._interaction.liveCompose; }
-  set liveCompose(v) { this._interaction.liveCompose = v; }
-  get undoStack() { return this._interaction.undoStack; }
-  set undoStack(v) { this._interaction.undoStack = v; }
-  get _handSlot() { return this._interaction._handSlot; }
-  set _handSlot(v) { this._interaction._handSlot = v; }
-  get slotPreviewAim() { return this._interaction.slotPreviewAim; }
-  set slotPreviewAim(v) { this._interaction.slotPreviewAim = v; }
 
   start() {
     this.showSplash();
@@ -156,13 +140,13 @@ export class App {
       this.title.draw();
       if (this.screen === "forge") {
         this.forgeAim += dt * 0.7;
-        this.paintForgePreview();
+        forge.paintForgePreview(this);
       }
       return;
     }
     if (this.screen === "editor") return;
     if (this.screen === "game" && this.sim) {
-      if (this._ghost) this._tickGhost(dt);
+      if (this._ghost) bridge.tickGhost(this, dt);
       if (!this.paused && this.sim.running) {
         this.accum += dt * this.speed;
         const step = 1 / TICK_HZ;
@@ -174,27 +158,25 @@ export class App {
       }
       if (!this.paused) this.fx.tick(dt * this.speed);
       this.score.setPhase(this.sim.checkpointPhase || "betweenWaves");
-      this.board.tool = this.tool;
-      this.board.selectedTowerId = this.selectedTowerId;
+      this.board.tool = this.interaction.tool;
+      this.board.selectedTowerId = this.interaction.selectedTowerId;
       this._syncGhostPlan();
       this._updateHandGhost();
       this._updateWallPreview();
-      // Update portal animator with dt
       if (this.portalAnimator) {
         this.portalAnimator.update(dt);
       }
-      // Pass portal animator to board for portal animation
       this.board.portalAnimator = this.portalAnimator;
       this.board.draw(dt, this.portalAnimator);
-      this.refreshHud();
-      this.slotPreviewAim = (this.slotPreviewAim || 0) + dt * 0.55;
-      this.paintSlotPreviews();
+      chrome.refreshHud(this);
+      this.interaction.slotPreviewAim = (this.interaction.slotPreviewAim || 0) + dt * 0.55;
+      chrome.paintSlotPreviews(this);
     }
   }
 
   _updateHandGhost() {
-    if (this._handSlot != null && this.board && this.sim) {
-      const loadout = this.sim.roster?.[this._handSlot];
+    if (this.interaction._handSlot != null && this.board && this.sim) {
+      const loadout = this.sim.roster?.[this.interaction._handSlot];
       if (loadout?.complete) {
         const hover = this.board.hover;
         if (hover) {
@@ -210,7 +192,7 @@ export class App {
   }
 
   _updateWallPreview() {
-    if (this.tool === "wall" && this.board && this.sim) {
+    if (this.interaction.tool === "wall" && this.board && this.sim) {
       const hover = this.board.hover;
       if (hover && this.sim.grid.inBounds(hover.x, hover.y) && this.sim.grid.isBuildable(hover.x, hover.y)) {
         const wallCost = this.sim.economy.wallCost(this.sim.playerWallCount());
@@ -227,14 +209,12 @@ export class App {
       this.board.setGhostPlan(null);
       return;
     }
-    // Hand has priority — use _handGhost (follows cursor), not _ghostPlan
-    if (this._handSlot != null) {
+    if (this.interaction._handSlot != null) {
       this.board.setGhostPlan(null);
       return;
     }
-    // Selected tower shows ghost at its cell
-    if (this.selectedTowerId >= 0) {
-      const t = this.sim.towers.find((x) => x.id === this.selectedTowerId);
+    if (this.interaction.selectedTowerId >= 0) {
+      const t = this.sim.towers.find((x) => x.id === this.interaction.selectedTowerId);
       if (t) {
         const cell = t.cell;
         const slot = t;
@@ -255,10 +235,10 @@ export class App {
   }
 
   clearHand() {
-    if (this._handSlot != null) {
-      this._handSlot = null;
+    if (this.interaction._handSlot != null) {
+      this.interaction._handSlot = null;
       this.board.setHandGhost(null);
-      this.renderGameChrome();
+      chrome.renderGameChrome(this);
     }
   }
 
@@ -284,13 +264,11 @@ export class App {
   }
 
   wireSim() {
-    this.sim.on("*", (e) => this.onSimEvent(e));
+    this.sim.on("*", (e) => bridge.onSimEvent(this, e));
     this.board.setSim(this.sim);
-    // Hook up portal animator events
     this.sim.on("portal_clump_start", (e) => this.portalAnimator.onClumpStart(e));
     this.sim.on("portal_clump_end", (e) => this.portalAnimator.onClumpEnd(e));
     this.sim.on("portal_move", (e) => this.portalAnimator.onMove(e));
-    // Telegraph: name the target seam column while the portal agitates.
     this.sim.on("portal_unstable", (e) => {
       this.portalAnimator.onUnstable(e);
       if (!this._ghost && Number.isInteger(e.toX)) {
@@ -322,8 +300,8 @@ export class App {
   }
   showCampaign() {
     this.sim = null;
-    this.selectedTowerId = -1;
-    this.selectedWallId = -1;
+    this.interaction.selectedTowerId = -1;
+    this.interaction.selectedWallId = -1;
     this.screen = "campaign";
     this.score?.toMenu();
     mountScreen(this.ui, "campaign", screenState(this));
@@ -376,12 +354,13 @@ export class App {
     if (x) runAction(this, x.getAttribute("data-act"));
   }
 
-  // Delegates keep App method names for data-act / hotkeys / cross-module app.* calls
+  // --- Compat delegates — deprecated, keep for existing callers ---
+  // New code should call `chrome.*(this)`, `place.*(this)`, `forge.*(this)`, etc. directly.
+  // These one-liners remain so `app.refreshHud()` etc. keep working during the transition.
   showEndlessHub() { return ends.showEndlessHub(this); }
   showVictory(o) { return ends.showVictory(this, o); }
   showGameOver() { return ends.showGameOver(this); }
   _applyEndlessBestBonus(p) { return ends.applyEndlessBestBonus(this, p); }
-
   showForge(r) { return forge.showForge(this, r); }
   _refreshForgeUi(o) { return forge.refreshForgeUi(this, o); }
   paintForgePreview() { return forge.paintForgePreview(this); }
@@ -390,14 +369,12 @@ export class App {
   toggleDevMode() { return forge.toggleDevMode(this); }
   unlockForgeSlot(i) { return forge.unlockForgeSlot(this, i); }
   buyPart(k, id, e) { return forge.buyPart(this, k, id, e); }
-
   showUpgrade(r) { return tech.showUpgrade(this, r); }
   setTechTreeTab(id) { return tech.setTechTreeTab(this, id); }
   selectTechNode(id) { return tech.selectTechNode(this, id); }
   closeTechOverlay() { return tech.closeTechOverlay(this); }
   buyTechNode(id) { return tech.buyTechNode(this, id); }
   unlockPartFromTech(k, id) { return tech.unlockPartFromTech(this, k, id); }
-
   persistMeta() { return metaSync.persistMeta(this); }
   _applyRunTech(sim, o) { return metaSync.applyRunTech(this, sim, o); }
   _syncSimFromMeta(sim, o) { return metaSync.syncSimFromMeta(this, sim, o); }
@@ -414,7 +391,6 @@ export class App {
   ghostSetSpeed(n) { return bridge.ghostSetSpeed(this, n); }
   ghostSkip() { return bridge.ghostSkip(this); }
   _tickGhost(dt) { return bridge.tickGhost(this, dt); }
-
   waveBusy() { return chrome.waveBusy(this); }
   renderGameChrome() { return chrome.renderGameChrome(this); }
   toggleLiveCompose() { return chrome.toggleLiveCompose(this); }
@@ -423,7 +399,6 @@ export class App {
   refreshHud() { return chrome.refreshHud(this); }
   _refreshThemeChip(t, e) { return syncWaveAndStatus(this.ui, chromeState(this)); }
   syncTowerOverlay() { return syncTowerOverlay(this.ui, chromeState(this)); }
-
   clearUndoStack() { return place.clearUndoStack(this); }
   pushUndo(e) { return place.pushUndo(this, e); }
   undoLast() { return place.undoLast(this); }
@@ -436,7 +411,6 @@ export class App {
   confirmPlaceTower() { return place.confirmPlaceTower(this); }
   handlePlace(r, l) { return place.handlePlace(this, r, l); }
   sellSelected() { return place.sellSelected(this); }
-
   onKeyDown(e) { return input.onKeyDown(this, e); }
   onKeyUp(e) { return input.onKeyUp(this, e); }
   setSpeed(n) { return input.setSpeed(this, n); }
@@ -444,7 +418,6 @@ export class App {
   _beginFastForward() { return input.beginFastForward(this); }
   _endFastForward() { return input.endFastForward(this); }
   _bindCallButton(btn) { return input.bindCallButton(this, btn); }
-
   applyPitch(d, o) { return pause.applyPitch(this, d, o); }
   openPause() { return pause.openPause(this); }
   resumeGame() { return pause.resumeGame(this); }

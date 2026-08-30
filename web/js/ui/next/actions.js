@@ -146,7 +146,7 @@ const R = [
   {
     is: "compose-close",
     run: (app) => {
-      app.liveCompose = false;
+      app.interaction.liveCompose = false;
       app.renderGameChrome();
     },
   },
@@ -220,10 +220,10 @@ const R = [
   {
     is: "tool:wall",
     run: (app) => {
-      app.tool = "wall";
+      app.interaction.tool = "wall";
       app.clearPlaceConfirm();
-      app.selectedTowerId = -1;
-      app.selectedWallId = -1;
+      app.interaction.selectedTowerId = -1;
+      app.interaction.selectedWallId = -1;
       app.renderGameChrome();
     },
   },
@@ -280,12 +280,12 @@ const R = [
       }
       // Keep sim loadouts aligned with Forge before selecting/placing.
       if ((app.sim.roster?.length | 0) < unlocked) app._syncSimFromMeta(app.sim);
-      app.slot = i;
-      app._handSlot = i; // Put this tower in hand
-      app.tool = "tower";
+      app.interaction.slot = i;
+      app.interaction._handSlot = i; // Put this tower in hand
+      app.interaction.tool = "tower";
       app.clearPlaceConfirm();
-      app.selectedTowerId = -1;
-      app.selectedWallId = -1;
+      app.interaction.selectedTowerId = -1;
+      app.interaction.selectedWallId = -1;
       app.renderGameChrome();
     },
   },

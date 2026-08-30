@@ -2,24 +2,24 @@
 import { undoStep, pushUndoEntry } from "./undoLogic.js";
 
 export function clearUndoStack(app) {
-  app.undoStack = [];
+  app.interaction.undoStack = [];
   
 }
 
 export function pushUndo(app, entry) {
-  pushUndoEntry(app.undoStack, entry);
+  pushUndoEntry(app.interaction.undoStack, entry);
   
 }
 
 export function undoLast(app) {
   if (!app.sim || app.paused) return;
-  const r = undoStep(app.sim, app.undoStack);
+  const r = undoStep(app.sim, app.interaction.undoStack);
   if (!r.ok) {
     app.toast(r.msg || "Nothing to undo");
     return;
   }
-  app.selectedTowerId = -1;
-  app.selectedWallId = -1;
+  app.interaction.selectedTowerId = -1;
+  app.interaction.selectedWallId = -1;
   app.board?.invalidateStatic?.();
   app.toast(r.msg);
   app.refreshHud();
@@ -27,11 +27,11 @@ export function undoLast(app) {
 }
 
 export function chooseLevelBranchSelected(app, branch) {
-  if (!app.sim || app.selectedTowerId < 0) {
+  if (!app.sim || app.interaction.selectedTowerId < 0) {
     app.toast("Select a tower first");
     return;
   }
-  const res = app.sim.tryChooseLevelBranch(app.selectedTowerId, branch);
+  const res = app.sim.tryChooseLevelBranch(app.interaction.selectedTowerId, branch);
   if (!res.ok) {
     const map = {
       no_picks: "No branch picks",
@@ -54,8 +54,8 @@ export function chooseLevelBranchSelected(app, branch) {
 export function onCellTap(app, cell) {
   if (!app.sim) return;
   // If tower in hand, place it
-  if (app._handSlot != null) {
-    const loadout = app.sim.roster?.[app._handSlot];
+  if (app.interaction._handSlot != null) {
+    const loadout = app.sim.roster?.[app.interaction._handSlot];
     if (loadout?.complete && app.sim.grid.isBuildable(cell.x, cell.y)) {
       // Check path
       app.sim.grid.setBlocked(cell.x, cell.y, true);
@@ -67,7 +67,7 @@ export function onCellTap(app, cell) {
       const quote = app.sim.economy.quoteTowerPlace(loadout.placeCost, app.sim.towers.length);
       if (app.sim.economy.battle < quote.total) return app.toast(`Need ${quote.total} Coin`);
       // Place it
-      const res = app.sim.tryPlaceTower(cell.x, cell.y, app._handSlot);
+      const res = app.sim.tryPlaceTower(cell.x, cell.y, app.interaction._handSlot);
       if (res.ok) {
         app.synth.play("place");
         const extra = res.surcharge > 0 ? ` (+${res.surcharge} board tax)` : "";
@@ -76,9 +76,9 @@ export function onCellTap(app, cell) {
         // nulls _handSlot (assigning null here used to make the next
         // beginPlaceConfirm read roster[null] and toast "Compose a full
         // triad" spuriously).
-        const keepSlot = app._handSlot;
+        const keepSlot = app.interaction._handSlot;
         app.clearHand();
-        app.slot = keepSlot;
+        app.interaction.slot = keepSlot;
         app.renderGameChrome();
       }
       return;
@@ -89,8 +89,8 @@ export function onCellTap(app, cell) {
   if (tower) {
     app.clearPlaceConfirm();
     app.clearHand();
-    app.selectedTowerId = tower.id;
-    app.selectedWallId = -1;
+    app.interaction.selectedTowerId = tower.id;
+    app.interaction.selectedWallId = -1;
     app.renderGameChrome();
     return;
   }
@@ -100,25 +100,25 @@ export function onCellTap(app, cell) {
   if (wall) {
     app.clearPlaceConfirm();
     app.clearHand();
-    app.selectedTowerId = -1;
-    app.selectedWallId = wall.id;
+    app.interaction.selectedTowerId = -1;
+    app.interaction.selectedWallId = wall.id;
     app.renderGameChrome();
     return;
   }
-  app.selectedTowerId = -1;
-  app.selectedWallId = -1;
+  app.interaction.selectedTowerId = -1;
+  app.interaction.selectedWallId = -1;
   app.syncTowerOverlay();
-  if (app.tool === "wall") {
+  if (app.interaction.tool === "wall") {
     app.clearPlaceConfirm();
     app.handlePlace(app.sim.tryPlaceWall(cell.x, cell.y), "Wall");
     return;
   }
   // Second click on the same cell confirms; another cell re-aims the ghost.
   if (
-    app.placeConfirm &&
-    app.placeConfirm.x === cell.x &&
-    app.placeConfirm.y === cell.y &&
-    app.placeConfirm.slot === app.slot
+    app.interaction.placeConfirm &&
+    app.interaction.placeConfirm.x === cell.x &&
+    app.interaction.placeConfirm.y === cell.y &&
+    app.interaction.placeConfirm.slot === app.interaction.slot
   ) {
     app.confirmPlaceTower();
     return;
@@ -133,8 +133,8 @@ export function beginPlaceConfirm(app, x, y) {
   if ((app.sim.roster?.length | 0) !== (app.meta.slotCount | 0)) {
     app._syncSimFromMeta(app.sim);
   } else {
-    const metaSlot = app.meta.roster?.[app.slot];
-    const simSlot = app.sim.roster?.[app.slot];
+    const metaSlot = app.meta.roster?.[app.interaction.slot];
+    const simSlot = app.sim.roster?.[app.interaction.slot];
     if (
       metaSlot &&
       simSlot &&
@@ -146,7 +146,7 @@ export function beginPlaceConfirm(app, x, y) {
       app._syncSimFromMeta(app.sim);
     }
   }
-  const loadout = app.sim.roster[app.slot];
+  const loadout = app.sim.roster[app.interaction.slot];
   if (!loadout?.complete) return app.toast("Compose a full triad in Forge first");
   if (!app.sim.grid.isBuildable(x, y)) return app.toast("Cell blocked");
 
@@ -159,10 +159,10 @@ export function beginPlaceConfirm(app, x, y) {
   const quote = app.sim.economy.quoteTowerPlace(loadout.placeCost, app.sim.towers.length);
   if (app.sim.economy.battle < quote.total) return app.toast(`Need ${quote.total} Coin`);
 
-  app.placeConfirm = {
+  app.interaction.placeConfirm = {
     x,
     y,
-    slot: app.slot,
+    slot: app.interaction.slot,
     cost: quote.total,
     surcharge: quote.surcharge,
   };
@@ -179,13 +179,13 @@ export function beginPlaceConfirm(app, x, y) {
 }
 
 export function clearPlaceConfirm(app) {
-  app.placeConfirm = null;
+  app.interaction.placeConfirm = null;
   if (app.board) app.board.pendingPlace = null;
   
 }
 
 export function cancelPlaceConfirm(app) {
-  if (!app.placeConfirm) return;
+  if (!app.interaction.placeConfirm) return;
   app.clearPlaceConfirm();
   app.status = "";
   const st = app.ui.querySelector("#status");
@@ -194,7 +194,7 @@ export function cancelPlaceConfirm(app) {
 }
 
 export function confirmPlaceTower(app) {
-  const pc = app.placeConfirm;
+  const pc = app.interaction.placeConfirm;
   if (!pc || !app.sim) return;
   const res = app.sim.tryPlaceTower(pc.x, pc.y, pc.slot);
   app.clearPlaceConfirm();
@@ -224,23 +224,23 @@ export function handlePlace(app, res, label) {
 
 export function sellSelected(app) {
   if (!app.sim) return;
-  if (app.selectedTowerId >= 0) {
-    const snap = app.sim.towers.find((x) => x.id === app.selectedTowerId);
-    const res = app.sim.trySellTower(app.selectedTowerId);
+  if (app.interaction.selectedTowerId >= 0) {
+    const snap = app.sim.towers.find((x) => x.id === app.interaction.selectedTowerId);
+    const res = app.sim.trySellTower(app.interaction.selectedTowerId);
     if (res.ok) {
       if (snap) app.pushUndo({ type: "sell_tower", tower: structuredClone(snap), refund: res.refund | 0 });
-      app.selectedTowerId = -1;
+      app.interaction.selectedTowerId = -1;
       app.synth.play("sell");
       app.toast(`Sold (+${res.refund} Coin)`);
     }
     return;
   }
-  if (app.selectedWallId >= 0) {
-    const snap = app.sim.walls.find((w) => w.id === app.selectedWallId);
-    const res = app.sim.trySellWall(app.selectedWallId);
+  if (app.interaction.selectedWallId >= 0) {
+    const snap = app.sim.walls.find((w) => w.id === app.interaction.selectedWallId);
+    const res = app.sim.trySellWall(app.interaction.selectedWallId);
     if (res.ok) {
       if (snap) app.pushUndo({ type: "sell_wall", wall: structuredClone(snap), refund: res.refund | 0 });
-      app.selectedWallId = -1;
+      app.interaction.selectedWallId = -1;
       app.synth.play("sell");
       app.toast(`Wall sold (+${res.refund} Coin)`);
     } else if (res.reason === "preplaced") {

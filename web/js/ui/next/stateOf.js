@@ -70,14 +70,14 @@ export function chromeState(app) {
     sim,
     roster: sim?.roster || [],
     quote: (i) => gameSlotQuote(app, i),
-    tool: app.tool,
-    slot: app.slot,
+    tool: app.interaction.tool,
+    slot: app.interaction.slot,
     forgeSlot: app.forgeSlot,
     status: app.status,
     ffHeld: !!app._ffHeld,
     speed: app.speed,
     paused: !!app.paused,
-    liveCompose: !!app.liveCompose,
+    liveCompose: !!app.interaction.liveCompose,
     ghost: app._ghost
       ? {
           log: app._ghost.log,
@@ -87,8 +87,8 @@ export function chromeState(app) {
         }
       : null,
     playtestFromEditor: !!app.playtestFromEditor,
-    selectedTowerId: app.selectedTowerId ?? -1,
-    selectedWallId: app.selectedWallId ?? -1,
+    selectedTowerId: app.interaction.selectedTowerId ?? -1,
+    selectedWallId: app.interaction.selectedWallId ?? -1,
     waveBusy: () => waveBusy(app),
     pitchDeg: VIEW25.pitchDeg,
     board: app.board

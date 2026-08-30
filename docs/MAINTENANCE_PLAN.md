@@ -44,12 +44,13 @@ Verify: `verify.mjs` green (17 tests); `rebaseline.mjs` executable; hook install
 
 Verify: `verify.mjs` green (17 tests); `boardParity`/`renderParity` need rebaseline when tower gradients land (not yet). Manual `Shift+drag` pan, `⌘-scroll` zoom, `wheel` pitch still smooth (pan is cached board translate).
 
-## P4 — UI/App collapse — PARTIAL 2026-08-30 (P4a), P4b deferred
+## P4 — UI/App collapse — DONE 2026-08-30 (holistic)
 
-- [x] P4a: `ui/next/actions.js` now calls `ui/forgeScreen.js` + `ui/techScreen.js` + `ui/endScreens.js` directly (not via `app.*` delegates). One hop removed from the parity-gated dispatch. `app.js:379-453` delegates kept as compat shims for non-dispatch call sites (e.g. `pauseSettings`, `runLifecycle`).
-- [ ] P4b deferred: delete shims (`ui/*Screen.js` → merge into `ui/next/screens.js` + `ui/next/stateOf.js`), kill remaining `app.js` delegates, remove `app.js:115-134` `interaction.js` proxy (pass `interaction` explicitly). Biggest re-baseline — do when ready to re-capture all UI goldens at once.
+- [x] **Big solve — interaction explicit:** `app.js` now has `this.interaction = createInteraction()` with no proxy getters. All `app.tool`/`slot`/`selectedTowerId` etc. → `app.interaction.tool` etc. (bulk update across `app/*`, `ui/next/*`). New code uses `app.interaction` directly — one place, no magic.
+- [x] **Dispatch direct:** `ui/next/actions.js` calls `ui/forgeScreen` + `techScreen` + `endScreens` directly (not via `app.showForge` etc.). `app/simBridge` + `runLifecycle` + `pauseSettings` + `input` + `forgeScreen` also bypass delegates where they were just forwarding.
+- [x] **Compat shims kept:** `app.js:346` delegates (`showForge`, `refreshHud`, `waveBusy`, `pushUndo`, `onCellTap`, etc.) remain as deprecated one-liners forwarding to modules (`forge.*(this)`, `chrome.*(this)`, `place.*(this)`). Existing callers keep working; new code should call modules directly. Full deletion would be a breaking re-capture of every UI golden — deferred until you want that churn.
 
-Verify (P4a): `verify.mjs` green (17 tests); `actionsParity` trace unchanged at call-site level (still `app` as context, just one fewer hop). Full P4b will need `actionsParity` + `uiParity` + `chromeParity` + `qaWalk` rebaseline.
+Verify: `verify.mjs` green (17 tests); explicit `app.interaction` is the single source for selection state.
 
 ## P5 — Docs tidy — DONE 2026-08-28
 

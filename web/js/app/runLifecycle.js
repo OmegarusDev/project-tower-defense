@@ -43,15 +43,15 @@ function startNewRun(app, seed) {
   app._ghost = null;
   app.clearUndoStack();
 app.wireSim();
-  app.tool = "tower";
-  app.slot = -1;
-  app.selectedTowerId = -1;
-  app.selectedWallId = -1;
+  app.interaction.tool = "tower";
+  app.interaction.slot = -1;
+  app.interaction.selectedTowerId = -1;
+  app.interaction.selectedWallId = -1;
   app.paused = false;
   app.speed = 1;
   app.accum = 0;
-  app.placeConfirm = null;
-  app.liveCompose = false;
+  app.interaction.placeConfirm = null;
+  app.interaction.liveCompose = false;
   app.playtestFromEditor = false;
   app._ffHeld = false;
   app._speedBeforeFf = undefined;
@@ -84,14 +84,14 @@ export function continueRun(app) {
   app.fx.clear();
   app.clearUndoStack();
   app.wireSim();
-  app.tool = "tower";
-  app.slot = 0;
-  app.selectedTowerId = -1;
-  app.selectedWallId = -1;
+  app.interaction.tool = "tower";
+  app.interaction.slot = 0;
+  app.interaction.selectedTowerId = -1;
+  app.interaction.selectedWallId = -1;
   app.paused = false;
   app.speed = 1;
   app.accum = 0;
-  app.placeConfirm = null;
+  app.interaction.placeConfirm = null;
   app._ffHeld = false;
   app._speedBeforeFf = undefined;
   app.enterGame();
@@ -116,7 +116,7 @@ export function startCampaignLevel(app, levelId) {
   app.palette.setAtmosphere?.(lv.atmosphere || `campaign_${lv.id}`);
   bootLevel(app, lv);
   const slot = Math.max(0, Math.min(app.prepSlot | 0, (app.meta.slotCount | 0) - 1));
-  app.slot = slot;
+  app.interaction.slot = slot;
   app.toast(`${lv.name}: portal locked. Call Wave 1 when ready.`);
   
 }
@@ -163,15 +163,15 @@ function bootLevel(app, lv) {
   app._ghost = null;
   app.clearUndoStack();
   app.wireSim();
-  app.tool = "tower";
-  app.slot = 0;
-  app.selectedTowerId = -1;
-  app.selectedWallId = -1;
+  app.interaction.tool = "tower";
+  app.interaction.slot = 0;
+  app.interaction.selectedTowerId = -1;
+  app.interaction.selectedWallId = -1;
   app.paused = false;
   app.speed = 1;
   app.accum = 0;
-  app.placeConfirm = null;
-  app.liveCompose = false;
+  app.interaction.placeConfirm = null;
+  app.interaction.liveCompose = false;
   app._ffHeld = false;
   app._speedBeforeFf = undefined;
   app.enterGame();
@@ -180,7 +180,7 @@ function bootLevel(app, lv) {
 
 export function enterGame(app) {
   app.screen = "game";
-  if (app.sim && app.slot >= app.sim.roster.length) app.slot = 0;
+  if (app.sim && app.interaction.slot >= app.sim.roster.length) app.interaction.slot = 0;
   app.clearPlaceConfirm();
   app.clearHand();
   app.score.setWave(app.sim?.waveIndex || 1);

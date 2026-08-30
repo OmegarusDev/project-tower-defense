@@ -41,7 +41,7 @@ export function onKeyDown(app, e) {
   if (app.screen !== "game" || !app.sim) return;
   if (e.code === "Escape" || e.key === "Escape") {
     e.preventDefault();
-    if (app.placeConfirm) {
+    if (app.interaction.placeConfirm) {
       app.cancelPlaceConfirm();
       return;
     }
@@ -90,7 +90,7 @@ export function onKeyDown(app, e) {
     }
     if (key === "w" || key === "W") {
       e.preventDefault();
-      app.tool = "wall";
+      app.interaction.tool = "wall";
       app.clearPlaceConfirm();
       app.clearHand(); // Clear hand when switching to wall tool
       app.refreshHud();
@@ -138,12 +138,12 @@ export function selectBuildSlot(app, i) {
     return;
   }
   if ((app.sim.roster?.length | 0) < unlocked) app._syncSimFromMeta(app.sim);
-  app.slot = i;
-  app._handSlot = i; // Put tower in hand
-  app.tool = "tower";
+  app.interaction.slot = i;
+  app.interaction._handSlot = i; // Put tower in hand
+  app.interaction.tool = "tower";
   app.clearPlaceConfirm();
-  app.selectedTowerId = -1;
-  app.selectedWallId = -1;
+  app.interaction.selectedTowerId = -1;
+  app.interaction.selectedWallId = -1;
   app.renderGameChrome();
   
 }

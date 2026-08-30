@@ -74,8 +74,8 @@ function finishQuit(app, fromEditor, campaign) {
   }
   app._endFastForward();
   app.paused = false;
-  app.selectedTowerId = -1;
-  app.selectedWallId = -1;
+  app.interaction.selectedTowerId = -1;
+  app.interaction.selectedWallId = -1;
   app.clearUndoStack();
   app.score.fadeStop(1);
   app.sim = null;
