@@ -182,6 +182,25 @@ export const ENEMY_KINDS = {
   },
 };
 
+const ARMOR_KINDS = new Set(["none", "plate", "insulated", "energy"]);
+const BALLASTS = new Set(["low", "mid", "high"]);
+const PATHINGS = new Set(["shortest", "evade"]);
+const RESIST_TYPES = new Set(["kinetic", "fire", "shock", "frost", "poison", "acid"]);
+
+(function validateEnemies() {
+  for (const [id, e] of Object.entries(ENEMY_KINDS)) {
+    if (!ARMOR_KINDS.has(e.armorKind)) throw new Error(`ENEMY_KINDS[${id}].armorKind "${e.armorKind}" invalid`);
+    if (!BALLASTS.has(e.ballast)) throw new Error(`ENEMY_KINDS[${id}].ballast "${e.ballast}" invalid`);
+    if (!PATHINGS.has(e.pathing)) throw new Error(`ENEMY_KINDS[${id}].pathing "${e.pathing}" invalid`);
+    for (const k of Object.keys(e.resist || {})) {
+      if (!RESIST_TYPES.has(k)) throw new Error(`ENEMY_KINDS[${id}].resist key "${k}" not in ${[...RESIST_TYPES]}`);
+    }
+    if (e.silhouette && typeof e.silhouette !== "string") throw new Error(`ENEMY_KINDS[${id}].silhouette must be string`);
+  }
+})();
+
+Object.freeze(ENEMY_KINDS);
+
 /** Legacy + paper-TD ids → the Cinder kinds. */
 const ENEMY_ALIASES = {
   // paper / early web

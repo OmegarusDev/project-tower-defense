@@ -3,7 +3,7 @@
  * Endless uses composeEndlessWave() — seeded RNG packs with themes.
  */
 
-import { ENEMY_COST, resolveEnemyKind } from "./enemies.js";
+import { ENEMY_KINDS, ENEMY_COST, resolveEnemyKind } from "./enemies.js";
 
 /** Named reusable packs for campaign authoring (Cinder ids). */
 export const WAVE_PACKS = {
@@ -29,6 +29,8 @@ WAVE_PACKS.plates = WAVE_PACKS.haulers;
 WAVE_PACKS.aegis_wall = WAVE_PACKS.ward_wall;
 WAVE_PACKS.cluster_burst = WAVE_PACKS.cask_burst;
 WAVE_PACKS.leech_pack = WAVE_PACKS.siphon_pack;
+
+Object.freeze(WAVE_PACKS);
 
 /**
  * Endless themes unlocked by wave.
@@ -92,6 +94,28 @@ const ENDLESS_EVENTS = [
     kinds: { hauler_ceramite: 0.45, ward: 0.25, mite: 0.15, kiln: 0.15 },
   },
 ];
+
+Object.freeze(ENDLESS_THEMES);
+Object.freeze(ENDLESS_EVENTS);
+
+(function validateWaveScripts() {
+  for (const [pack, list] of Object.entries(WAVE_PACKS)) {
+    for (const k of list) {
+      if (!k || typeof k !== "string") throw new Error(`WAVE_PACKS[${pack}] has non-string entry ${JSON.stringify(k)}`);
+      if (!ENEMY_KINDS[k]) throw new Error(`WAVE_PACKS[${pack}] unknown enemy kind "${k}"`);
+    }
+  }
+  for (const t of ENDLESS_THEMES) {
+    for (const k of Object.keys(t.kinds)) {
+      if (!ENEMY_KINDS[k]) throw new Error(`ENDLESS_THEMES[${t.id}].kinds unknown kind "${k}"`);
+    }
+  }
+  for (const ev of ENDLESS_EVENTS) {
+    for (const k of Object.keys(ev.kinds)) {
+      if (!ENEMY_KINDS[k]) throw new Error(`ENDLESS_EVENTS[${ev.id}].kinds unknown kind "${k}"`);
+    }
+  }
+})();
 
 export function composeEndlessWave(wave, rand) {
   const w = Math.max(1, wave | 0);

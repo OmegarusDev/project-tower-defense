@@ -39,6 +39,7 @@ export function tickCombat(state) {
 
 export function refreshEnemyAuras(state) {
   const es = state.enemies;
+  // Fast path: no ward present — O(n) scan, no pairwise work.
   let ward = null;
   for (const e of es) {
     if (e.aura && e.hp > 0 && (e.aura.armor || 0) > 0) {
@@ -55,14 +56,22 @@ export function refreshEnemyAuras(state) {
   }
   for (const e of es) e.auraArmor = 0;
   state.auraApplied = false;
+  // Collect wards first — avoids re-checking !aura per inner iteration.
+  const wards = [];
   for (const w of es) {
     const a = w.aura;
-    if (!a || w.hp <= 0 || !(a.armor > 0)) continue;
-    const r = a.radius || 1.5;
+    if (a && w.hp > 0 && (a.armor | 0) > 0) wards.push(w);
+  }
+  for (const w of wards) {
+    const r = w.aura.radius || 1.5;
+    const r2 = r * r;
+    const armor = w.aura.armor | 0;
     for (const e of es) {
       if (e === w) continue;
-      if (Math.hypot(e.pos.x - w.pos.x, e.pos.y - w.pos.y) <= r) {
-        e.auraArmor = Math.max(e.auraArmor, a.armor || 0);
+      const dx = e.pos.x - w.pos.x;
+      const dy = e.pos.y - w.pos.y;
+      if (dx * dx + dy * dy <= r2) {
+        if (armor > (e.auraArmor | 0)) e.auraArmor = armor;
         state.auraApplied = true;
       }
     }
@@ -206,7 +215,10 @@ function tickProjectiles(state) {
       w.projectiles.splice(i, 1);
       continue;
     }
-    const target = w.enemies.find((e) => e.id === p.targetId && e.hp > 0);
+    const target = (() => {
+      const cand = w.enemiesById.get(p.targetId);
+      return cand && cand.hp > 0 ? cand : null;
+    })();
     if (!target && p.homing) {
       // H11: target died — AoE detonates at last pos; else coast on last velocity.
       if ((p.aoeRadius || 0) > 0) {

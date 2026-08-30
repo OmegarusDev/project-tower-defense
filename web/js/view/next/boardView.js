@@ -270,36 +270,6 @@ export class BoardView {
     const cssW = this.canvas.clientWidth || 360;
     const cssH = this.canvas.clientHeight || 640;
     const dpr = this._resolveDpr();
-    const key = [
-      cssW | 0,
-      cssH | 0,
-      dpr.toFixed(2),
-      this.zoom.toFixed(3),
-      this.panX.toFixed(2),
-      this.panY.toFixed(2),
-      g.cols,
-      g.rows,
-      VIEW25.pitchDeg | 0,
-      this.sim.walls.length,
-    ].join("|");
-    if (!force && key === this._fitKey && this.canvas.width === Math.floor(cssW * dpr)) {
-      return false;
-    }
-    const nextW = Math.floor(cssW * dpr);
-    const nextH = Math.floor(cssH * dpr);
-    const resized = this.canvas.width !== nextW || this.canvas.height !== nextH;
-    const keyChanged = key !== this._fitKey;
-    this._fitKey = key;
-    // Reassigning canvas.width always clears the bitmap (even to the same size).
-    if (resized) {
-      this.canvas.width = nextW;
-      this.canvas.height = nextH;
-      this.invalidateStatic();
-    } else if (force || keyChanged) {
-      this.invalidateStatic();
-    }
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
     const sy = VIEW25.yScale;
     const topPad = 72;
     const bottomPad = 162;
@@ -330,9 +300,43 @@ export class BoardView {
       this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY));
     }
 
+    // Layout key: pitch/cell/grid/walls determine the static field geometry.
+    // Pan is intentionally EXCLUDED — panning becomes a draw-time translate of
+    // the cached board, so gliding no longer re-projects every tile each frame.
+    // Zoom is implicit via `cell` (baseCell * zoom) and sy (pitch).
+    const layoutKey = [
+      cssW | 0,
+      cssH | 0,
+      dpr.toFixed(2),
+      this.cell.toFixed(2),
+      g.cols,
+      g.rows,
+      VIEW25.pitchDeg | 0,
+      this.sim.walls.length,
+    ].join("|");
+    const canvasW = Math.floor(cssW * dpr);
+    const canvasH = Math.floor(cssH * dpr);
+    const resized = this.canvas.width !== canvasW || this.canvas.height !== canvasH;
+    const layoutChanged = layoutKey !== this._fitKey;
+    this._fitKey = layoutKey;
+    if (resized) {
+      this.canvas.width = canvasW;
+      this.canvas.height = canvasH;
+      this.invalidateStatic();
+    } else if (force || layoutChanged) {
+      this.invalidateStatic();
+    }
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // Cache layout for the static board layer (pan-independent).
+    this._boardW = boardW;
+    this._boardH = boardH;
+    this._topPad = topPad;
+    this._leftPad = leftPad;
+
     this.origin = { x: this.panX, y: topPad + this.panY };
     this.cam.configure(this.origin.x, this.origin.y, this.cell, g.cols, g.rows);
-    return true;
+    return layoutChanged || resized;
   }
 
   _cellAt(canvasX, canvasY) {
@@ -573,9 +577,18 @@ export class BoardView {
     ctx.save();
     ctx.translate(shake.x, shake.y);
 
-    this._ensureStaticLayer(cssW, cssH, dpr);
+    this._ensureStaticLayer();
     if (this._staticLayer) {
-      ctx.drawImage(this._staticLayer, 0, 0, cssW, cssH);
+      // Pan is a translate of the cached board — no re-projection.
+      const bw = this._boardW || 0;
+      const bh = this._boardH || 0;
+      if (bw > 0 && bh > 0) {
+        ctx.drawImage(
+          this._staticLayer,
+          0, 0, Math.floor(bw * dpr), Math.floor(bh * dpr),
+          this.origin.x, this.origin.y, bw, bh
+        );
+      }
     } else {
       this._drawBoardShadow();
       this._drawField(g);
@@ -619,26 +632,38 @@ export class BoardView {
     this._drawAtmosphere(cssW, cssH);
   }
 
-  _ensureStaticLayer(cssW, cssH, dpr) {
+  _ensureStaticLayer() {
     if (!this._staticDirty && this._staticLayer) return;
     if (!this._staticLayer) this._staticLayer = document.createElement("canvas");
     const layer = this._staticLayer;
-    const w = Math.floor(cssW * dpr);
-    const h = Math.floor(cssH * dpr);
+    const bw = this._boardW || 0;
+    const bh = this._boardH || 0;
+    const dpr = this._resolveDpr();
+    const w = Math.max(1, Math.floor(bw * dpr));
+    const h = Math.max(1, Math.floor(bh * dpr));
     if (layer.width !== w || layer.height !== h) {
       layer.width = w;
       layer.height = h;
     }
     const lctx = layer.getContext("2d");
     lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    lctx.clearRect(0, 0, cssW, cssH);
-    const prev = this.ctx;
+    lctx.clearRect(0, 0, bw, bh);
+    const prevCtx = this.ctx;
+    const prevOrigin = this.origin;
+    const prevCamOriginX = this.cam.originX;
+    const prevCamOriginY = this.cam.originY;
+    // Render the board at a neutral origin (0,0) — pan is applied at draw time.
     this.ctx = lctx;
+    this.origin = { x: 0, y: 0 };
+    this.cam.configure(0, 0, this.cell, this.sim.grid.cols, this.sim.grid.rows);
     const g = this.sim.grid;
     this._drawBoardShadow();
     this._drawField(g);
     for (const wall of this.sim.walls) this._drawWall(wall.cell.x, wall.cell.y);
-    this.ctx = prev;
+    this.ctx = prevCtx;
+    // Restore the live camera for everything else (stains/bastion/path/towers).
+    this.origin = prevOrigin;
+    this.cam.configure(prevCamOriginX, prevCamOriginY, this.cell, g.cols, g.rows);
     this._staticDirty = false;
   }
 

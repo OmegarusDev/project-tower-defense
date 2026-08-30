@@ -5,7 +5,7 @@
 **History:** [`DESIGN_HISTORY.md`](DESIGN_HISTORY.md)  
 **Production:** this repo — vanilla web only (`web/`). No Godot, no npm, no asset packs.
 
-**Reconciled 2026-08-13 (spring cleaning):** repo moved to `~/Documents/Projects/Code/project-tower-defense`. Balance tooling now measures the shipped endless map (`ENDLESS_GRID` 9×8), not the old 11×14 default. Known gaps vs this GDD: Settings has **no IAP stub** yet (GDD §14), and the **aura** system is designed-but-unimplemented (dead branches in `attackPlan.js`/`combat.js` — treat as placeholder until the combat refactor). `docs/CURSOR_PROMPT.md` is superseded by `AGENTS.md`.
+**Reconciled 2026-08-28:** repo moved to `~/Documents/Projects/Code/project-tower-defense`. Balance tooling measures the shipped endless map (`ENDLESS_GRID` 9×8). Known gaps vs this GDD: Settings still has **no IAP stub** (GDD §14, deferred to last — see `DESIGN.md` step ordering), and the **aura** system is live (ward +1 armor within 1.6 cells — `combat.js:refreshEnemyAuras`) since the 2026-08-13 refactor. `docs/CURSOR_PROMPT.md` is superseded by `AGENTS.md`.
 
 ---
 
@@ -61,7 +61,7 @@
 
 ## 5. Campaign
 
-- **Current slice (shipped):** Act I — **7 linear levels** (clear prior to unlock next)
+- **Current slice (shipped):** Act I — **12 linear levels** (clear prior to unlock next; GDD previously said 7 — expanded, see `data/campaign.js:LEVEL_DEFS`)
 - **PINNED / future:** 3 campaigns of **5 / 10 / 25** levels (40 total) — do not invent the full slate yet
 - Level = multiple waves; later waves/levels harder (more waves on later levels)
 - Victory: clear required waves and/or boss (per level data)

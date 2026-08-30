@@ -21,7 +21,7 @@ Conversation reconciliations (later answer wins). Kept out of the final GDD for 
 | XP auto-level | XP fills → auto-level (+branch pick); overlay Damage/ROF/Range |
 | Battle buys levels | Removed — Battle is place/walls only |
 | Campaign map RNG | Predefined seed per level |
-| Campaign scope | Shipped **7 Act I levels**; 5/10/25×3 PINNED |
+| Campaign scope | Shipped **12 Act I levels** (was 7 — expanded, see `data/campaign.js`); 5/10/25×3 PINNED |
 | Flying | Air layer; ignore walls/towers |
 | Start grant | Battle only; free parts sentry/single/kinetic |
 | Commander / Trap | Commander aura+fire; Trap pulse primary |

@@ -26,10 +26,12 @@ export function tickEnemies(state) {
           });
           child.battleDrop = 1;
           enemies.push(child);
+          state.enemiesById.set(child.id, child);
         }
       }
       state.killCount = (state.killCount | 0) + 1;
       emit(state, "enemy_killed", { enemy: e, drop: e.battleDrop || 1 });
+      state.enemiesById.delete(e.id);
       enemies.splice(i, 1);
       continue;
     }
@@ -54,6 +56,7 @@ export function tickEnemies(state) {
         });
         child.battleDrop = 1;
         enemies.push(child);
+        state.enemiesById.set(child.id, child);
       }
     }
     advance(state, e);
@@ -61,6 +64,7 @@ export function tickEnemies(state) {
       state.lives = Math.max(0, state.lives - (e.leakDamage || 1));
       state.leakCount = (state.leakCount | 0) + 1;
       emit(state, "leak", { enemy: e, lives: state.lives });
+      state.enemiesById.delete(e.id);
       enemies.splice(i, 1);
       if (state.lives <= 0) {
         state.running = false;

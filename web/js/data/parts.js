@@ -242,6 +242,29 @@ export const PARTS = {
   },
 };
 
+// ---- frozen enums + import-time validation (P1) ----
+
+const DOCTRINES = new Set(["first", "closest", "strongest", "flying", "last", "weakest"]);
+const PATTERNS = new Set(["projectile", "pulse"]);
+const DAMAGE_TYPES = new Set(["kinetic", "fire", "shock", "frost", "poison", "acid"]);
+
+(function validateParts() {
+  for (const [id, b] of Object.entries(PARTS.bases)) {
+    if (!DOCTRINES.has(b.doctrine)) throw new Error(`PARTS.bases[${id}].doctrine "${b.doctrine}" not in ${[...DOCTRINES]}`);
+  }
+  for (const [id, b] of Object.entries(PARTS.barrels)) {
+    if (!PATTERNS.has(b.pattern)) throw new Error(`PARTS.barrels[${id}].pattern "${b.pattern}" not in ${[...PATTERNS]}`);
+  }
+  for (const [id, p] of Object.entries(PARTS.payloads)) {
+    if (!DAMAGE_TYPES.has(p.damageType)) throw new Error(`PARTS.payloads[${id}].damageType "${p.damageType}" not in ${[...DAMAGE_TYPES]}`);
+  }
+})();
+
+Object.freeze(PARTS.bases);
+Object.freeze(PARTS.barrels);
+Object.freeze(PARTS.payloads);
+Object.freeze(PARTS);
+
 const STARTER = { base: "sentry", barrel: "single", payload: "kinetic" };
 
 const STARTER_OWNED = {
@@ -310,6 +333,10 @@ export function migratePartId(kind, id) {
 }
 
 export function placeCost(base, barrel, payload) {
+  // Empty strings allowed for incomplete slots (cost 0); non-empty must be valid.
+  if (base && !PARTS.bases[base]) throw new Error(`placeCost: unknown base "${base}"`);
+  if (barrel && !PARTS.barrels[barrel]) throw new Error(`placeCost: unknown barrel "${barrel}"`);
+  if (payload && !PARTS.payloads[payload]) throw new Error(`placeCost: unknown payload "${payload}"`);
   const b = PARTS.bases[base]?.cost ?? 0;
   const r = PARTS.barrels[barrel]?.cost ?? 0;
   const p = PARTS.payloads[payload]?.cost ?? 0;

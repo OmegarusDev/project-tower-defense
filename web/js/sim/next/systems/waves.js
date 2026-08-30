@@ -124,6 +124,7 @@ function spawnOne(state) {
     pos: spawnPos(state, kind),
   });
   state.enemies.push(e);
+  state.enemiesById.set(e.id, e);
   emit(state, "enemy_spawned", { enemy: e });
 }
 

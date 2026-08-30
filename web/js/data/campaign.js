@@ -1,5 +1,7 @@
 import { BoardGrid } from "../sim/boardGrid.js";
 import { mulberry32 } from "../sim/rng.js";
+import { ENEMY_KINDS } from "./enemies.js";
+import { WAVE_PACKS } from "./waveScripts.js";
 
 /**
  * Place `count` walls with a seeded RNG; never seals spawn→exit.
@@ -364,6 +366,20 @@ const LEVEL_DEFS = [
     ],
   },
 ];
+
+(function validateCampaign() {
+  const ids = new Set();
+  for (const def of LEVEL_DEFS) {
+    if (ids.has(def.id)) throw new Error(`LEVEL_DEFS duplicate id ${def.id}`);
+    ids.add(def.id);
+    for (const w of def.waves) {
+      if (w.pack && !WAVE_PACKS[w.pack]) throw new Error(`LEVEL_DEFS[${def.id}].waves pack "${w.pack}" not in WAVE_PACKS`);
+      for (const k of w.queue || []) if (!ENEMY_KINDS[k]) throw new Error(`LEVEL_DEFS[${def.id}].waves queue unknown kind "${k}"`);
+    }
+  }
+})();
+
+Object.freeze(LEVEL_DEFS);
 
 export const CAMPAIGN_LEVELS = LEVEL_DEFS.map((def) => ({
   ...def,
