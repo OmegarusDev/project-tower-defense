@@ -4,6 +4,7 @@ import { RULES } from "../data/rules.js";
 import { confirmSheet } from "../ui/next/modal.js";
 import { pauseSheetHtml as renderPauseSheetHtml } from "../ui/next/chrome.js";
 import { pauseState } from "../ui/next/stateOf.js";
+import * as ends from "../ui/endScreens.js";
 
 /** Persist camera pitch from Settings or the in-game slider. */
 export function applyPitch(app, deg, { save = true } = {}) {
@@ -81,7 +82,7 @@ function finishQuit(app, fromEditor, campaign) {
   app.playtestFromEditor = false;
   if (fromEditor) app.showEditor();
   else if (campaign) app.showCampaign();
-  else app.showEndlessHub();
+  else ends.showEndlessHub(app);
   
 }
 

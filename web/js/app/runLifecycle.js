@@ -9,6 +9,7 @@ import {
   loadEndless,
 } from "../saveStore.js";
 import { getCampaignLevel, isLevelUnlocked, levelPortalCell } from "../data/campaign.js";
+import * as ends from "../ui/endScreens.js";
 
 const ACT_TEMPO_OFFSET = {
   Outskirts: 0,
@@ -63,7 +64,7 @@ app.wireSim();
 
 export function continueRun(app) {
   const blob = loadEndless();
-  if (!blob) return app.showEndlessHub();
+  if (!blob) return ends.showEndlessHub(app);
   app.sim = new Sim();
   app.sim.loadCheckpoint(blob);
   const savedWave = blob.wave | 0;

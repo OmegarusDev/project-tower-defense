@@ -157,7 +157,7 @@ export function paintForgePreview(app) {
 
 export function applyForgePart(app, kind, id) {
   if (!ownsPart(app.meta.owned, kind, id)) {
-    app.buyPart(kind, id, true);
+    buyPart(app, kind, id, true);
     return;
   }
   const r = forgeApplyPart(app.meta, app.forgeSlot, kind, id);
@@ -199,7 +199,7 @@ export function buyPart(app, kind, id, equip = true) {
   const r = forgeBuyPart(app.meta, app.forgeSlot, kind, id, equip);
   if (!r.ok) {
     if (r.reason === "owned") {
-      if (equip) app.applyForgePart(kind, id);
+      if (equip) applyForgePart(app, kind, id);
       else app.toast("Already owned");
     } else {
       app.toast(`Need ${r.need} Forge parts`);

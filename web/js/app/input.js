@@ -1,4 +1,5 @@
 /** Extracted from App — pure move, no gameplay changes. */
+import * as tech from "../ui/techScreen.js";
 
 /** Arrow-key navigation over the visible [data-act] controls (menus + pause sheet). */
 function arrowNav(app, e) {
@@ -27,7 +28,7 @@ export function onKeyDown(app, e) {
     // Meta screens: Esc closes the tech overlay (modals handle their own Esc).
     if (app.screen === "upgrade" && app.techSelectedId) {
       e.preventDefault();
-      app.closeTechOverlay();
+      tech.closeTechOverlay(app);
       return;
     }
     // Meta screens: Esc = same as the X/back button.

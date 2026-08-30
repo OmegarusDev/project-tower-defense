@@ -6,6 +6,7 @@ import {
 import { partLabel } from "../data/parts.js";
 import { RULES } from "../data/rules.js";
 import { exportReplayBlob, applyReplayAction } from "../ui/replay.js";
+import * as ends from "../ui/endScreens.js";
 
 export function onSimEvent(app, e) {
   switch (e.kind) {
@@ -153,7 +154,7 @@ export function onSimEvent(app, e) {
       app._lastReplay = exportReplayBlob(app.sim);
       if (app.sim.modeEndless) clearEndless();
       app.score.fadeStop(1.5);
-      app.showGameOver();
+      ends.showGameOver(app);
       break;
     case "tower_leveled":
       app.synth.play("confirm");
@@ -190,7 +191,7 @@ export function onCampaignVictory(app) {
   app.persistMeta();
   app.score.fadeStop(1.5);
   app.status = first && id > 0 ? `First clear · +${RULES.FIRST_CLEAR_AETHER} Aether` : "Level cleared";
-  app.showVictory({ firstClear: first && id > 0 });
+  ends.showVictory(app, { firstClear: first && id > 0 });
   
 }
 
@@ -256,7 +257,7 @@ function finishGhost(app) {
     app._ghostEndSim = null;
   }
   app._ghost = null;
-  app.showGameOver();
+  ends.showGameOver(app);
   
 }
 
