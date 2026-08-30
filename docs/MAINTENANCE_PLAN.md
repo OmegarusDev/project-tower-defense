@@ -44,13 +44,12 @@ Verify: `verify.mjs` green (17 tests); `rebaseline.mjs` executable; hook install
 
 Verify: `verify.mjs` green (17 tests); `boardParity`/`renderParity` need rebaseline when tower gradients land (not yet). Manual `Shift+drag` pan, `⌘-scroll` zoom, `wheel` pitch still smooth (pan is cached board translate).
 
-## P4 — UI/App collapse (2–3 days, biggest re-baseline — do last)
+## P4 — UI/App collapse — PARTIAL 2026-08-30 (P4a), P4b deferred
 
-- [ ] Delete shims: `ui/forgeScreen.js`, `ui/techScreen.js`, `ui/endScreens.js`, `ui/menuScreens.js` (keep pure `ui/next/screens.js` + `ui/next/stateOf.js`).
-- [ ] Kill `app.js:379-453` delegates — `ui/next/actions.js:24` `R` table becomes sole dispatcher with `{sim, meta, interaction, board}` context, calls `app/*Logic` directly. `registry.js:18` `mountScreen` is sole mounter.
-- [ ] Remove `interaction.js` proxy — pass `interaction` explicitly; delete `app.js:115-134` getters.
+- [x] P4a: `ui/next/actions.js` now calls `ui/forgeScreen.js` + `ui/techScreen.js` + `ui/endScreens.js` directly (not via `app.*` delegates). One hop removed from the parity-gated dispatch. `app.js:379-453` delegates kept as compat shims for non-dispatch call sites (e.g. `pauseSettings`, `runLifecycle`).
+- [ ] P4b deferred: delete shims (`ui/*Screen.js` → merge into `ui/next/screens.js` + `ui/next/stateOf.js`), kill remaining `app.js` delegates, remove `app.js:115-134` `interaction.js` proxy (pass `interaction` explicitly). Biggest re-baseline — do when ready to re-capture all UI goldens at once.
 
-Verify: `actionsParity` + `uiParity` + `chromeParity` + `qaWalk` all re-baselined deliberately; `verify.mjs` green.
+Verify (P4a): `verify.mjs` green (17 tests); `actionsParity` trace unchanged at call-site level (still `app` as context, just one fewer hop). Full P4b will need `actionsParity` + `uiParity` + `chromeParity` + `qaWalk` rebaseline.
 
 ## P5 — Docs tidy — DONE 2026-08-28
 

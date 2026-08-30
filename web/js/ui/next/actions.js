@@ -10,6 +10,9 @@ import { loadEditorLevels } from "../levelEditor.js";
 import { MAX_ROSTER_SLOTS } from "../../data/parts.js";
 import { META_KEY, ENDLESS_KEY } from "../../saveStore.js";
 import { confirmSheet, holdConfirmSheet } from "./modal.js";
+import * as ends from "../endScreens.js";
+import * as forge from "../forgeScreen.js";
+import * as tech from "../techScreen.js";
 
 /** Remainder of an act after its prefix: tail("slot:3", "slot:") → "3". */
 function tail(act, prefix) {
@@ -31,9 +34,9 @@ const R = [
     },
   },
 
-  // ---- screen nav (exact) ----
-  { is: "endless", run: (app) => app.showEndlessHub() },
-  { is: "hub", run: (app) => app.showEndlessHub() },
+  // ---- screen nav (exact) — P4a: call screens directly, not via app delegates (one less hop)
+  { is: "endless", run: (app) => ends.showEndlessHub(app) },
+  { is: "hub", run: (app) => ends.showEndlessHub(app) },
   { is: "main", run: (app) => app.showMain() },
   { is: "campaign", run: (app) => app.showCampaign() },
   { is: "settings", run: (app) => app.showSettings() },
@@ -166,14 +169,14 @@ const R = [
   { is: "continue", run: (app) => app.continueRun() },
 
   // ---- forge nav ----
-  { is: "forge", run: (app) => app.showForge(app.forgeReturn || "main") },
-  { is: "forge-from-hub", run: (app) => app.showForge("hub") },
-  { is: "forge-from-main", run: (app) => app.showForge("main") },
-  { is: "forge-from-campaign", run: (app) => app.showForge("campaign") },
-  { is: "forge-from-prep", run: (app) => app.showForge("prep") },
-  { is: "upgrade-from-prep", run: (app) => app.showUpgrade("prep") },
-  { is: "upgrade-from-hub", run: (app) => app.showUpgrade("hub") },
-  { is: "upgrade-from-campaign", run: (app) => app.showUpgrade("campaign") },
+  { is: "forge", run: (app) => forge.showForge(app, app.forgeReturn || "main") },
+  { is: "forge-from-hub", run: (app) => forge.showForge(app, "hub") },
+  { is: "forge-from-main", run: (app) => forge.showForge(app, "main") },
+  { is: "forge-from-campaign", run: (app) => forge.showForge(app, "campaign") },
+  { is: "forge-from-prep", run: (app) => forge.showForge(app, "prep") },
+  { is: "upgrade-from-prep", run: (app) => tech.showUpgrade(app, "prep") },
+  { is: "upgrade-from-hub", run: (app) => tech.showUpgrade(app, "hub") },
+  { is: "upgrade-from-campaign", run: (app) => tech.showUpgrade(app, "campaign") },
   {
     is: "upgrade",
     run: (app) => {
@@ -189,22 +192,22 @@ const R = [
                 : app.screen === "campaign"
                   ? "campaign"
                   : app.forgeReturn || "forge";
-      app.showUpgrade(from);
+      tech.showUpgrade(app, from);
     },
   },
 
   // ---- tech ----
-  { is: "tech-close", run: (app) => app.closeTechOverlay() },
-  { has: "tech-tab:", run: (app, act) => app.setTechTreeTab(tail(act, "tech-tab:")) },
-  { has: "tech-select:", run: (app, act) => app.selectTechNode(tail(act, "tech-select:")) },
+  { is: "tech-close", run: (app) => tech.closeTechOverlay(app) },
+  { has: "tech-tab:", run: (app, act) => tech.setTechTreeTab(app, tail(act, "tech-tab:")) },
+  { has: "tech-select:", run: (app, act) => tech.selectTechNode(app, tail(act, "tech-select:")) },
   {
     has: "tech-unlock-part:",
     run: (app, act) => {
       const [kind, id] = args(act, "tech-unlock-part:");
-      app.unlockPartFromTech(kind, id);
+      tech.unlockPartFromTech(app, kind, id);
     },
   },
-  { has: "tech-buy:", run: (app, act) => app.buyTechNode(tail(act, "tech-buy:")) },
+  { has: "tech-buy:", run: (app, act) => tech.buyTechNode(app, tail(act, "tech-buy:")) },
 
   // ---- game controls ----
   { is: "pause", run: (app) => app.openPause() },
@@ -226,16 +229,16 @@ const R = [
   },
 
   // ---- forge ops ----
-  { is: "forge-clear", run: (app) => app.clearForgeSlot() },
-  { is: "dev-toggle", run: (app) => app.toggleDevMode() },
-  { is: "forge-unlock-slot", run: (app) => app.unlockForgeSlot() },
+  { is: "forge-clear", run: (app) => forge.clearForgeSlot(app) },
+  { is: "dev-toggle", run: (app) => forge.toggleDevMode(app) },
+  { is: "forge-unlock-slot", run: (app) => forge.unlockForgeSlot(app) },
   {
     has: "forge-slot:",
     run: (app, act) => {
       const i = +tail(act, "forge-slot:");
       app.forgeSlot = i;
       app.status = `Editing slot ${i + 1}`;
-      app._refreshForgeUi();
+      forge.refreshForgeUi(app);
     },
   },
   { is: "forge-slot-prev", run: (app) => shiftForgeSlot(app, -1) },
@@ -244,14 +247,14 @@ const R = [
     has: "forge-part:",
     run: (app, act) => {
       const [kind, id] = args(act, "forge-part:");
-      app.applyForgePart(kind, id);
+      forge.applyForgePart(app, kind, id);
     },
   },
   {
     has: "buy:",
     run: (app, act) => {
       const [kind, id] = args(act, "buy:");
-      app.buyPart(kind, id);
+      forge.buyPart(app, kind, id);
     },
   },
   {
@@ -259,7 +262,7 @@ const R = [
     run: (app, act) => {
       const i = +tail(act, "slot-locked:") | 0;
       if (app.screen === "forge") {
-        app.unlockForgeSlot(i);
+        forge.unlockForgeSlot(app, i);
         return;
       }
       const n = i + 1;
@@ -314,7 +317,7 @@ function shiftForgeSlot(app, delta) {
     app.forgeSlot === slotCount
       ? `Slot ${slotCount + 1} — locked`
       : `Editing slot ${app.forgeSlot + 1}`;
-  app._refreshForgeUi();
+  forge.refreshForgeUi(app);
   // Scroll carousel to active card
   requestAnimationFrame(() => {
     const wrap = app.ui.querySelector(".forge-preview-wrap");
