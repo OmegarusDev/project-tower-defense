@@ -26,13 +26,13 @@
 
 Verify: `verify.mjs` green (17 tests); `diagRun` stable.
 
-## P2 — Parity robustness (0.5 day, no corpus change)
+## P2 — Parity robustness — DONE 2026-08-30
 
-- [ ] Add `tools/corpus/rebaseline.mjs` single entry (runs all `*Parity.mjs --capture` in order — today 5 separate flags).
-- [ ] Deduplicate goldens: `board/scene.png` duplicates `goldens/board_scene.png`; keep one.
-- [ ] Pre-commit hook: `verify.mjs` only (fast). Full `simParity` stays CI (`parity.yml:36`).
+- [x] Add `tools/corpus/rebaseline.mjs` single entry (runs all `*Parity.mjs --capture` in order — was 5 separate flags).
+- [x] Deduplicate goldens: checked `board/scene.png` (414K) vs `goldens/board_scene.png` (392K) — they differ, so no deletion (earlier audit claim was stale).
+- [x] Pre-commit hook: `.git/hooks/pre-commit` runs `verify.mjs` only (fast). Full `simParity` stays CI (`parity.yml:36`).
 
-Verify: `ls -lh tools/corpus/out` drops ~0.8M; hook runs on commit.
+Verify: `verify.mjs` green (17 tests); `rebaseline.mjs` executable; hook installed.
 
 ## P3 — Per-frame allocs (1 day, needs `boardParity`/`renderParity` re-baseline)
 
