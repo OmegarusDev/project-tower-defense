@@ -46,7 +46,7 @@ Platform: portrait primary, adaptive phone/tablet/desktop. Apple Silicon daily d
 
 ### Campaign
 
-- Current slice: Act I — 7 linear levels (clear prior to unlock next). PINNED future: 3 campaigns of 5/10/25 levels (40 total).
+- Current slice: Act I — 12 linear levels (was 7 — expanded, see `data/campaign.js:LEVEL_DEFS`). PINNED future: 3 campaigns of 5/10/25 levels (40 total).
 - Level = multiple waves; later waves/levels harder.
 - Victory: clear required waves and/or boss (per level data).
 - Prep between levels (no timer): Forge, Aether → Start Level. During level: no Forge/tech (frozen).

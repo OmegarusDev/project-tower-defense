@@ -1,7 +1,7 @@
 # Project Tower Defense — Game Design Document
 
 **Status:** Final brief (systems locked). Balance numbers live in data as placeholders until playtest.  
-**Pair with:** [`CURSOR_PROMPT.md`](CURSOR_PROMPT.md) for implementation agents.  
+**Pair with:** [`AGENTS.md`](../AGENTS.md) for implementation agents.  
 **History:** [`DESIGN_HISTORY.md`](DESIGN_HISTORY.md)  
 **Production:** this repo — vanilla web only (`web/`). No Godot, no npm, no asset packs.
 
