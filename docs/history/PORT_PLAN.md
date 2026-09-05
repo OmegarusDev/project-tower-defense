@@ -1,4 +1,6 @@
-# Behavioral-Parity Port — Master Plan & Takeover Document
+> **HISTORICAL (superseded)** — preserved for posterity. Living docs are `GDD.md` + `ARCHITECTURE.md`; on-hold vision is `SIDEQUEL.md`/`REWRITE_PLAN.md`.
+
+# Behavioral-Parity Port — Master Plan & Takeover Document (historical)
 
 **Mission:** replace the game with a 1:1 cleaner clone — identical look, feel, and behavior
 ("seriously exact"), built on the ideal architecture (pure sim core, registries,

@@ -79,6 +79,7 @@ export function createState(opts = {}) {
     // combat cache
     plans: new Map(),
     altToggle: new Map(),
+    // using Map instead of find because homing needs O(1) lookup per projectile per tick
     // id -> tower / enemy (projectile hits resolve O(1); maintained by
     // tryPlaceTower / trySellTower / loadCheckpoint and enemy spawn/death)
     towersById: new Map(),

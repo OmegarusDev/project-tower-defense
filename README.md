@@ -29,7 +29,7 @@ Open [http://localhost:8080](http://localhost:8080)
 
 | Action | How |
 |--------|-----|
-| Campaign | Main → **Campaign** (Act I · 7 levels) |
+| Campaign | Main → **Campaign** (Act I · 12 levels) |
 | Forge | Compose + unlock parts |
 | Tech Tree | Permanent Aether / Parts upgrades (Respec available) |
 | Place tower / wall | Bottom dock → tap cell (**Coin**); `1`–`0` / `-`/`=` slots; `W` wall |

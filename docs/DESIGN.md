@@ -1,3 +1,5 @@
+> **Canonical — also copied to root `DESIGN.md` for tooling. Steps 1-4 done, Step 5 pending.**
+
 # DESIGN — Identity, Copy, Dialogs, Forge UX + UI scour
 
 Status: STEPS 1-4 IMPLEMENTED AND VERIFIED (copy+faction, dialogs, forge UX,

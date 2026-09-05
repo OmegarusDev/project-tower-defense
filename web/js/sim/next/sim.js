@@ -38,31 +38,16 @@ import {
 export const TICK_HZ = 60;
 export const TICK_DT = 1 / TICK_HZ;
 
-// Defaults before setup() — matches createState().
-const FALLBACK = {
-  lives: BASE_START_LIVES,
-  startLives: BASE_START_LIVES,
-  leakCount: 0,
-  killCount: 0,
-  tickIndex: 0,
-  waveIndex: 0,
-  running: false,
-  runLevelCap: 1,
-  checkpointPhase: undefined,
-  earlyBonusWave: 0,
-  seed: 1,
-};
-
+// using direct _s instead of fallback because Sim is always setup before use — one layer, no second guesses
 export class Sim {
   constructor() {
     this._s = null;
-    this._fallback = { ...FALLBACK };
     this.dt = 1 / 60;
     this.grid = null;
-    this._roster = [];
-    this._actionLog = [];
     this.runSeed = 1;
     this.modeEndless = true;
+    // using eager setup instead of fallback because Sim should always be valid — one layer, no null checks
+    this.setup(11, 14, 1, true);
     this.campaignWaves = null;
     this.wavesToWin = 0;
     this.campaignLevelId = 0;
@@ -70,27 +55,28 @@ export class Sim {
     // Single proxy objects — created once, not per setup().
     // Arrow getters close over `self` so `this` inside the literal is not the literal.
     const self = this;
+    // using direct _s instead of fallback because Sim is always setup before use
     this.waves = {
-      get waveActive() { return self._s ? self._s.waves.active : false; },
-      set waveActive(v) { if (self._s) self._s.waves.active = v; },
-      get toSpawn() { return self._s ? self._s.waves.toSpawn : 0; },
-      set toSpawn(v) { if (self._s) self._s.waves.toSpawn = v; },
-      get queue() { return self._s ? self._s.waves.queue : []; },
-      set queue(v) { if (self._s) self._s.waves.queue = v; },
-      get lastTheme() { return self._s ? self._s.waves.theme : ""; },
-      get speedMult() { return self._s ? self._s.waves.speedMult : 1; },
-      get lastEvent() { return self._s ? self._s.waves.event : ""; },
+      get waveActive() { return self._s.waves.active; },
+      set waveActive(v) { self._s.waves.active = v; },
+      get toSpawn() { return self._s.waves.toSpawn; },
+      set toSpawn(v) { self._s.waves.toSpawn = v; },
+      get queue() { return self._s.waves.queue; },
+      set queue(v) { self._s.waves.queue = v; },
+      get lastTheme() { return self._s.waves.theme; },
+      get speedMult() { return self._s.waves.speedMult; },
+      get lastEvent() { return self._s.waves.event; },
     };
     this.economy = {
-      get battle() { return self._s ? self._s.economy.battle : 0; },
-      set battle(v) { if (self._s) self._s.economy.battle = v; },
-      get forge() { return self._s ? self._s.economy.forge : 0; },
-      set forge(v) { if (self._s) self._s.economy.forge = v; },
-      get aether() { return self._s ? self._s.economy.aether : 0; },
-      set aether(v) { if (self._s) self._s.economy.aether = v; },
-      get runWaveGains() { return self._s ? self._s.economy.runWaveGains : { coin: 0, parts: 0, aether: 0 }; },
-      get towerCostMult() { return self._s ? self._s.economy.towerCostMult : 1; },
-      get wallCostMult() { return self._s ? self._s.economy.wallCostMult : 1; },
+      get battle() { return self._s.economy.battle; },
+      set battle(v) { self._s.economy.battle = v; },
+      get forge() { return self._s.economy.forge; },
+      set forge(v) { self._s.economy.forge = v; },
+      get aether() { return self._s.economy.aether; },
+      set aether(v) { self._s.economy.aether = v; },
+      get runWaveGains() { return self._s.economy.runWaveGains; },
+      get towerCostMult() { return self._s.economy.towerCostMult; },
+      get wallCostMult() { return self._s.economy.wallCostMult; },
       quoteTowerPlace: (pc, tc) => quoteTowerPlace(self._s.economy, pc, tc),
       placeSurcharge: (b, c) => placeSurcharge(self._s.economy, b, c),
       towerCost: (b) => towerCost(self._s.economy, b),
@@ -102,52 +88,52 @@ export class Sim {
     };
   }
 
-  // ---- proxied scalars (single source: _s) ----
+  // ---- proxied scalars (single source: _s, no fallback) ----
 
-  get lives() { return this._s ? this._s.lives : this._fallback.lives; }
-  set lives(v) { if (this._s) this._s.lives = v; this._fallback.lives = v; }
-  get startLives() { return this._s ? this._s.startLives : this._fallback.startLives; }
-  set startLives(v) { if (this._s) this._s.startLives = v; this._fallback.startLives = v; }
-  get leakCount() { return this._s ? this._s.leakCount : this._fallback.leakCount; }
-  set leakCount(v) { if (this._s) this._s.leakCount = v; this._fallback.leakCount = v; }
-  get killCount() { return this._s ? this._s.killCount : this._fallback.killCount; }
-  set killCount(v) { if (this._s) this._s.killCount = v; this._fallback.killCount = v; }
-  get tickIndex() { return this._s ? this._s.tickIndex : this._fallback.tickIndex; }
-  set tickIndex(v) { if (this._s) this._s.tickIndex = v; this._fallback.tickIndex = v; }
-  get waveIndex() { return this._s ? this._s.waves.index : this._fallback.waveIndex; }
-  set waveIndex(v) { if (this._s) this._s.waves.index = v; this._fallback.waveIndex = v; }
-  get running() { return this._s ? this._s.running : this._fallback.running; }
-  set running(v) { if (this._s) this._s.running = v; this._fallback.running = v; }
-  get runLevelCap() { return this._s ? this._s.runLevelCap : this._fallback.runLevelCap; }
-  set runLevelCap(v) { if (this._s) this._s.runLevelCap = v; this._fallback.runLevelCap = v; }
-  get checkpointPhase() { return this._s ? this._s.checkpointPhase : this._fallback.checkpointPhase; }
-  set checkpointPhase(v) { if (this._s) this._s.checkpointPhase = v; this._fallback.checkpointPhase = v; }
-  get earlyBonusWave() { return this._s ? this._s.earlyBonusWave : this._fallback.earlyBonusWave; }
-  set earlyBonusWave(v) { if (this._s) this._s.earlyBonusWave = v; this._fallback.earlyBonusWave = v; }
-  get seed() { return this._s ? this._s.seed : this._fallback.seed; }
-  set seed(v) { if (this._s) this._s.seed = v; this._fallback.seed = v; }
+  get lives() { return this._s.lives; }
+  set lives(v) { this._s.lives = v; }
+  get startLives() { return this._s.startLives; }
+  set startLives(v) { this._s.startLives = v; }
+  get leakCount() { return this._s.leakCount; }
+  set leakCount(v) { this._s.leakCount = v; }
+  get killCount() { return this._s.killCount; }
+  set killCount(v) { this._s.killCount = v; }
+  get tickIndex() { return this._s.tickIndex; }
+  set tickIndex(v) { this._s.tickIndex = v; }
+  get waveIndex() { return this._s.waves.index; }
+  set waveIndex(v) { this._s.waves.index = v; }
+  get running() { return this._s.running; }
+  set running(v) { this._s.running = v; }
+  get runLevelCap() { return this._s.runLevelCap; }
+  set runLevelCap(v) { this._s.runLevelCap = v; }
+  get checkpointPhase() { return this._s.checkpointPhase; }
+  set checkpointPhase(v) { this._s.checkpointPhase = v; }
+  get earlyBonusWave() { return this._s.earlyBonusWave; }
+  set earlyBonusWave(v) { this._s.earlyBonusWave = v; }
+  get seed() { return this._s.seed; }
+  set seed(v) { this._s.seed = v; }
 
-  get portal() { return this._s ? this._s.portal : null; }
-  set portal(v) { if (this._s) this._s.portal = v; }
-  get enemies() { return this._s ? this._s.enemies : []; }
-  set enemies(v) { if (this._s) this._s.enemies = v; }
-  get towers() { return this._s ? this._s.towers : []; }
-  set towers(v) { if (this._s) this._s.towers = v; }
-  get walls() { return this._s ? this._s.walls : []; }
-  set walls(v) { if (this._s) this._s.walls = v; }
-  get projectiles() { return this._s ? this._s.projectiles : []; }
-  set projectiles(v) { if (this._s) this._s.projectiles = v; }
-  get roster() { return this._s ? this._s.roster : this._roster; }
-  set roster(v) { if (this._s) this._s.roster = v; this._roster = v; }
-  get actionLog() { return this._s ? this._s.actionLog : this._actionLog; }
-  set actionLog(v) { if (this._s) this._s.actionLog = v; this._actionLog = v; }
+  get portal() { return this._s.portal; }
+  set portal(v) { this._s.portal = v; }
+  get enemies() { return this._s.enemies; }
+  set enemies(v) { this._s.enemies = v; }
+  get towers() { return this._s.towers; }
+  set towers(v) { this._s.towers = v; }
+  get walls() { return this._s.walls; }
+  set walls(v) { this._s.walls = v; }
+  get projectiles() { return this._s.projectiles; }
+  set projectiles(v) { this._s.projectiles = v; }
+  get roster() { return this._s.roster; }
+  set roster(v) { this._s.roster = v; }
+  get actionLog() { return this._s.actionLog; }
+  set actionLog(v) { this._s.actionLog = v; }
 
-  get campaignWaves() { return this._s ? this._s.campaignWaves : this._campaignWaves; }
-  set campaignWaves(v) { if (this._s) this._s.campaignWaves = v; this._campaignWaves = v; }
-  get wavesToWin() { return this._s ? this._s.wavesToWin : this._wavesToWin; }
-  set wavesToWin(v) { if (this._s) this._s.wavesToWin = v; this._wavesToWin = v; }
-  get campaignLevelId() { return this._s ? this._s.campaignLevelId : this._campaignLevelId; }
-  set campaignLevelId(v) { if (this._s) this._s.campaignLevelId = v; this._campaignLevelId = v; }
+  get campaignWaves() { return this._s.campaignWaves; }
+  set campaignWaves(v) { this._s.campaignWaves = v; }
+  get wavesToWin() { return this._s.wavesToWin; }
+  set wavesToWin(v) { this._s.wavesToWin = v; }
+  get campaignLevelId() { return this._s.campaignLevelId; }
+  set campaignLevelId(v) { this._s.campaignLevelId = v; }
 
   on(type, fn) {
     on(this._s, type, fn);
@@ -161,11 +147,8 @@ export class Sim {
     const s = createState({ cols, rows, seed, endless });
     this._s = s;
     this.grid = s.grid;
-    this._roster = s.roster;
-    this._actionLog = s.actionLog;
     this.runSeed = s.runSeed;
     this.modeEndless = s.modeEndless;
-    // _fallback stays as the pre-setup values — _s is now live, getters read from it.
   }
 
   startWave({ earlyBonus = 0 } = {}) {
@@ -193,10 +176,6 @@ export class Sim {
     tickWaves(s);
     tickCombat(s);
     tickEnemies(s);
-    // running propagates one way: internal stops (game_over / victory) reflect
-    // on the facade; a manual `this.running = false` (wave_cleared hand-off) is
-    // never clobbered back to true.
-    if (!s.running) this._fallback.running = false;
   }
 
   setStartLives(n, { resetCurrent = true } = {}) {

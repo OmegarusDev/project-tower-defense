@@ -1,11 +1,8 @@
 /**
  * App orchestrator — thin, explicit.
- * Interaction state lives in `this.interaction` (plain object, explicit — no proxy getters).
- * Dispatch is via `ui/next/actions.js` which calls screens/logic directly;
- * App owns navigation + tick + wiring. Legacy `app.*` delegates remain as
- * deprecated compat shims (one-liners forwarding to modules) so existing
- * callers keep working; new code should call `chrome.*(app)`, `place.*(app)`,
- * `app.interaction.tool` etc. directly.
+ * using explicit app.interaction.* instead of proxy getters (app.tool) because direct field is searchable and obvious
+ * Dispatch via `ui/next/actions.js` calls screens/logic directly; App owns navigation + tick + wiring.
+ * Legacy `app.*` delegates remain as deprecated compat shims so old callers keep working; new code calls `chrome.*(app)` etc. directly.
  */
 
 import { buildAttackPlan, planOptsFromParts } from "./sim/attackPlan.js";
@@ -354,9 +351,7 @@ export class App {
     if (x) runAction(this, x.getAttribute("data-act"));
   }
 
-  // --- Compat delegates — deprecated, keep for existing callers ---
-  // New code should call `chrome.*(this)`, `place.*(this)`, `forge.*(this)`, etc. directly.
-  // These one-liners remain so `app.refreshHud()` etc. keep working during the transition.
+  // using compat shims instead of deleting because existing callers still use app.* — new code calls modules directly, full deletion waits for one big re-capture
   showEndlessHub() { return ends.showEndlessHub(this); }
   showVictory(o) { return ends.showVictory(this, o); }
   showGameOver() { return ends.showGameOver(this); }

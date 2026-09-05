@@ -17,7 +17,7 @@ Details: [`web/README.md`](web/README.md)
 
 | Action | How |
 |--------|-----|
-| Campaign | Main → **Campaign** — Act I (7 linear levels) |
+| Campaign | Main → **Campaign** — Act I (12 linear levels) |
 | Forge | Main / Endless / Campaign → **Forge** — compose + unlock parts |
 | Tech Tree | Forge → **Tech Tree** — Aether / Parts (slots, level cap, lives, …); Respec refunds ranks |
 | Place tower | Bottom slots (`1`–`9`/`0`/`-`/`=`), tap empty cell (**Coin**) |

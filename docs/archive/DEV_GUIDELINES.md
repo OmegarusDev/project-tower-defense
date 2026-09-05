@@ -1,6 +1,6 @@
-# Developer Guidelines — Forgeworks TD
+> **ARCHIVED — SIDEQUEL VISION** — on hold, may become a different game. Living process doc is `docs/DEV.md`; this file describes the property-bag sidequel, not this iteration.
 
-Living process doc. Pair with `GDD.md` (spec) · `ARCHITECTURE.md` (code) · `REWRITE_PLAN.md` (execution). `AGENTS.md` is the single entry point for agents.
+# Developer Guidelines — Forgeworks TD (archived)
 
 ---
 

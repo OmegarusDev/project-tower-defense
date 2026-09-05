@@ -242,6 +242,7 @@ export const PARTS = {
   },
 };
 
+// using throw at import instead of silent fallback because typo should fail fast, not hide as free tower
 // ---- frozen enums + import-time validation (P1) ----
 
 const DOCTRINES = new Set(["first", "closest", "strongest", "flying", "last", "weakest"]);

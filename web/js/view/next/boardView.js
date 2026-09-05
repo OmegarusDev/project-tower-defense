@@ -300,9 +300,8 @@ export class BoardView {
       this.panY = Math.max(this.panMin, Math.min(this.panMax, this.panY));
     }
 
-    // Layout key: pitch/cell/grid/walls determine the static field geometry.
-    // Pan is intentionally EXCLUDED — panning becomes a draw-time translate of
-    // the cached board, so gliding no longer re-projects every tile each frame.
+    // using translate instead of reproject because pan is just sliding the picture, pitch must reproject (geometry changes)
+    // Layout key: pitch/cell/grid/walls determine static board; pan excluded
     // Zoom is implicit via `cell` (baseCell * zoom) and sy (pitch).
     const layoutKey = [
       cssW | 0,

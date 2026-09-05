@@ -1,4 +1,6 @@
-# BETA_PLAN — First full public beta release
+> **HISTORICAL (superseded)** — preserved for posterity. Living docs are `GDD.md` + `ARCHITECTURE.md`; on-hold vision is `SIDEQUEL.md`/`REWRITE_PLAN.md`.
+
+# BETA_PLAN — First full public beta release (historical)
 
 **Purpose**: a self-contained execution plan for another session. Everything
 decided here is final unless the user overrides. Do not re-derive decisions;

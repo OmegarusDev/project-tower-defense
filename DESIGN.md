@@ -1,3 +1,5 @@
+> **Copy of `docs/DESIGN.md` — Identity/Copy/Forge UX (Steps 1-4 done, Step 5 pending). Root copy kept for tooling; `docs/DESIGN.md` is canonical for docs.**
+
 # DESIGN — Identity, Copy, Dialogs, Forge UX + UI scour
 
 Status: STEPS 1-4 IMPLEMENTED AND VERIFIED (copy+faction, dialogs, forge UX,

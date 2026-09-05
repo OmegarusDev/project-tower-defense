@@ -7,6 +7,10 @@ export const Pattern = { PROJECTILE: 0, PULSE: 1, HYBRID: 2 };
  * Range/ROF stack: base envelope × base mults × barrel mults × part upgrade ranks × globals.
  */
 export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {}) {
+  // using throw instead of fallback because typo should fail fast, not hide as free tower
+  if (baseId && !PARTS.bases[baseId]) throw new Error(`unknown base "${baseId}"`);
+  if (barrelId && !PARTS.barrels[barrelId]) throw new Error(`unknown barrel "${barrelId}"`);
+  if (payloadId && !PARTS.payloads[payloadId]) throw new Error(`unknown payload "${payloadId}"`);
   const base = PARTS.bases[baseId] || {};
   const barrel = PARTS.barrels[barrelId] || {};
   const payload = PARTS.payloads[payloadId] || {};

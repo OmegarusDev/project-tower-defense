@@ -237,4 +237,4 @@ All numeric values (costs, HP, XP thresholds, grid sizes, wall curve, wave formu
 
 ---
 
-*End GDD. Agents: follow [`CURSOR_PROMPT.md`](CURSOR_PROMPT.md).*
+*End GDD. Agents: follow [`AGENTS.md`](../AGENTS.md).*
