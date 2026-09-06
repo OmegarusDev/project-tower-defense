@@ -3,8 +3,8 @@
  * telegraph, rare shift budget, campaign pins.
  * Run: node js/tests/portal.test.mjs
  */
-import { Sim } from "../sim/next/sim.js";
-import { spawnPos, PORTAL_WARN_TIME } from "../sim/next/systems/waves.js";
+import { Sim } from "../sim/sim.js";
+import { spawnPos, PORTAL_WARN_TIME } from "../sim/systems/waves.js";
 import { levelPortalCell } from "../data/campaign.js";
 
 function assert(cond, msg) {

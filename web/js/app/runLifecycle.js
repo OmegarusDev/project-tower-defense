@@ -1,7 +1,7 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { ENDLESS_GRID } from "../data/endlessGrid.js";
-import { Sim } from "../sim/next/sim.js";
-import { confirmSheet } from "../ui/next/modal.js";
+import { Sim } from "../sim/sim.js";
+import { confirmSheet } from "../ui/modal.js";
 import { BASE_START_CASH } from "../data/techTree.js";
 import {
   hasEndless,

@@ -1,8 +1,8 @@
 /** Extracted from App — pure move, no gameplay changes. */
-import { endsState } from "./next/stateOf.js";
+import { endsState } from "./stateOf.js";
 import { endBestBonus } from "../app/endsLogic.js";
-import { renderHub, renderVictory, renderGameOver } from "./next/screens.js";
-import { applyBtnTextures, swapWithExitAnim } from "./next/registry.js";
+import { renderHub, renderVictory, renderGameOver } from "./screens.js";
+import { applyBtnTextures, swapWithExitAnim } from "./registry.js";
 
 function _swapScreen(app, html) {
   swapWithExitAnim(app.ui, () => _apply(app, html));

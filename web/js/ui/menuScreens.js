@@ -1,5 +1,5 @@
 /**
- * Menu / meta screen LOGIC — the render fns now live in ui/next/screens.js
+ * Menu / meta screen LOGIC — the render fns now live in ui/screens.js
  * (pure, registry-driven); this module keeps the post-mount wiring:
  * settings listeners, campaign thumb painting, and the forge summary line
  * (re-exported from the next renderers).

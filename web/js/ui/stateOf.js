@@ -3,11 +3,11 @@
  * extract it from the app runtime (the app→renderer bridge). The renderers never
  * see `app`.
  */
-import { VIEW25 } from "../../view/view25.js";
-import { MAX_ROSTER_SLOTS } from "../../data/parts.js";
-import { nextRosterSlotUnlock } from "../../data/techTree.js";
-import { waveBusy, gameSlotQuote } from "../../app/gameChrome.js";
-import { hasEndless, loadEndless } from "../../saveStore.js";
+import { VIEW25 } from "../view/camera.js";
+import { MAX_ROSTER_SLOTS } from "../data/parts.js";
+import { nextRosterSlotUnlock } from "../data/techTree.js";
+import { waveBusy, gameSlotQuote } from "../app/gameChrome.js";
+import { hasEndless, loadEndless } from "../saveStore.js";
 
 /** Meta-screen state (registry mount). */
 export function screenState(app) {

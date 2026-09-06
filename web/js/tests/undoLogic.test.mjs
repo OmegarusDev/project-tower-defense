@@ -2,7 +2,7 @@
  * Undo logic — pure sim mutations over (sim, stack), no app/DOM.
  * Run: node js/tests/undoLogic.test.mjs
  */
-import { Sim } from "../sim/next/sim.js";
+import { Sim } from "../sim/sim.js";
 import { makeSlot } from "../data/parts.js";
 import { undoStep, pushUndoEntry } from "../app/undoLogic.js";
 

@@ -1,9 +1,9 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { saveMeta, saveEndless } from "../saveStore.js";
 import { RULES } from "../data/rules.js";
-import { confirmSheet } from "../ui/next/modal.js";
-import { pauseSheetHtml as renderPauseSheetHtml } from "../ui/next/chrome.js";
-import { pauseState } from "../ui/next/stateOf.js";
+import { confirmSheet } from "../ui/modal.js";
+import { pauseSheetHtml as renderPauseSheetHtml } from "../ui/chrome.js";
+import { pauseState } from "../ui/stateOf.js";
 import * as ends from "../ui/endScreens.js";
 
 /** Persist camera pitch from Settings or the in-game slider. */

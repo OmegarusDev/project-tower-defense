@@ -2,8 +2,8 @@
  * Towers & walls — placement, sell, branch picks, stall guard, preWalls.
  * The tower object shape is save-format: loadCheckpoint rebuilds from it.
  */
-import { XP_TO_POINT } from "../../../data/parts.js";
-import { INF } from "../../boardGrid.js";
+import { XP_TO_POINT } from "../../data/parts.js";
+import { INF } from "../boardGrid.js";
 import { allocId, emit, logAction } from "../state.js";
 import {
   quoteTowerPlace,

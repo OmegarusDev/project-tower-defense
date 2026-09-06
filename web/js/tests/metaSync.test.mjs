@@ -2,7 +2,7 @@
  * Meta ↔ sim merge math — pure over (meta, sim), no app/DOM.
  * Run: node js/tests/metaSync.test.mjs
  */
-import { Sim } from "../sim/next/sim.js";
+import { Sim } from "../sim/sim.js";
 import { makeSlot, normalizeRoster } from "../data/parts.js";
 import { syncTechDerived } from "../data/techTree.js";
 import {

@@ -12,7 +12,7 @@ import {
   spendBattle,
   addBattle,
   applyRunMods,
-} from "../sim/next/systems/economy.js";
+} from "../sim/systems/economy.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);

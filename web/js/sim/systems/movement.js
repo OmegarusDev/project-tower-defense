@@ -3,7 +3,7 @@
  * gliding, leaks, game-over. The iteration order and float sequence are the
  * parity contract (simParity.mjs).
  */
-import { ballastSlowFactor } from "../../../data/enemies.js";
+import { ballastSlowFactor } from "../../data/enemies.js";
 import { emit } from "../state.js";
 import { makeEnemy } from "./waves.js";
 

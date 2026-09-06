@@ -1,12 +1,12 @@
 /**
  * Generic tower renderer — interprets partVisuals over the unified two-factor
- * basis (groundBasis / capEllipse / prims25 / hubLiftFor / crownFactorFor).
+ * basis (groundBasis / capEllipse / primitives / hubLiftFor / crownFactorFor).
  * Produces the reference painter's exact pixels (golden-verified); the only
  * per-part knowledge lives in the visual data.
  */
-import { VIEW25, deckRy, groundBasis, capEllipse } from "../view25.js";
-import { vz, cyl25, box25, frustum25, diamondPrism25, ring25, rivetRing } from "../prims25.js";
-import { shade, withAlpha, matsFrom, roundRect } from "../drawUtil.js";
+import { VIEW25, deckRy, groundBasis, capEllipse } from "./camera.js";
+import { vz, cyl25, box25, frustum25, diamondPrism25, ring25, rivetRing } from "./primitives.js";
+import { shade, withAlpha, matsFrom, roundRect } from "./drawUtil.js";
 import { BASE_VISUALS, BARREL_VISUALS, PAYLOAD_VISUALS } from "./partVisuals.js";
 
 const BASE_SCALE = 1.22;

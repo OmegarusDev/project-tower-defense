@@ -3,7 +3,7 @@
  * Chains waves until game over, victory, maxWaves, or maxTicks.
  */
 
-import { Sim, TICK_DT } from "../sim/next/sim.js";
+import { Sim, TICK_DT } from "../sim/sim.js";
 import { makeSlot } from "../data/parts.js";
 import { BASE_START_CASH } from "../data/techTree.js";
 import { ENDLESS_GRID } from "../data/endlessGrid.js";

@@ -1,9 +1,9 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { TECH_TREES, getTechNode } from "../data/techTree.js";
 import { techBuyNode, techUnlockPart } from "../app/techLogic.js";
-import { renderTech, techTreeHtml } from "./next/screens.js";
-import { techState } from "./next/stateOf.js";
-import { applyBtnTextures, swapWithExitAnim } from "./next/registry.js";
+import { renderTech, techTreeHtml } from "./screens.js";
+import { techState } from "./stateOf.js";
+import { applyBtnTextures, swapWithExitAnim } from "./registry.js";
 
 export function showUpgrade(app, returnTo) {
   const wasUpgrade = app.screen === "upgrade";

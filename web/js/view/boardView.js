@@ -1,14 +1,14 @@
 /**
  * BoardView — canvas host: sim binding, pointer/zoom/pitch input, camera
  * glide, static-layer caching, painter's-order draw over the pure
- * boardScene renderers (view/next/boardScene.js). Pixel gates:
+ * boardScene renderers (view/boardScene.js). Pixel gates:
  * renderParity.mjs + boardParity.mjs.
  */
-import { buildAttackPlan, planOptsFromParts } from "../../sim/attackPlan.js";
-import { XP_TO_POINT } from "../../data/parts.js";
+import { buildAttackPlan, planOptsFromParts } from "../sim/attackPlan.js";
+import { XP_TO_POINT } from "../data/parts.js";
 import * as S from "./boardScene.js";
 import { PortalAnimator } from "./boardScene.js";
-import { VIEW25, setPitch, BoardCamera } from "../view25.js";
+import { VIEW25, setPitch, BoardCamera } from "./camera.js";
 import { renderTowerNext } from "./renderTower.js";
 
 /** Draw towers/enemies a bit larger than the cell footprint. */

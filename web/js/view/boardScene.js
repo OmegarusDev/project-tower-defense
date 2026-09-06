@@ -7,8 +7,8 @@
  */
 import { renderTowerNext } from "./renderTower.js";
 import { renderEnemyNext } from "./renderEnemy.js";
-import { VIEW25, deckRy } from "../view25.js";
-import { shade, withAlpha, hash21 } from "../drawUtil.js";
+import { VIEW25, deckRy } from "./camera.js";
+import { shade, withAlpha, hash21 } from "./drawUtil.js";
 
 /** Draw towers/enemies a bit larger than the cell footprint. */
 export const UNIT_SCALE = 1.22;

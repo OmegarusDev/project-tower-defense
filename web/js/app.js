@@ -1,17 +1,17 @@
 /**
  * App orchestrator — thin, explicit.
  * using explicit app.interaction.* instead of proxy getters (app.tool) because direct field is searchable and obvious
- * Dispatch via `ui/next/actions.js` calls screens/logic directly; App owns navigation + tick + wiring.
+ * Dispatch via `ui/actions.js` calls screens/logic directly; App owns navigation + tick + wiring.
  * Legacy `app.*` delegates remain as deprecated compat shims so old callers keep working; new code calls `chrome.*(app)` etc. directly.
  */
 
 import { buildAttackPlan, planOptsFromParts } from "./sim/attackPlan.js";
-import { TICK_HZ } from "./sim/next/sim.js";
-import { BoardView } from "./view/next/boardView.js";
-import { PortalAnimator } from "./view/next/boardScene.js";
+import { TICK_HZ } from "./sim/sim.js";
+import { BoardView } from "./view/boardView.js";
+import { PortalAnimator } from "./view/boardScene.js";
 import { ProcPalette } from "./view/palette.js";
 import { TitleView } from "./view/titleView.js";
-import { setPitch } from "./view/view25.js";
+import { setPitch } from "./view/camera.js";
 import { FxSystem } from "./view/fx.js";
 import { SynthBank } from "./audio/synthBank.js";
 import { ScoreEngine } from "./audio/scoreEngine.js";
@@ -27,11 +27,11 @@ const META_BACKDROP_SCREENS = new Set([
 import { getCampaignLevel } from "./data/campaign.js";
 import { wireSettings, paintCampaignThumbs } from "./ui/menuScreens.js";
 import { LevelEditor, loadEditorLevels } from "./ui/levelEditor.js";
-import { mountScreen } from "./ui/next/registry.js";
-import { screenState, chromeState } from "./ui/next/stateOf.js";
-import { syncTowerOverlay, syncWaveAndStatus } from "./ui/next/chrome.js";
+import { mountScreen } from "./ui/registry.js";
+import { screenState, chromeState } from "./ui/stateOf.js";
+import { syncTowerOverlay, syncWaveAndStatus } from "./ui/chrome.js";
 import { paintLevelThumb } from "./ui/metaUi.js";
-import { runAction } from "./ui/next/actions.js";
+import { runAction } from "./ui/actions.js";
 import * as forge from "./ui/forgeScreen.js";
 import * as tech from "./ui/techScreen.js";
 import * as ends from "./ui/endScreens.js";

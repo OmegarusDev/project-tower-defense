@@ -5,11 +5,11 @@
 <body>
 <script type="module">
   import { ProcPalette } from "/js/view/palette.js";
-  import { BoardView as NextBoardView } from "/js/view/next/boardView.js";
-  import { Sim } from "/js/sim/next/sim.js";
+  import { BoardView as NextBoardView } from "/js/view/boardView.js";
+  import { Sim } from "/js/sim/sim.js";
   import { ENDLESS_GRID } from "/js/data/endlessGrid.js";
   import { buildAttackPlan, planOptsFromParts } from "/js/sim/attackPlan.js";
-  import * as S from "/js/view/next/boardScene.js";
+  import * as S from "/js/view/boardScene.js";
 
   const palette = new ProcPalette();
   const W = 960, H = 540;

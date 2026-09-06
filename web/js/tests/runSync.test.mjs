@@ -2,7 +2,7 @@
  * Regression guards for continue/resume + life-budget sync.
  * Run: node js/tests/runSync.test.mjs
  */
-import { Sim } from "../sim/next/sim.js";
+import { Sim } from "../sim/sim.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);

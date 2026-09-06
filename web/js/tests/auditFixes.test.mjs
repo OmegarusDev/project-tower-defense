@@ -3,8 +3,8 @@
  * pierce, level points, level cap, Iron Guard + forgeBuys migration.
  * Run: node js/tests/auditFixes.test.mjs
  */
-import { Sim } from "../sim/next/sim.js";
-import { onHit, grantXp } from "../sim/next/systems/combat.js";
+import { Sim } from "../sim/sim.js";
+import { onHit, grantXp } from "../sim/systems/combat.js";
 import { buildAttackPlan } from "../sim/attackPlan.js";
 import { PARTS, estimateForgeBuys, MAX_ROSTER_SLOTS } from "../data/parts.js";
 import {

@@ -7,9 +7,10 @@
  * rosterPeekHtml, prepSlotButtonsHtml, partIcons, xClose) are reused as-is
  * — they never touch app.
  */
-import { CAMPAIGN_LEVELS, isLevelUnlocked, getCampaignLevel } from "../../data/campaign.js";import { WAVE_PACKS } from "../../data/waveScripts.js";
-import { VIEW25 } from "../../view/view25.js";
-import { buildAttackPlan } from "../../sim/attackPlan.js";
+import { CAMPAIGN_LEVELS, isLevelUnlocked, getCampaignLevel } from "../data/campaign.js";
+import { WAVE_PACKS } from "../data/waveScripts.js";
+import { VIEW25 } from "../view/camera.js";
+import { buildAttackPlan } from "../sim/attackPlan.js";
 import {
   makeSlot,
   PARTS,
@@ -17,7 +18,7 @@ import {
   ownsPart,
   partLabel,
   doctrineLabel,
-} from "../../data/parts.js";
+} from "../data/parts.js";
 import {
   TECH_TREES,
   BASE_START_CASH,
@@ -30,11 +31,11 @@ import {
   formatTechCost,
   canAffordTech,
   nextRosterSlotUnlock,
-} from "../../data/techTree.js";
-import { MAX_ROSTER_SLOTS } from "../../data/parts.js";
-import { threatTagsForLevel, rosterPeekHtml, endlessThemeBlurb } from "../metaUi.js";
-import { xClose } from "../xClose.js";
-import { partIconHtml, techCategoryIcon, techNodeIconHtml } from "../partIcons.js";
+} from "../data/techTree.js";
+import { MAX_ROSTER_SLOTS } from "../data/parts.js";
+import { threatTagsForLevel, rosterPeekHtml, endlessThemeBlurb } from "./metaUi.js";
+import { xClose } from "./xClose.js";
+import { partIconHtml, techCategoryIcon, techNodeIconHtml } from "./partIcons.js";
 
 export const VERSION = "0.5.0";
 export const VERSION_NAME = "Tempered";

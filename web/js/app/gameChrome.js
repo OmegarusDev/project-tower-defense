@@ -1,11 +1,11 @@
 /** Extracted from App — pure move, no gameplay changes. */
 import { makeSlot, ownsPart, MAX_ROSTER_SLOTS } from "../data/parts.js";
 
-import { renderTowerNext } from "../view/next/renderTower.js";
-import { chromeState } from "../ui/next/stateOf.js";
-import { chromeHtml, composeSheetHtml, syncHud } from "../ui/next/chrome.js";
-import { rosterSlotButtonsHtml } from "../ui/next/screens.js";
-import { applyBtnTextures, swapWithExitAnim } from "../ui/next/registry.js";
+import { renderTowerNext } from "../view/renderTower.js";
+import { chromeState } from "../ui/stateOf.js";
+import { chromeHtml, composeSheetHtml, syncHud } from "../ui/chrome.js";
+import { rosterSlotButtonsHtml } from "../ui/screens.js";
+import { applyBtnTextures, swapWithExitAnim } from "../ui/registry.js";
 
 /** Live place quote for a roster index (game only). */
 export function gameSlotQuote(app, i) {

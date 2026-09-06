@@ -5,7 +5,7 @@
  * foreshorten via deckRy, so nothing drifts from the unified camera.
  */
 
-import { VIEW25, deckRy } from "./view25.js";
+import { VIEW25, deckRy } from "./camera.js";
 import { shade, withAlpha, facePoly } from "./drawUtil.js";
 
 /** Pitch-linked vertical measure — footprint radii stay unscaled. */

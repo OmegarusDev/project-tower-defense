@@ -3,10 +3,10 @@
  * plan cache and alt-toggle live ON STATE: they are the determinism
  * contract the parity traces pin (simParity.mjs). Do not reorder.
  */
-import { PARTS, XP_TO_POINT } from "../../../data/parts.js";
-import { ballastPressureFactor, isConductive } from "../../../data/enemies.js";
-import { buildAttackPlan, Pattern, planOptsFromParts } from "../../attackPlan.js";
-import { INF } from "../../boardGrid.js";
+import { PARTS, XP_TO_POINT } from "../../data/parts.js";
+import { ballastPressureFactor, isConductive } from "../../data/enemies.js";
+import { buildAttackPlan, Pattern, planOptsFromParts } from "../attackPlan.js";
+import { INF } from "../boardGrid.js";
 import { allocId, emit, logAction } from "../state.js";
 import { applyStatus as applyStatusRegistry, tickStatus as tickStatusRegistry } from "../combat/status.js";
 import { SYNERGIES, heatBlockActive } from "../combat/synergy.js";

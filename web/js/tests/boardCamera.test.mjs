@@ -1,4 +1,4 @@
-import { BoardCamera, setPitch, VIEW25 } from "../view/view25.js";
+import { BoardCamera, setPitch, VIEW25 } from "../view/camera.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);

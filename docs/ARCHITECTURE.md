@@ -12,24 +12,22 @@ web/
     main.js app.js saveStore.js
     app/         # metaSync, runLifecycle, simBridge, gameChrome, placeUndo, input, pauseSettings,
                  # endsLogic, forgeLogic, techLogic, undoLogic
-    ui/          # menuScreens, forgeScreen, techScreen, endScreens, levelEditor, metaUi,
-                 # partIcons, replay, xClose
-    ui/next/     # actions (runAction), screens, registry (mountScreen), chrome, modal, stateOf
+    ui/          # actions, screens, registry, chrome, modal, stateOf, menuScreens, forgeScreen,
+                 # techScreen, endScreens, levelEditor, metaUi, partIcons, replay, xClose
     data/        # parts, techTree, campaign, enemies, waveScripts, endlessGrid, rules
-    sim/         # boardGrid, attackPlan, rng
-    sim/next/    # state, sim (Sim facade), systems/{combat,economy,movement,towers,waves},
+    sim/         # boardGrid, attackPlan, rng, state, sim (facade), systems/{combat,economy,movement,towers,waves},
                  # combat/{status,synergy}
     balance/     # headless runSim + greedyBot + scenarios (no DOM)
-    view/        # palette, drawUtil, prims25, fx, titleView, view25 (camera)
-    view/next/   # boardScene, boardView, enemyVisuals, partVisuals, renderEnemy, renderTower
+    view/        # palette, drawUtil, primitives, fx, titleView, camera (Anvil Engine), boardScene, boardView,
+                 # enemyVisuals, partVisuals, renderEnemy, renderTower
     audio/       # SynthBank SFX+Music buses; ScoreEngine generative ambient
     tests/       # node smoke tests (17 files, run via verify.mjs)
-docs/            # GDD + prompts + legacy notes
-PLAY.html        # thin launcher → GitHub Pages
-.github/         # Pages deploy (uploads web/)
+  docs/            # GDD + prompts + legacy notes
+  PLAY.html        # thin launcher → GitHub Pages
+  .github/         # Pages deploy (uploads web/)
 ```
 
-`app.js` is a thin orchestrator (ctor, start/tick, wireSim, bindUi); screen and run logic live under `js/app/*` and `js/ui/*` as `function foo(app, …)` modules.
+`app.js` is a thin orchestrator (ctor, start/tick, wireSim, bindUi); screen and run logic live under `js/app/*` and `js/ui/*` as `function foo(app, …)` modules. Anvil Engine is the 2.5D camera + primitives + board view (`view/camera.js` + `primitives.js` + `boardView.js`/`boardScene.js`) — lightweight, no game deps; Forge is the in-game parts shop (`app/forgeLogic.js` + `data/parts.js`).
 
 ## Pipelines
 
@@ -145,8 +143,7 @@ These are enforced by CI (`.github/workflows/parity.yml`) and must not regress:
   on quota failure).
 - **Zero assets / no build**: no frameworks, npm at runtime, or art/SFX packs.
   `playwright` is dev-only (CI parity).
-- **Live code layout**: `sim/next`, `ui/next`, `view/next` are the current code (not
-  legacy). A folder rename is deferred until a true blank-slate rebuild.
+- **Live code layout**: `sim/`, `ui/`, `view/` are flat — `next/` collapsed and `view25`/`prims25` renamed to `camera`/`primitives` (Anvil Engine) in the 1.0 deepclean.
 - **Docs accuracy**: CI greps `docs/` for references to removed modules (the old
   action-binding shim and the former Sim-world wrapper); keep references accurate.
   Historical plans live in `docs/history/`.

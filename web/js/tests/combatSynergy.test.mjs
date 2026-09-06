@@ -2,12 +2,12 @@
  * Combat refactor regression guards: cross-part synergies + enemy identity.
  * Run: node js/tests/combatSynergy.test.mjs
  */
-import { Sim } from "../sim/next/sim.js";
+import { Sim } from "../sim/sim.js";
 import { buildAttackPlan } from "../sim/attackPlan.js";
 import { enemyDef } from "../data/enemies.js";
-import { makeEnemy } from "../sim/next/systems/waves.js";
-import { tickEnemies } from "../sim/next/systems/movement.js";
-import { tickStatus, applyHit, doChain, refreshEnemyAuras } from "../sim/next/systems/combat.js";
+import { makeEnemy } from "../sim/systems/waves.js";
+import { tickEnemies } from "../sim/systems/movement.js";
+import { tickStatus, applyHit, doChain, refreshEnemyAuras } from "../sim/systems/combat.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);

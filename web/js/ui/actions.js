@@ -6,9 +6,9 @@
  * tail()/args() — no hardcoded offsets. The parity gate (actionsParity.mjs)
  * replays the full act vocabulary through a spy app and pins call traces.
  */
-import { loadEditorLevels } from "../levelEditor.js";
-import { MAX_ROSTER_SLOTS } from "../../data/parts.js";
-import { META_KEY, ENDLESS_KEY } from "../../saveStore.js";
+import { loadEditorLevels } from "./levelEditor.js";
+import { MAX_ROSTER_SLOTS } from "../data/parts.js";
+import { META_KEY, ENDLESS_KEY } from "../saveStore.js";
 import { confirmSheet, holdConfirmSheet } from "./modal.js";
 import * as ends from "../endScreens.js";
 import * as forge from "../forgeScreen.js";

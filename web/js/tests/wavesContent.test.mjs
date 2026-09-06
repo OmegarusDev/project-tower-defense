@@ -1,5 +1,5 @@
-import { Sim } from "../sim/next/sim.js";
-import { makeEnemy } from "../sim/next/systems/waves.js";
+import { Sim } from "../sim/sim.js";
+import { makeEnemy } from "../sim/systems/waves.js";
 import { WAVE_PACKS, composeEndlessWave, resolveCampaignWave } from "../data/waveScripts.js";
 import { ENEMY_KINDS, resolveEnemyKind } from "../data/enemies.js";
 import { CAMPAIGN_LEVELS, campaignCoinGrant } from "../data/campaign.js";

@@ -3,9 +3,9 @@
  * primitives with a shared wrapper (animation transform,
  * brass rivets, energy veil). Golden-verified per kind.
  */
-import { deckRy } from "../view25.js";
-import { cyl25, box25, frustum25 } from "../prims25.js";
-import { shade, withAlpha, matsFrom } from "../drawUtil.js";
+import { deckRy } from "./camera.js";
+import { cyl25, box25, frustum25 } from "./primitives.js";
+import { shade, withAlpha, matsFrom } from "./drawUtil.js";
 import { ENEMY_VISUALS } from "./enemyVisuals.js";
 
 const BRASS = withAlpha("#c9a227", 0.55);

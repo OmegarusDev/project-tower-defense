@@ -118,7 +118,7 @@ function tryPlaceWalls(sim, budget = 3) {
 }
 
 /**
- * @param {import('../sim/next/sim.js').Sim} sim
+ * @param {import('../sim/sim.js').Sim} sim
  * @param {'betweenWaves'|'inWave'} phase
  */
 export function greedyAct(sim, phase) {

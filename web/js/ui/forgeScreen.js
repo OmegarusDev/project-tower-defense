@@ -7,11 +7,11 @@ import {
   forgeUnlockSlot,
   forgeBuyPart,
 } from "../app/forgeLogic.js";
-import { renderTowerNext } from "../view/next/renderTower.js";
-import { forgePartGridHtml, forgePreviewCard, forgeUnlockCard } from "./next/screens.js";
-import { renderForge } from "./next/screens.js";
-import { forgeState } from "./next/stateOf.js";
-import { applyBtnTextures, swapWithExitAnim } from "./next/registry.js";
+import { renderTowerNext } from "../view/renderTower.js";
+import { forgePartGridHtml, forgePreviewCard, forgeUnlockCard } from "./screens.js";
+import { renderForge } from "./screens.js";
+import { forgeState } from "./stateOf.js";
+import { applyBtnTextures, swapWithExitAnim } from "./registry.js";
 
 /** Patch the open Forge screen without wiping scroll / replaying enter anim. */
 export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true } = {}) {

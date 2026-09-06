@@ -4,9 +4,9 @@
  * Draw order across systems is the parity contract (simParity.mjs pins it
  * byte-exactly, not just "seeded the same").
  */
-import { BoardGrid } from "../boardGrid.js";
-import { mulberry32 } from "../rng.js";
-import { BASE_START_CASH, BASE_START_LIVES } from "../../data/techTree.js";
+import { BoardGrid } from "./boardGrid.js";
+import { mulberry32 } from "./rng.js";
+import { BASE_START_CASH, BASE_START_LIVES } from "../data/techTree.js";
 import { makeEconomy } from "./systems/economy.js";
 
 export function createState(opts = {}) {

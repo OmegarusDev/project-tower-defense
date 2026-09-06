@@ -11,9 +11,9 @@ import {
   doctrineLabel,
   XP_TO_POINT,
   MAX_ROSTER_SLOTS,
-} from "../../data/parts.js";
+} from "../data/parts.js";
 import { forgePlanSummary, rosterSlotButtonsHtml } from "./screens.js";
-import { partIconHtml } from "../partIcons.js";
+import { partIconHtml } from "./partIcons.js";
 
 /** The chrome shell (renderGameChrome's template) — pure over state. */
 export function chromeHtml(state) {

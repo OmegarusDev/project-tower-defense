@@ -71,5 +71,32 @@ Verify: `verify.mjs` green; `git status` shows only this plan + P1 data changes.
 P1 → P2 → P3 → P5 → P4. Each phase lands as one commit, gated. P4 last because it touches every parity gate.
 
 ---
-
+ 
+## Pre-Release Checklist (to fix before next tag)
+ 
+- [ ] **Fix `actionsParity` test mock** (`web/dev/probe-actions.html`)
+  - Add mock `score` object with `toMenu` method to `BASE` proxy in `probe-actions.html`
+  - Root cause: mock app missing `score.toMenu()` method; `endScreens.js:19` calls `app.score?.toMenu()` which fails on mock
+  - Files: `web/dev/probe-actions.html` (add mock `score` to `BASE`), `web/js/ui/endScreens.js:19` (harden to `app.score?.toMenu?.()`)
+ 
+- [ ] **Harden optional chaining in `endScreens.js`**
+  - Change `app.score?.toMenu()` → `app.score?.toMenu?.()` for full safety
+  - Pattern: `app.score?.toMenu?.()` guards against both null `score` AND missing method
+ 
+- [ ] **Verify all corpus gates pass**
+  - Run `node tools/corpus/actionsParity.mjs` (should PASS after fixes)
+  - Run full parity suite: `boardParity`, `uiParity`, `actionsParity`, `chromeParity`, `ladderParity`, `simParity`
+  - Run `smokeWalk.mjs` + `qaWalk.mjs` (requires `python3 -m http.server 8123`)
+ 
+- [ ] **BoardParity view divergence** (0.11% / 582 px)
+  - Already re-captured with `--capture` flag — now PASS
+  - Note: if view changes again, re-capture with `node tools/corpus/boardParity.mjs --capture`
+ 
+- [ ] **Build stamp + release artifacts** (Phase 4)
+  - Title screen footer: `v0.9-beta · <commit short>`
+  - `BETA.md` at repo root (what's in, known issues, report via Issues)
+  - Tag `beta-1` + push + verify deployed Pages URL serves tag's code
+ 
+---
+ 
 *Checklist for execution — refer during build. Pair with `GDD.md` + `ARCHITECTURE.md` + `DEV.md`.*

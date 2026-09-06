@@ -51,8 +51,7 @@ gates green. This safety net is what makes maintenance safe — do not weaken it
   checkpoint.
 - No `console.log` / `console.debug` / `debugger` in `web/js`. Two intentional
   `console.info` / `console.warn` calls are allowlisted (CI grep guard).
-- `sim/next`, `ui/next`, `view/next` are the live code. A folder rename is deferred
-  until a true blank-slate rebuild.
+- `sim/`, `ui/`, `view/` are flat — `next/` collapsed and `view25`/`prims25` → `camera`/`primitives` (Anvil Engine) in the 1.0 deepclean.
 
 ## Git hygiene
 

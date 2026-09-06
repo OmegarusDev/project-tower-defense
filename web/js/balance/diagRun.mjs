@@ -5,7 +5,7 @@
  */
 import { runSim } from "./runSim.js";
 import { scenarioByName } from "./scenarios.js";
-import { Sim } from "../sim/next/sim.js";
+import { Sim } from "../sim/sim.js";
 
 function parseArgs(argv) {
   const out = { preset: "fresh", seed: 1 };

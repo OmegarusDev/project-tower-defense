@@ -1,6 +1,6 @@
 /** Run: node js/tests/boardGrid.test.mjs */
 import { BoardGrid, INF } from "../sim/boardGrid.js";
-import { Sim } from "../sim/next/sim.js";
+import { Sim } from "../sim/sim.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -187,7 +187,7 @@ console.log("ALL boardGrid tests passed");
 
   // The preview (stub camera) returns the trunk + the alternative branch,
   // and both lanes reach the exit.
-  const { pathPoints } = await import("../view/next/boardScene.js");
+  const { pathPoints } = await import("../view/boardScene.js");
   const cam = { projectCell: (x, y) => ({ x, y, s: 1 }) };
   const { trunk, branches } = pathPoints(cam, g5, g5.spawn.x);
   const allPts = [...trunk, ...branches.flat()];

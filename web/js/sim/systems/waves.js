@@ -3,11 +3,11 @@
  * per wave, draw order (compose → portal cycle) and jitter draws after
  * each spawn are the determinism contract — do not reorder.
  */
-import { ENDLESS_GRID } from "../../../data/endlessGrid.js";
-import { composeEndlessWave, resolveCampaignWave } from "../../../data/waveScripts.js";
-import { enemyDef, resolveEnemyKind } from "../../../data/enemies.js";
-import { mulberry32 } from "../../rng.js";
-import { INF } from "../../boardGrid.js";
+import { ENDLESS_GRID } from "../../data/endlessGrid.js";
+import { composeEndlessWave, resolveCampaignWave } from "../../data/waveScripts.js";
+import { enemyDef, resolveEnemyKind } from "../../data/enemies.js";
+import { mulberry32 } from "../rng.js";
+import { INF } from "../boardGrid.js";
 import { allocId, emit } from "../state.js";
 import { applyWaveClear } from "./economy.js";
 
