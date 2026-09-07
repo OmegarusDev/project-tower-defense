@@ -12,6 +12,8 @@ import { forgePartGridHtml, forgePreviewCard, forgeUnlockCard } from "./screens.
 import { renderForge } from "./screens.js";
 import { forgeState } from "./stateOf.js";
 import { applyBtnTextures, swapWithExitAnim } from "./registry.js";
+import { persistMeta, syncSimFromMeta } from "../app/metaSync.js";
+import { applyPitch } from "../app/pauseSettings.js";
 
 /** Patch the open Forge screen without wiping scroll / replaying enter anim. */
 export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true } = {}) {
@@ -61,7 +63,7 @@ export function refreshForgeUi(app, { rebuildParts = false, flashPreview = true 
           e.preventDefault();
           const cur = app.meta.settings?.cameraPitch ?? RULES.PITCH_DEFAULT;
           const pitch = Math.max(RULES.PITCH_MIN, Math.min(RULES.PITCH_MAX, cur + e.deltaY * 0.09));
-          app.applyPitch(pitch);
+          applyPitch(app, pitch);
         }
       }, { passive: false });
     }
@@ -161,8 +163,8 @@ export function applyForgePart(app, kind, id) {
     return;
   }
   const r = forgeApplyPart(app.meta, app.forgeSlot, kind, id);
-  app.persistMeta();
-  if (app.sim) app._syncSimFromMeta(app.sim);
+  persistMeta(app);
+  if (app.sim) syncSimFromMeta(app, app.sim);
   app.synth.play("ui", 1, 0.4);
   app.status = r.status;
   refreshForgeUi(app);
@@ -171,8 +173,8 @@ export function applyForgePart(app, kind, id) {
 
 export function clearForgeSlot(app) {
   const r = forgeClearSlot(app.meta, app.forgeSlot);
-  app.persistMeta();
-  if (app.sim) app._syncSimFromMeta(app.sim);
+  persistMeta(app);
+  if (app.sim) syncSimFromMeta(app, app.sim);
   app.status = r.status;
   refreshForgeUi(app);
   
@@ -186,8 +188,8 @@ export function unlockForgeSlot(app, wantIndex) {
     return;
   }
   app.forgeSlot = r.slotIndex;
-  app.persistMeta();
-  if (app.sim) app._syncSimFromMeta(app.sim);
+  persistMeta(app);
+  if (app.sim) syncSimFromMeta(app, app.sim);
   app.synth.play("confirm");
   app.status = r.status;
   refreshForgeUi(app, { rebuildParts: true });
@@ -206,8 +208,8 @@ export function buyPart(app, kind, id, equip = true) {
     }
     return;
   }
-  app.persistMeta();
-  if (app.sim) app._syncSimFromMeta(app.sim);
+  persistMeta(app);
+  if (app.sim) syncSimFromMeta(app, app.sim);
   app.synth.play("confirm");
   app.status = r.status;
   refreshForgeUi(app, { rebuildParts: true });
@@ -243,6 +245,6 @@ export function toggleDevMode(app) {
     app.synth.play("confirm");
     app.toast("Dev Mode: Progress restored");
   }
-  app.persistMeta();
+  persistMeta(app);
   if (app.screen === "forge") refreshForgeUi(app, { rebuildParts: true });
 }

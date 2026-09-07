@@ -12,7 +12,7 @@
 - [x] Pan camera: `boardView.js:289` layoutKey excludes pan; board cached at `(0,0)` and drawn at `origin` — pan is translate, pitch still invalidates (smooth).
 - [x] Homing `combat.js:209` → `enemiesById` via `state.enemiesById` (`state.js:84`, `waves.js:126`, `movement.js:14`).
 - [x] Ward aura `combat.js:40` early-exit + squared-distance, wards collected once.
-- [x] Sim facade `sim.js` — single source `_s` + `_fallback`, class accessors, single `waves`/`economy` proxies (not per `setup`).
+- [x] Sim is a command adapter over `sim.state` (no getter/setter facade; economy helpers are functions).
 - [x] P1/P5 as above.
 - [x] Docs shelved: `SIDEQUEL.md` (future vision), `REWRITE_PLAN.md` on hold, `DESIGN.md` copied to `docs/DESIGN.md`, `archive/` populated.
 
@@ -46,9 +46,9 @@ Verify: `verify.mjs` green (17 tests); `boardParity`/`renderParity` need rebasel
 
 ## P4 — UI/App collapse — DONE 2026-08-30 (holistic)
 
-- [x] **Big solve — interaction explicit:** `app.js` now has `this.interaction = createInteraction()` with no proxy getters. All `app.tool`/`slot`/`selectedTowerId` etc. → `app.interaction.tool` etc. (bulk update across `app/*`, `ui/next/*`). New code uses `app.interaction` directly — one place, no magic.
-- [x] **Dispatch direct:** `ui/next/actions.js` calls `ui/forgeScreen` + `techScreen` + `endScreens` directly (not via `app.showForge` etc.). `app/simBridge` + `runLifecycle` + `pauseSettings` + `input` + `forgeScreen` also bypass delegates where they were just forwarding.
-- [x] **Compat shims kept:** `app.js:346` delegates (`showForge`, `refreshHud`, `waveBusy`, `pushUndo`, `onCellTap`, etc.) remain as deprecated one-liners forwarding to modules (`forge.*(this)`, `chrome.*(this)`, `place.*(this)`). Existing callers keep working; new code should call modules directly. Full deletion would be a breaking re-capture of every UI golden — deferred until you want that churn.
+- [x] **Big solve — interaction explicit:** `app.js` now has `this.interaction = createInteraction()` with no proxy getters. All `app.tool`/`slot`/`selectedTowerId` etc. → `app.interaction.tool` etc. (bulk update across `app/*`, `ui/*`). New code uses `app.interaction` directly — one place, no magic.
+- [x] **Dispatch direct:** `ui/actions.js` calls `ui/forgeScreen` + `techScreen` + `endScreens` directly (not via `app.showForge` etc.). `app/simBridge` + `runLifecycle` + `pauseSettings` + `input` + `forgeScreen` also bypass delegates where they were just forwarding.
+- [x] **Compat shims deleted:** `app.js` no longer forwards `showForge` / `refreshHud` / `waveBusy` / etc. Call sites go to modules. HUD adapters freeze snapshots (`stateOf.js`).
 
 Verify: `verify.mjs` green (17 tests); explicit `app.interaction` is the single source for selection state.
 
@@ -74,14 +74,11 @@ P1 → P2 → P3 → P5 → P4. Each phase lands as one commit, gated. P4 last b
  
 ## Pre-Release Checklist (to fix before next tag)
  
-- [ ] **Fix `actionsParity` test mock** (`web/dev/probe-actions.html`)
-  - Add mock `score` object with `toMenu` method to `BASE` proxy in `probe-actions.html`
-  - Root cause: mock app missing `score.toMenu()` method; `endScreens.js:19` calls `app.score?.toMenu()` which fails on mock
-  - Files: `web/dev/probe-actions.html` (add mock `score` to `BASE`), `web/js/ui/endScreens.js:19` (harden to `app.score?.toMenu?.()`)
+- [x] **Fix `actionsParity` test mock** (`web/dev/probe-actions.html`)
+  - `BASE` stub includes `score.toMenu` / `synth` / `toast` / `unlockAudio`; `endScreens.js` uses `app.score?.toMenu?.()`
  
-- [ ] **Harden optional chaining in `endScreens.js`**
-  - Change `app.score?.toMenu()` → `app.score?.toMenu?.()` for full safety
-  - Pattern: `app.score?.toMenu?.()` guards against both null `score` AND missing method
+- [x] **Harden optional chaining in `endScreens.js`**
+  - `app.score?.toMenu?.()` guards against both null `score` AND missing method
  
 - [ ] **Verify all corpus gates pass**
   - Run `node tools/corpus/actionsParity.mjs` (should PASS after fixes)

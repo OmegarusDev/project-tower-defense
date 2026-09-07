@@ -742,6 +742,18 @@ label.btn input {
   color: var(--muted) !important;
 }
 
+.level-blurb {
+  margin: 0 !important;
+  text-align: left !important;
+  font-size: 0.78rem !important;
+  line-height: 1.3;
+  color: #c4b49a !important;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .roster-peek {
   display: flex;
   flex-wrap: wrap;

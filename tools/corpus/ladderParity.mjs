@@ -14,7 +14,7 @@
  */
 import { runSim } from "../../web/js/balance/runSim.js";
 import { scenarioByName } from "../../web/js/balance/scenarios.js";
-import { Sim } from "../../web/js/sim/next/sim.js";
+import { Sim } from "../../web/js/sim/sim.js";
 import { CAMPAIGN_LEVELS, levelPortalCell } from "../../web/js/data/campaign.js";
 import { makeSlot } from "../../web/js/data/parts.js";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -63,17 +63,17 @@ for (const preset of presets) {
 function runCampaign(Factory, lv) {
   const sim = new Factory();
   sim.setup(lv.cols, lv.rows, lv.seed, false);
-  sim.runSeed = lv.seed >>> 0 || 1;
-  sim.campaignLevelId = lv.id || 0;
-  sim.wavesToWin = lv.wavesToWin;
-  sim.campaignWaves = lv.waves || null;
-  sim.economy.battle = lv.coinGrant || 55;
+  sim.state.runSeed = lv.seed >>> 0 || 1;
+  sim.state.campaignLevelId = lv.id || 0;
+  sim.state.wavesToWin = lv.wavesToWin;
+  sim.state.campaignWaves = lv.waves || null;
+  sim.state.economy.battle = lv.coinGrant || 55;
   sim.applyPreWalls(lv.preWalls || []);
-  sim.portal = levelPortalCell(lv);
+  sim.state.portal = levelPortalCell(lv);
   sim.setRoster([makeSlot("sentry", "single", "kinetic", 1)]);
   const events = [];
   const rec = (t, type, ...rest) => events.push([t, type, ...rest]);
-  const tk = () => sim.tickIndex;
+  const tk = () => sim.state.tickIndex;
   sim.on("enemy_spawned", (e) => rec(tk(), "spawn", e.enemy?.kind, round(e.enemy?.pos?.x), round(e.enemy?.pos?.y)));
   sim.on("leak", (e) => rec(tk(), "leak", e.enemy?.kind, e.lives));
   sim.on("enemy_killed", (e) => rec(tk(), "kill", e.enemy?.kind));
@@ -92,9 +92,9 @@ function runCampaign(Factory, lv) {
   let ticks = 0;
   const maxTicks = 60 * 60 * 8;
   while (ticks < maxTicks && !gameOver) {
-    if (sim.waveIndex >= lv.wavesToWin && !sim.waves.waveActive && sim.enemies.length === 0) break;
-    if (!sim.running) {
-      if (sim.waveIndex >= lv.wavesToWin) break;
+    if (sim.state.waves.index >= lv.wavesToWin && !sim.state.waves.active && sim.state.enemies.length === 0) break;
+    if (!sim.state.running) {
+      if (sim.state.waves.index >= lv.wavesToWin) break;
       bot.act(sim, "betweenWaves");
       if (gameOver) break;
       sim.startWave({ earlyBonus: 0 });
@@ -108,14 +108,14 @@ function runCampaign(Factory, lv) {
     events,
     ticks,
     state: JSON.stringify({
-      waveIndex: sim.waveIndex,
-      lives: sim.lives,
-      battle: round(sim.economy?.battle),
-      towers: sim.towers.map((t) => [t.id, t.cell.x, t.cell.y, t.level]),
-      walls: sim.walls.map((w) => [w.id, w.cell.x, w.cell.y, w.preplaced ? 1 : 0]),
-      enemies: sim.enemies.map((e) => [e.id, e.kind, round(e.pos.x), round(e.pos.y), round(e.hp)]),
-      portal: sim.portal,
-      log: sim.actionLog,
+      waveIndex: sim.state.waves.index,
+      lives: sim.state.lives,
+      battle: round(sim.state.economy?.battle),
+      towers: sim.state.towers.map((t) => [t.id, t.cell.x, t.cell.y, t.level]),
+      walls: sim.state.walls.map((w) => [w.id, w.cell.x, w.cell.y, w.preplaced ? 1 : 0]),
+      enemies: sim.state.enemies.map((e) => [e.id, e.kind, round(e.pos.x), round(e.pos.y), round(e.hp)]),
+      portal: sim.state.portal,
+      log: sim.state.actionLog,
     }),
   };
 }
@@ -133,10 +133,10 @@ function checkpointRun(Factory, preset, seed) {
   const base = scenarioByName(preset);
   const s1 = new Factory();
   s1.setup(9, 8, seed, true);
-  s1.runSeed = seed;
-  s1.runLevelCap = base.runLevelCap;
+  s1.state.runSeed = seed;
+  s1.state.runLevelCap = base.runLevelCap;
   s1.setStartLives(base.startLives, { resetCurrent: true });
-  s1.economy.battle = base.startBattle;
+  s1.state.economy.battle = base.startBattle;
   s1.setRoster(base.roster.map((x) => makeSlot(x.base, x.barrel, x.payload, x.levelCap || base.runLevelCap)));
   const bot = { act: (s, phase) => greedyAct(s, phase) };
   let ticks = 0;
@@ -145,7 +145,7 @@ function checkpointRun(Factory, preset, seed) {
   bot.act(s1, "betweenWaves");
   s1.startWave({ earlyBonus: 0 });
   while (ticks < 3000 && !dead) {
-    if (!s1.running) {
+    if (!s1.state.running) {
       bot.act(s1, "betweenWaves");
       s1.startWave({ earlyBonus: 0 });
       continue;
@@ -153,7 +153,7 @@ function checkpointRun(Factory, preset, seed) {
     if ((ticks & 15) === 0) bot.act(s1, "inWave");
     s1.tick();
     ticks += 1;
-    if (s1.tickIndex > 1200) break;
+    if (s1.state.tickIndex > 1200) break;
   }
   const blob = s1.checkpoint();
   if (dead) return JSON.stringify({ blob, dead: true });
@@ -161,7 +161,7 @@ function checkpointRun(Factory, preset, seed) {
   const s2 = new Factory();
   s2.loadCheckpoint(blob);
   const out = [];
-  const tk2 = () => s2.tickIndex;
+  const tk2 = () => s2.state.tickIndex;
   s2.on("leak", (e) => out.push([tk2(), "leak", e.enemy?.kind, e.lives]));
   s2.on("enemy_killed", (e) => out.push([tk2(), "kill", e.enemy?.kind]));
   s2.on("wave_cleared", (e) => out.push([tk2(), "clear", e.wave]));
@@ -170,7 +170,7 @@ function checkpointRun(Factory, preset, seed) {
   bot.act(s2, "betweenWaves");
   s2.startWave({ earlyBonus: 0 });
   let t2 = 0;
-  while (t2 < 30000 && s2.running) {
+  while (t2 < 30000 && s2.state.running) {
     if ((t2 & 15) === 0) bot.act(s2, "inWave");
     s2.tick();
     t2 += 1;
@@ -179,12 +179,12 @@ function checkpointRun(Factory, preset, seed) {
     blob,
     out,
     state: {
-      waveIndex: s2.waveIndex,
-      lives: s2.lives,
-      battle: round(s2.economy?.battle),
-      towers: s2.towers.map((t) => [t.id, t.cell.x, t.cell.y, t.level]),
-      enemies: s2.enemies.map((e) => [e.id, e.kind, round(e.pos.x), round(e.pos.y), round(e.hp)]),
-      log: s2.actionLog,
+      waveIndex: s2.state.waves.index,
+      lives: s2.state.lives,
+      battle: round(s2.state.economy?.battle),
+      towers: s2.state.towers.map((t) => [t.id, t.cell.x, t.cell.y, t.level]),
+      enemies: s2.state.enemies.map((e) => [e.id, e.kind, round(e.pos.x), round(e.pos.y), round(e.hp)]),
+      log: s2.state.actionLog,
     },
   });
 }

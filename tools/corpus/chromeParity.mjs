@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Chrome (HUD) regression — ui/next/chrome.js output vs committed goldens
+ * Chrome (HUD) regression — ui/chrome.js output vs committed goldens
  * (--capture to refresh). Frozen time + seeded RNG, game CSS loaded.
  *
  *   node tools/corpus/chromeParity.mjs [--capture]

@@ -8,6 +8,7 @@
 import { saveMeta } from "../saveStore.js";
 import { paintLevelThumb } from "./metaUi.js";
 import { getCampaignLevel } from "../data/campaign.js";
+import { applyPitch } from "../app/pauseSettings.js";
 
 export function wireSettings(app) {
   const save = () => saveMeta(app.meta);
@@ -48,7 +49,7 @@ export function wireSettings(app) {
   });
   app.ui.querySelector("#pitch")?.addEventListener("input", (e) => {
     const v = +e.target.value;
-    app.applyPitch(v);
+    applyPitch(app, v);
     const lab = app.ui.querySelector("#pitchLabel");
     if (lab) lab.textContent = `${Math.round(v)}°`;
   });

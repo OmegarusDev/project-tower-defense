@@ -29,10 +29,10 @@ import { ENDLESS_GRID } from "../data/endlessGrid.js";
 
 const sim = new Sim();
 sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, seed, true);
-sim.runSeed = seed;
-sim.runLevelCap = base.runLevelCap;
+sim.state.runSeed = seed;
+sim.state.runLevelCap = base.runLevelCap;
 sim.setStartLives(base.startLives, { resetCurrent: true });
-sim.economy.battle = base.startBattle;
+sim.state.economy.battle = base.startBattle;
 if (base.partUpgrades) sim.setPartUpgrades(base.partUpgrades);
 if (base.globalMods) sim.setGlobalMods(base.globalMods);
 const roster = base.roster.map((s) => makeSlot(s.base, s.barrel, s.payload, s.levelCap || base.runLevelCap));
@@ -45,7 +45,7 @@ const leakDetail = [];
 
 sim.on("wave_cleared", () => {
   perWave.set(cur.wave, { ...cur, result: "cleared" });
-  sim.running = false;
+  sim.state.running = false;
   cur = { wave: cur.wave + 1, leaks: 0, kills: 0, flyingLeaks: 0 };
 });
 sim.on("leak", (ev) => {
@@ -57,7 +57,7 @@ sim.on("leak", (ev) => {
 sim.on("game_over", () => {
   gameOver = true;
   perWave.set(cur.wave, { ...cur, result: "GAME OVER" });
-  sim.running = false;
+  sim.state.running = false;
 });
 sim.on("enemy_killed", () => {
   cur.kills += 1;
@@ -68,9 +68,9 @@ sim.startWave({ earlyBonus: 0 });
 let ticks = 0;
 const maxTicks = base.maxTicks;
 while (ticks < maxTicks && !gameOver) {
-  if (sim.waveIndex >= base.maxWaves && !sim.waves.waveActive && sim.enemies.length === 0) break;
-  if (!sim.running) {
-    if (sim.waveIndex >= base.maxWaves) break;
+  if (sim.state.waves.index >= base.maxWaves && !sim.state.waves.active && sim.state.enemies.length === 0) break;
+  if (!sim.state.running) {
+    if (sim.state.waves.index >= base.maxWaves) break;
     base.bot.act(sim, "betweenWaves");
     if (gameOver) break;
     sim.startWave({ earlyBonus: 0 });
@@ -82,8 +82,8 @@ while (ticks < maxTicks && !gameOver) {
 }
 if (!gameOver && !perWave.has(cur.wave)) perWave.set(cur.wave, { ...cur, result: "survived" });
 
-console.log(`preset=${preset} seed=${seed} → ${gameOver ? "GAME OVER" : "survived"} at wave ${sim.waveIndex}`);
+console.log(`preset=${preset} seed=${seed} → ${gameOver ? "GAME OVER" : "survived"} at wave ${sim.state.waves.index}`);
 for (const [w, row] of [...perWave.entries()].sort((a, b) => a[0] - b[0])) {
-  console.log(`w${w} ${row.result} leaks=${row.leaks}${row.flyingLeaks ? ` (${row.flyingLeaks} flyer)` : ""} kills=${row.kills} towers=${sim.towers.length} lives=${sim.lives}`);
+  console.log(`w${w} ${row.result} leaks=${row.leaks}${row.flyingLeaks ? ` (${row.flyingLeaks} flyer)` : ""} kills=${row.kills} towers=${sim.state.towers.length} lives=${sim.state.lives}`);
 }
 for (const line of leakDetail.slice(0, 40)) console.log(line);

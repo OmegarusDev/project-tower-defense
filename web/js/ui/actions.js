@@ -10,9 +10,16 @@ import { loadEditorLevels } from "./levelEditor.js";
 import { MAX_ROSTER_SLOTS } from "../data/parts.js";
 import { META_KEY, ENDLESS_KEY } from "../saveStore.js";
 import { confirmSheet, holdConfirmSheet } from "./modal.js";
-import * as ends from "../endScreens.js";
-import * as forge from "../forgeScreen.js";
-import * as tech from "../techScreen.js";
+import * as ends from "./endScreens.js";
+import * as forge from "./forgeScreen.js";
+import * as tech from "./techScreen.js";
+import { startCampaignLevel, playtestEditorLevel, newRun, continueRun } from "../app/runLifecycle.js";
+import { toggleLiveCompose, renderGameChrome, applyLiveComposePart } from "../app/gameChrome.js";
+import { sellSelected, chooseLevelBranchSelected, undoLast, clearPlaceConfirm } from "../app/placeUndo.js";
+import { openPause, resumeGame, quitToMenu } from "../app/pauseSettings.js";
+import { setSpeed } from "../app/input.js";
+import { startGhostReplay, ghostSetSpeed, ghostSkip } from "../app/simBridge.js";
+import { syncSimFromMeta } from "../app/metaSync.js";
 
 /** Remainder of an act after its prefix: tail("slot:3", "slot:") → "3". */
 function tail(act, prefix) {
@@ -53,7 +60,7 @@ const R = [
   },
   { is: "prep-slot-prev", run: (app) => shiftPrepSlot(app, -1) },
   { is: "prep-slot-next", run: (app) => shiftPrepSlot(app, 1) },
-  { has: "start-level:", run: (app, act) => app.startCampaignLevel(+tail(act, "start-level:")) },
+  { has: "start-level:", run: (app, act) => startCampaignLevel(app, +tail(act, "start-level:")) },
 
   // ---- meta reset ----
   {
@@ -112,7 +119,7 @@ const R = [
       app.editor.wavesToWin = +(app.ui.querySelector("#edWaves")?.value || 5);
       app.editor.coinGrant = +(app.ui.querySelector("#edCoin")?.value || 50);
       app.editor.waveScript = app.ui.querySelector("#edScript")?.value || "mixed_mid";
-      app.playtestEditorLevel(app.editor.toLevelDef());
+      playtestEditorLevel(app, app.editor.toLevelDef());
     },
   },
   {
@@ -129,7 +136,7 @@ const R = [
     run: (app, act) => {
       const list = loadEditorLevels();
       const lv = list[+tail(act, "ed-load:")];
-      if (lv) app.playtestEditorLevel(lv);
+      if (lv) playtestEditorLevel(app, lv);
     },
   },
   {
@@ -142,31 +149,31 @@ const R = [
   },
 
   // ---- live compose ----
-  { is: "compose-toggle", run: (app) => app.toggleLiveCompose() },
+  { is: "compose-toggle", run: (app) => toggleLiveCompose(app) },
   {
     is: "compose-close",
     run: (app) => {
       app.interaction.liveCompose = false;
-      app.renderGameChrome();
+      renderGameChrome(app);
     },
   },
   {
     has: "compose-part:",
     run: (app, act) => {
       const [kind, id] = args(act, "compose-part:");
-      app.applyLiveComposePart(kind, id);
+      applyLiveComposePart(app, kind, id);
     },
   },
 
   // ---- run/end ----
-  { is: "ghost-replay", run: (app) => app.startGhostReplay() },
+  { is: "ghost-replay", run: (app) => startGhostReplay(app) },
   {
     has: "ghost-speed:",
-    run: (app, act) => app.ghostSetSpeed(+tail(act, "ghost-speed:")),
+    run: (app, act) => ghostSetSpeed(app, +tail(act, "ghost-speed:")),
   },
-  { is: "ghost-skip", run: (app) => app.ghostSkip() },
-  { is: "newrun", run: (app) => app.newRun() },
-  { is: "continue", run: (app) => app.continueRun() },
+  { is: "ghost-skip", run: (app) => ghostSkip(app) },
+  { is: "newrun", run: (app) => newRun(app) },
+  { is: "continue", run: (app) => continueRun(app) },
 
   // ---- forge nav ----
   { is: "forge", run: (app) => forge.showForge(app, app.forgeReturn || "main") },
@@ -210,21 +217,21 @@ const R = [
   { has: "tech-buy:", run: (app, act) => tech.buyTechNode(app, tail(act, "tech-buy:")) },
 
   // ---- game controls ----
-  { is: "pause", run: (app) => app.openPause() },
-  { is: "resume", run: (app) => app.resumeGame() },
-  { is: "quit-run", run: (app) => app.quitToMenu() },
-  { is: "sell", run: (app) => app.sellSelected() },
-  { has: "level-branch:", run: (app, act) => app.chooseLevelBranchSelected(tail(act, "level-branch:")) },
-  { is: "undo", run: (app) => app.undoLast() },
-  { has: "speed:", run: (app, act) => app.setSpeed(+tail(act, "speed:")) },
+  { is: "pause", run: (app) => openPause(app) },
+  { is: "resume", run: (app) => resumeGame(app) },
+  { is: "quit-run", run: (app) => quitToMenu(app) },
+  { is: "sell", run: (app) => sellSelected(app) },
+  { has: "level-branch:", run: (app, act) => chooseLevelBranchSelected(app, tail(act, "level-branch:")) },
+  { is: "undo", run: (app) => undoLast(app) },
+  { has: "speed:", run: (app, act) => setSpeed(app, +tail(act, "speed:")) },
   {
     is: "tool:wall",
     run: (app) => {
       app.interaction.tool = "wall";
-      app.clearPlaceConfirm();
+      clearPlaceConfirm(app);
       app.interaction.selectedTowerId = -1;
       app.interaction.selectedWallId = -1;
-      app.renderGameChrome();
+      renderGameChrome(app);
     },
   },
 
@@ -279,14 +286,14 @@ const R = [
         return;
       }
       // Keep sim loadouts aligned with Forge before selecting/placing.
-      if ((app.sim.roster?.length | 0) < unlocked) app._syncSimFromMeta(app.sim);
+      if ((app.sim.state.roster?.length | 0) < unlocked) syncSimFromMeta(app, app.sim);
       app.interaction.slot = i;
       app.interaction._handSlot = i; // Put this tower in hand
       app.interaction.tool = "tower";
-      app.clearPlaceConfirm();
+      clearPlaceConfirm(app);
       app.interaction.selectedTowerId = -1;
       app.interaction.selectedWallId = -1;
-      app.renderGameChrome();
+      renderGameChrome(app);
     },
   },
 ];

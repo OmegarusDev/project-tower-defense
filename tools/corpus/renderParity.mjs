@@ -30,9 +30,9 @@ const HTML = `
 <body><div id="host"></div>
 <script type="module">
   import { ProcPalette } from "/js/view/palette.js";
-  import { renderTowerNext } from "/js/view/next/renderTower.js";
-  import { renderEnemyNext } from "/js/view/next/renderEnemy.js";
-  import { setPitch } from "/js/view/view25.js";
+  import { renderTowerNext } from "/js/view/renderTower.js";
+  import { renderEnemyNext } from "/js/view/renderEnemy.js";
+  import { setPitch } from "/js/view/camera.js";
   const palette = new ProcPalette();
   const SIZE = 200, CSS = 92;
   window.__render = (base, barrel, payload, angle, pitchDeg) => {

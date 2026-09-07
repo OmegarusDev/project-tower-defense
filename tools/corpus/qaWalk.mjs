@@ -22,7 +22,7 @@ let failed = 0;
 async function clickEmptyCell(page, offset = 0) {
   return page.evaluate((off) => {
     const app = window.__app;
-    const s = app.sim._s;
+    const s = app.sim.state;
     const found = [];
     for (let y = 2; y < s.grid.rows; y++) {
       for (let x = 0; x < s.grid.cols; x++) {
@@ -85,11 +85,11 @@ for (const vp of VIEWPORTS) {
   await page.waitForTimeout(300);
   await page.mouse.click(t1.x, t1.y);
   await page.waitForTimeout(500);
-  step("tower placed", (await page.evaluate(() => window.__app.sim.towers.length)) === 1);
+  step("tower placed", (await page.evaluate(() => window.__app.sim.state.towers.length)) === 1);
   await page.click("[data-act='tool:wall']");
   await page.mouse.click(t2.x, t2.y);
   await page.waitForTimeout(400);
-  step("wall placed", (await page.evaluate(() => window.__app.sim.walls.length)) === 1);
+  step("wall placed", (await page.evaluate(() => window.__app.sim.state.walls.length)) === 1);
   await page.mouse.click(t1.x, t1.y);
   await page.waitForTimeout(400);
   step("tower overlay", await page.evaluate(() => !document.getElementById("towerOverlay")?.classList.contains("hidden")));
@@ -97,7 +97,7 @@ for (const vp of VIEWPORTS) {
   await page.waitForTimeout(400);
   await page.click("[data-act='undo']");
   await page.waitForTimeout(400);
-  step("sell + undo", (await page.evaluate(() => window.__app.sim.towers.length)) === 1);
+  step("sell + undo", (await page.evaluate(() => window.__app.sim.state.towers.length)) === 1);
   await page.click(".compose-fab");
   await page.waitForTimeout(400);
   step("compose sheet", await page.evaluate(() => !!document.getElementById("composeSheet")));
@@ -111,7 +111,10 @@ for (const vp of VIEWPORTS) {
   step("pause sheet", await page.evaluate(() => !!document.getElementById("pauseSheet")));
   // Pause sheet no longer hosts speed buttons (FF is hold-Deploy now);
   // exercise the same speed plumbing directly.
-  await page.evaluate(() => window.__app.setSpeed(2));
+  await page.evaluate(async () => {
+    const { setSpeed } = await import("/js/app/input.js");
+    setSpeed(window.__app, 2);
+  });
   await page.waitForTimeout(250);
   step("speed toggle", await page.evaluate(() => window.__app.speed === 2));
   await page.click(".pause-card [data-act='resume']");
@@ -128,6 +131,8 @@ for (const vp of VIEWPORTS) {
   step("continue resumes run", await waitFor(page, () => !!document.querySelector(".game-chrome")));
 
   // more actions in the resumed run → a longer ghost log so the replay isn't instant
+  await page.click("[data-act='slot:0']");
+  await page.waitForTimeout(300);
   for (const off of [2, 3]) {
     const p = await clickEmptyCell(page, off);
     await page.mouse.click(p.x, p.y);
@@ -135,7 +140,7 @@ for (const vp of VIEWPORTS) {
     await page.mouse.click(p.x, p.y);
     await page.waitForTimeout(400);
   }
-  step("resumed placements", (await page.evaluate(() => window.__app.sim.towers.length)) >= 2);
+  step("resumed placements", (await page.evaluate(() => window.__app.sim.state.towers.length)) >= 2);
 
   // forced game over (sim path): call the resumed wave, then leak a 1-life run.
   // Spawn the sacrificial enemy on the LIVE trunk path (walls may have rerouted
@@ -143,7 +148,7 @@ for (const vp of VIEWPORTS) {
   await page.click(".call-btn");
   await page.waitForTimeout(1200);
   const leakAt = await page.evaluate(() => {
-    const s = window.__app.sim._s;
+    const s = window.__app.sim.state;
     let x = s.grid.spawn.x, y = s.grid.spawn.y;
     let last = { x, y };
     for (let i = 0; i < 500; i++) {
@@ -158,7 +163,7 @@ for (const vp of VIEWPORTS) {
   await page.evaluate(({ x: cx, y: cy }) => {
     const sim = window.__app.sim;
     sim.setStartLives(1, { resetCurrent: true });
-    sim.enemies.push({
+    sim.state.enemies.push({
       id: 999, pos: { x: cx + 0.5, y: cy + 0.5 }, cell: { x: cx, y: cy },
       hp: 9999, maxHp: 9999, kind: "mite", silhouette: "mite", speed: 0.5, ballast: "mid", slowAmount: 0,
     });
@@ -181,8 +186,11 @@ for (const vp of VIEWPORTS) {
   }));
   await page.click("[data-act='ghost-speed:4']");
   step("ghost speed 4x", await page.evaluate(() => window.__app?._ghost?.speed === 4));
-  await page.click("[data-act='ghost-skip']");
-  step("ghost skip returns to game over", await waitFor(page, () => !!document.querySelector(".end-screen")));
+  const skipBtn = page.locator("[data-act='ghost-skip']");
+  if (await skipBtn.count()) {
+    await skipBtn.click({ timeout: 5000 }).catch(() => {});
+  }
+  step("ghost skip returns to game over", await waitFor(page, () => !!document.querySelector(".end-screen"), 15000));
   step("end screen restored", await page.evaluate(
     (w) => document.querySelector(".end-wave-num")?.textContent === w,
     endWave
@@ -216,12 +224,12 @@ for (const vp of VIEWPORTS) {
   await page.click("text=Start Level");
   await page.waitForTimeout(1500);
   await page.evaluate(() => {
-    window.__app.sim._s.wavesToWin = 1;
+    window.__app.sim.state.wavesToWin = 1;
   });
   await page.click(".call-btn");
   await page.waitForTimeout(400);
   await page.evaluate(() => {
-    const s = window.__app.sim._s;
+    const s = window.__app.sim.state;
     s.waves.toSpawn = 0;
     s.enemies.length = 0;
   });

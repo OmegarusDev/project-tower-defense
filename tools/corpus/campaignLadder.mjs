@@ -9,7 +9,8 @@
  *
  *   node tools/corpus/campaignLadder.mjs [--levels 1,2,3]
  */
-import { Sim, TICK_DT } from "../../web/js/sim/next/sim.js";
+import { Sim, TICK_DT } from "../../web/js/sim/sim.js";
+import { quoteTowerPlace, wallCost } from "../../web/js/sim/systems/economy.js";
 import { CAMPAIGN_LEVELS, levelPortalCell } from "../../web/js/data/campaign.js";
 import { normalizeRoster, PARTS } from "../../web/js/data/parts.js";
 import { scenarioByName } from "../../web/js/balance/scenarios.js";
@@ -60,7 +61,7 @@ const DIRS4 = [
 ];
 
 function claimPicks(sim) {
-  for (const t of sim.towers) {
+  for (const t of sim.state.towers) {
     while ((t.pendingPicks | 0) > 0) {
       const r = sim.tryChooseLevelBranch(t.id, "damage");
       if (!r.ok) break;
@@ -69,7 +70,7 @@ function claimPicks(sim) {
 }
 
 function pathCells(sim) {
-  const g = sim.grid;
+  const g = sim.state.grid;
   const out = [];
   let x = g.spawn.x;
   let y = g.spawn.y;
@@ -89,7 +90,7 @@ function pathCells(sim) {
 }
 
 function slotRange(sim, slotIdx) {
-  const s = sim.roster[slotIdx];
+  const s = sim.state.roster[slotIdx];
   if (!s || !s.complete) return 2;
   const b = PARTS.bases[s.base];
   const br = PARTS.barrels[s.barrel];
@@ -107,23 +108,23 @@ function candidateScore(sim, cand, path, range) {
     if (dx * dx + dy * dy <= range * range) covered++;
   }
   if (covered === 0) return 0;
-  const midDepth = Math.min(cand.y, sim.grid.rows - 1 - cand.y);
+  const midDepth = Math.min(cand.y, sim.state.grid.rows - 1 - cand.y);
   return covered * 10 + midDepth;
 }
 
 function placeTowers(sim, maxPlaces = 6) {
-  const slotIdx = sim.roster.findIndex((s) => s && s.complete);
+  const slotIdx = sim.state.roster.findIndex((s) => s && s.complete);
   if (slotIdx < 0) return 0;
   const path = pathCells(sim);
   const pathSet = new Set(path.map((c) => `${c.x},${c.y}`));
   const range = slotRange(sim, slotIdx);
   const candidates = [];
-  for (let y = 0; y < sim.grid.rows; y++) {
-    for (let x = 0; x < sim.grid.cols; x++) {
+  for (let y = 0; y < sim.state.grid.rows; y++) {
+    for (let x = 0; x < sim.state.grid.cols; x++) {
       const key = `${x},${y}`;
       if (pathSet.has(key)) continue;
-      if (!sim.grid.isBuildable(x, y)) continue;
-      if (sim.towers.some((t) => t.cell.x === x && t.cell.y === y)) continue;
+      if (!sim.state.grid.isBuildable(x, y)) continue;
+      if (sim.state.towers.some((t) => t.cell.x === x && t.cell.y === y)) continue;
       const score = candidateScore(sim, { x, y }, path, range);
       if (score > 0) candidates.push({ x, y, score });
     }
@@ -132,11 +133,8 @@ function placeTowers(sim, maxPlaces = 6) {
   let placed = 0;
   for (const c of candidates) {
     if (placed >= maxPlaces) break;
-    const quote = sim.economy.quoteTowerPlace(
-      sim.roster[slotIdx].placeCost,
-      sim.towers.length
-    );
-    if (sim.economy.battle < quote.total) break;
+    const quote = quoteTowerPlace(sim.state.economy, sim.state.roster[slotIdx], sim.state.towers);
+    if (sim.state.economy.battle < quote.total) break;
     const res = sim.tryPlaceTower(c.x, c.y, slotIdx);
     if (res.ok) placed++;
   }
@@ -144,13 +142,13 @@ function placeTowers(sim, maxPlaces = 6) {
 }
 
 function placeWalls(sim, budget = 3) {
-  if (sim.towers.length < 1) return 0;
+  if (sim.state.towers.length < 1) return 0;
   const path = pathCells(sim);
   const pathSet = new Set(path.map((c) => `${c.x},${c.y}`));
-  const slotIdx = sim.roster.findIndex((s) => s && s.complete);
+  const slotIdx = sim.state.roster.findIndex((s) => s && s.complete);
   const towerCost =
     slotIdx >= 0
-      ? sim.economy.quoteTowerPlace(sim.roster[slotIdx].placeCost, sim.towers.length).total
+      ? quoteTowerPlace(sim.state.economy, sim.state.roster[slotIdx], sim.state.towers).total
       : Infinity;
   let placed = 0;
   for (const c of path) {
@@ -160,11 +158,11 @@ function placeWalls(sim, budget = 3) {
       const x = c.x + dx;
       const y = c.y + dy;
       if (pathSet.has(`${x},${y}`)) continue;
-      if (!sim.grid.isBuildable(x, y)) continue;
-      const cost = sim.economy.wallCost(sim.playerWallCount());
+      if (!sim.state.grid.isBuildable(x, y)) continue;
+      const cost = wallCost(sim.state.economy, sim.playerWallCount());
       // Spend leftover coin on walls only when it can't buy a tower instead.
-      if (sim.economy.battle < cost) return placed;
-      if (sim.economy.battle >= towerCost) return placed;
+      if (sim.state.economy.battle < cost) return placed;
+      if (sim.state.economy.battle >= towerCost) return placed;
       const before = pathCells(sim).length;
       const res = sim.tryPlaceWall(x, y);
       if (!res.ok) continue;
@@ -191,13 +189,13 @@ export function campaignAct(sim, phase) {
 function runLevel(lv, meta) {
   const sim = new Sim();
   sim.setup(lv.cols, lv.rows, lv.seed || 1, false);
-  sim.runSeed = (lv.seed || 1) >>> 0;
-  sim.campaignLevelId = lv.id;
-  sim.wavesToWin = lv.wavesToWin;
-  sim.campaignWaves = lv.waves;
-  sim.economy.battle = lv.coinGrant + (meta.startCashBonus | 0);
+  sim.state.runSeed = (lv.seed || 1) >>> 0;
+  sim.state.campaignLevelId = lv.id;
+  sim.state.wavesToWin = lv.wavesToWin;
+  sim.state.campaignWaves = lv.waves;
+  sim.state.economy.battle = lv.coinGrant + (meta.startCashBonus | 0);
   sim.setRoster(normalizeRoster(meta.roster || [], meta.slotCount | 0 || 3, meta.levelCap | 0 || 1));
-  sim.runLevelCap = meta.levelCap | 0 || 1;
+  sim.state.runLevelCap = meta.levelCap | 0 || 1;
   sim.setStartLives(meta.startLives | 0 || 3, { resetCurrent: true });
   if (meta.partUpgrades && Object.keys(meta.partUpgrades).length) sim.setPartUpgrades(meta.partUpgrades);
   sim.setGlobalMods({
@@ -207,16 +205,16 @@ function runLevel(lv, meta) {
   });
   sim.applyPreWalls(lv.preWalls || []);
   const pc = levelPortalCell(lv);
-  if (sim.grid.groundDist[sim.grid.idx(pc.x, pc.y)] >= 1_000_000) {
-    for (let x = 0; x < sim.grid.cols; x++) {
-      if (sim.grid.groundDist[sim.grid.idx(x, 0)] < 1_000_000) {
+  if (sim.state.grid.groundDist[sim.state.grid.idx(pc.x, pc.y)] >= 1_000_000) {
+    for (let x = 0; x < sim.state.grid.cols; x++) {
+      if (sim.state.grid.groundDist[sim.state.grid.idx(x, 0)] < 1_000_000) {
         pc.x = x;
         pc.y = 0;
         break;
       }
     }
   }
-  sim.portal = pc;
+  sim.state.portal = pc;
 
   const bot = { act: campaignAct };
   let gameOver = false;
@@ -227,15 +225,15 @@ function runLevel(lv, meta) {
 
   sim.on("game_over", () => {
     gameOver = true;
-    sim.running = false;
+    sim.state.running = false;
   });
   sim.on("victory", () => {
     victory = true;
-    sim.running = false;
+    sim.state.running = false;
   });
   sim.on("wave_cleared", () => {
     wavesCleared += 1;
-    sim.running = false;
+    sim.state.running = false;
   });
   sim.on("leak", () => {
     leaks += 1;
@@ -253,9 +251,9 @@ function runLevel(lv, meta) {
 
   let ticks = 0;
   while (ticks < MAX_TICKS && !gameOver && !victory) {
-    if (sim.waveIndex >= lv.wavesToWin && !sim.waves.waveActive && sim.enemies.length === 0) break;
-    if (!sim.running) {
-      if (sim.waveIndex >= lv.wavesToWin) break;
+    if (sim.state.waves.index >= lv.wavesToWin && !sim.state.waves.active && sim.state.enemies.length === 0) break;
+    if (!sim.state.running) {
+      if (sim.state.waves.index >= lv.wavesToWin) break;
       act("betweenWaves");
       if (gameOver) break;
       sim.startWave({ earlyBonus: 0 });
@@ -266,19 +264,19 @@ function runLevel(lv, meta) {
     ticks += 1;
   }
 
-  const peakLevel = sim.towers.reduce((m, t) => Math.max(m, t.level | 0), 1);
+  const peakLevel = sim.state.towers.reduce((m, t) => Math.max(m, t.level | 0), 1);
   return {
     level: lv.id,
     name: lv.name,
     wavesToWin: lv.wavesToWin,
     wavesCleared,
     victory,
-    lives: sim.lives | 0,
+    lives: sim.state.lives | 0,
     leaks,
     kills,
-    towers: sim.towers.length,
-    walls: sim.walls.filter((w) => !w.preplaced).length,
-    battle: sim.economy.battle | 0,
+    towers: sim.state.towers.length,
+    walls: sim.state.walls.filter((w) => !w.preplaced).length,
+    battle: sim.state.economy.battle | 0,
     ticks,
     simSeconds: Math.round(ticks * TICK_DT),
     gameOver,

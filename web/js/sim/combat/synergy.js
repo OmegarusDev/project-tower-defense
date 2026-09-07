@@ -1,7 +1,7 @@
 /**
- * Synergy registry — the game's documented cross-status rules as data.
- * Combat and status systems consult these tables; adding a synergy is a
- * data entry. The predicates/multipliers are pinned by combatSynergy tests.
+ * World chemistry — status sitting on an enemy, often from two towers.
+ * Combat consults these tables. This is not a part-combo wiki; part
+ * composition is the barrel applying the payload's verb.
  */
 export const SYNERGIES = {
   /** Cooked Toxin — burning targets take +50% poison tick damage. */

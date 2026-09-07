@@ -23,30 +23,30 @@
     document.body.appendChild(canvas);
     const sim = new Sim();
     sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, SEED, true);
-    sim.partUpgrades = {};
-    sim.globalMods = {};
-    sim.portal = { x: 4, y: 0 };
-    sim.walls.push({ cell: { x: 2, y: 3 }, hp: 4, maxHp: 4 });
-    sim.walls.push({ cell: { x: 6, y: 5 }, hp: 4, maxHp: 4 });
+    sim.state.partUpgrades = {};
+    sim.state.globalMods = {};
+    sim.state.portal = { x: 4, y: 0 };
+    sim.state.walls.push({ cell: { x: 2, y: 3 }, hp: 4, maxHp: 4 });
+    sim.state.walls.push({ cell: { x: 6, y: 5 }, hp: 4, maxHp: 4 });
 
-    sim.towers.push({
+    sim.state.towers.push({
       id: 11, cell: { x: 2, y: 4 }, base: "sentry", barrel: "single", payload: "kinetic",
       level: 1, xp: 0, xpToPoint: 100, levelCap: 5, aimAngle: -Math.PI / 2,
     });
-    sim.towers.push({
+    sim.state.towers.push({
       id: 12, cell: { x: 6, y: 4 }, base: "warden", barrel: "flak", payload: "fire",
       level: 3, xp: 75, xpToPoint: 100, levelCap: 5, aimAngle: 0.4,
     });
-    sim.towers.push({
+    sim.state.towers.push({
       id: 13, cell: { x: 4, y: 2 }, base: "spire", barrel: "twin", payload: "shock",
       level: 2, xp: 40, xpToPoint: 100, levelCap: 5, aimAngle: 1.1,
     });
-    sim.towers.push({
+    sim.state.towers.push({
       id: 14, cell: { x: 4, y: 6 }, base: "aerie", barrel: "pulse", payload: "kinetic",
       level: 3, xp: 60, xpToPoint: 100, levelCap: 3, aimAngle: 0,
     });
 
-    sim.enemies.push(
+    sim.state.enemies.push(
       { id: 1, pos: { x: 4.0, y: 0.5 }, hp: 60, maxHp: 100, kind: "mite", silhouette: "mite" },
       { id: 2, pos: { x: 4.2, y: 2.0 }, hp: 20, maxHp: 100, kind: "hauler", silhouette: "hauler", shieldHp: 50 },
       { id: 3, pos: { x: 4.5, y: 3.4 }, hp: 80, maxHp: 100, kind: "ward", silhouette: "ward", burnT: 2 },
@@ -56,7 +56,7 @@
       { id: 7, pos: { x: 4.0, y: 1.5 }, hp: 40, maxHp: 100, kind: "claim", silhouette: "claim", shredT: 2 }
     );
 
-    sim.projectiles.push(
+    sim.state.projectiles.push(
       { pos: { x: 4.0, y: 3.0 }, damageType: "kinetic", vx: 1, vy: 0.4 },
       { pos: { x: 4.4, y: 3.6 }, damageType: "fire", vx: -0.6, vy: 0.8 },
       { pos: { x: 4.8, y: 4.2 }, damageType: "frost", vx: 0.5, vy: -0.3 },
@@ -64,7 +64,7 @@
       { pos: { x: 4.6, y: 5.6 }, damageType: "shock", vx: -0.8, vy: 0.2 },
       { pos: { x: 3.8, y: 4.4 }, damageType: "poison", vx: 0.7, vy: 0.5 }
     );
-    for (const p of sim.projectiles) {
+    for (const p of sim.state.projectiles) {
       p._trail = [
         { x: p.pos.x - p.vx * 0.6, y: p.pos.y - p.vy * 0.6 },
         { x: p.pos.x - p.vx * 0.3, y: p.pos.y - p.vy * 0.3 },
@@ -102,19 +102,19 @@
   window.__drawBoardNext = () => {
     const { board, sim } = buildScene();
     const cam = board.cam;
-    const g = sim.grid;
+    const g = sim.state.grid;
     const cell = board.cell;
     const ctx = board.canvas.getContext("2d");
     clearFrame(ctx);
     const t = 1;
     S.drawBoardShadow(ctx, cam, palette, cell);
     S.drawField(ctx, cam, palette, g, cell);
-    for (const w of sim.walls) S.drawWall(ctx, cam, palette, w.cell.x, w.cell.y, cell);
+    for (const w of sim.state.walls) S.drawWall(ctx, cam, palette, w.cell.x, w.cell.y, cell);
     S.drawStains(ctx, cam, palette, board._stains, cell);
     S.drawBastion(ctx, cam, palette, g, cell, t, board._bastionFlinch);
-    S.drawPath(ctx, cam, g, sim.portal.x, cell, t, sim.enemies.length);
-    S.drawPortal(ctx, cam, palette, sim.portal, cell, t);
-    const towers = [...sim.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
+    S.drawPath(ctx, cam, g, sim.state.portal.x, cell, t, sim.state.enemies.length);
+    S.drawPortal(ctx, cam, palette, sim.state.portal, cell, t);
+    const towers = [...sim.state.towers].sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
     for (const tw of towers) {
       const p = cam.projectCell(tw.cell.x, tw.cell.y);
       const s = cell * p.s * S.UNIT_SCALE;
@@ -123,13 +123,13 @@
       const kickY = recoil > 0 ? Math.sin(tw.aimAngle || 0) * recoil * 10 * p.s : 0;
       const selected = tw.id === board.selectedTowerId;
       const plan = selected
-        ? buildAttackPlan(tw.base, tw.barrel, tw.payload, tw.level, planOptsFromParts(sim.partUpgrades, sim.globalMods, tw))
+        ? buildAttackPlan(tw.base, tw.barrel, tw.payload, tw.level, planOptsFromParts(sim.state.partUpgrades, sim.state.globalMods, tw))
         : null;
       S.drawTowerFrame(ctx, cam, palette, tw, p.x - s / 2 - kick, p.y - s / 2 - kickY, s, { selected, plan, cell });
     }
-    const enemies = [...sim.enemies].sort((a, b) => a.pos.y - b.pos.y);
+    const enemies = [...sim.state.enemies].sort((a, b) => a.pos.y - b.pos.y);
     for (const e of enemies) S.drawEnemyFrame(ctx, cam, palette, e, cell, t);
-    for (const p of sim.projectiles) S.drawProjectile(ctx, cam, palette, p, cell);
+    for (const p of sim.state.projectiles) S.drawProjectile(ctx, cam, palette, p, cell);
     if (board._ghostPlan) S.drawPlanGhost(ctx, cam, palette, board._ghostPlan.plan, board._ghostPlan.cell, cell);
     if (board.pendingPlace) {
       S.drawPendingPlace(ctx, cam, palette, board.pendingPlace, cell, t, cell);

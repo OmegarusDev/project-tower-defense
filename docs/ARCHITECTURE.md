@@ -11,14 +11,16 @@ web/
   js/
     main.js app.js saveStore.js
     app/         # metaSync, runLifecycle, simBridge, gameChrome, placeUndo, input, pauseSettings,
-                 # endsLogic, forgeLogic, techLogic, undoLogic
-    ui/          # actions, screens, registry, chrome, modal, stateOf, menuScreens, forgeScreen,
+                 # endsLogic, forgeLogic, techLogic, undoLogic, fastForward
+    ui/          # actions, screens.js barrel + screens/{helpers,meta,workshop,end},
+                 # registry, chrome, modal, stateOf, menuScreens, forgeScreen,
                  # techScreen, endScreens, levelEditor, metaUi, partIcons, replay, xClose
     data/        # parts, techTree, campaign, enemies, waveScripts, endlessGrid, rules
-    sim/         # boardGrid, attackPlan, rng, state, sim (facade), systems/{combat,economy,movement,towers,waves},
-                 # combat/{status,synergy}
+    sim/         # boardGrid, attackPlan, rng, state, sim (command adapter over state),
+                 # systems/{combat,economy,movement,towers,waves}, combat/{status,synergy,targeting,hits}
     balance/     # headless runSim + greedyBot + scenarios (no DOM)
-    view/        # palette, drawUtil, primitives, fx, titleView, camera (Anvil Engine), boardScene, boardView,
+    view/        # palette, drawUtil, primitives, fx, titleView, camera (Anvil Engine),
+                 # boardScene.js barrel + boardScene/{geom,ground,path,units,atmosphere}, boardView,
                  # enemyVisuals, partVisuals, renderEnemy, renderTower
     audio/       # SynthBank SFX+Music buses; ScoreEngine generative ambient
     tests/       # node smoke tests (17 files, run via verify.mjs)
@@ -27,7 +29,9 @@ web/
   .github/         # Pages deploy (uploads web/)
 ```
 
-`app.js` is a thin orchestrator (ctor, start/tick, wireSim, bindUi); screen and run logic live under `js/app/*` and `js/ui/*` as `function foo(app, …)` modules. Anvil Engine is the 2.5D camera + primitives + board view (`view/camera.js` + `primitives.js` + `boardView.js`/`boardScene.js`) — lightweight, no game deps; Forge is the in-game parts shop (`app/forgeLogic.js` + `data/parts.js`).
+`app.js` is a thin orchestrator (ctor, start/tick, wireSim, bindUi). Screen and run logic live under `js/app/*` and `js/ui/*` as `function foo(app, …)` modules — call them directly, not via `app.*` shims. Sim commands live on `Sim`; all run data lives on `sim.state` (plain object). HUD adapters in `stateOf.js` freeze a snapshot (`quotes[]`, boolean `waveBusy`, `overlayAnchor`) — renderers never close over `app`. Anvil Engine is the 2.5D camera + primitives + board view (`view/camera.js` + `primitives.js` + `boardView.js`/`boardScene.js`) — lightweight, no game deps; Forge is the in-game parts shop (`app/forgeLogic.js` + `data/parts.js`).
+
+Events: `sim.on` / `sim.off` (and `state.js` `on`/`off`). `App.wireSim` is idempotent per instance; `_unwireSim` removes the stored handlers.
 
 ## Pipelines
 
@@ -46,7 +50,7 @@ Endless checkpoints store `phase` (`inWave` | `betweenWaves`), `earlyBonusWave`,
 
 ### Seam portal (spawn origin)
 
-`world.portal` is the live spawn cell. Endless: `WaveManager` builds a seeded shuffle
+`state.portal` is the live spawn cell. Endless: the waves system builds a seeded shuffle
 cycle of back-line columns at wave 1 (`_portalRand`, own stream — independent of the
 compose/jitter `_rand`). Shifts are clump-gated and deliberately rare — `shiftsForWave`
 gives 0 before wave 8, 1 through wave 21, then +1 per 10 waves. Each shift is
@@ -120,8 +124,7 @@ cd web && python3 -m http.server 8080
 ## Tests
 
 ```bash
-cd web
-for f in js/tests/*.mjs; do node "$f"; done
+node verify.mjs   # from repo root: parse-check, resolve relative imports, run js/tests/*.test.mjs
 ```
 
 ## Invariants & maintenance

@@ -4,6 +4,7 @@ import { techBuyNode, techUnlockPart } from "../app/techLogic.js";
 import { renderTech, techTreeHtml } from "./screens.js";
 import { techState } from "./stateOf.js";
 import { applyBtnTextures, swapWithExitAnim } from "./registry.js";
+import { persistMeta, syncSimFromMeta } from "../app/metaSync.js";
 
 export function showUpgrade(app, returnTo) {
   const wasUpgrade = app.screen === "upgrade";
@@ -89,10 +90,10 @@ export function buyTechNode(app, id) {
               : "Unknown tech";
     return app.toast(msg);
   }
-  app.persistMeta();
+  persistMeta(app);
   if (app.sim && (app.screen === "game" || app.screen === "hub" || app.screen === "upgrade")) {
     // Mid-meta upgrades must raise caps/slots on a continued run too.
-    app._syncSimFromMeta(app.sim);
+    syncSimFromMeta(app, app.sim);
   }
   app.synth.play("confirm");
   app.status = r.status;
@@ -112,7 +113,7 @@ export function unlockPartFromTech(app, kind, id) {
     }
     return app.toast(`Need ${r.need} Forge parts`);
   }
-  app.persistMeta();
+  persistMeta(app);
   app.synth.play("confirm");
   app.status = r.status;
   showUpgrade(app);

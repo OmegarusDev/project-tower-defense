@@ -48,11 +48,12 @@ Design docs: `docs/GDD.md` (spec), `docs/ARCHITECTURE.md` (code), `docs/DEV.md` 
 
 | ID | Earn | Spend | Persist |
 |----|------|-------|---------|
-| aether | Wave clear; level first-clear | Tech graph | Meta |
-| forge | Wave clear; full-campaign bonus | Parts buy/upgrade | Meta |
+| aether | Wave clear; campaign first-clear lump | Tech graph | Meta |
+| forge | Kills (chance / lump); every 3rd wave clear; campaign first-clear lump | Parts buy/upgrade | Meta |
 | battle | Start grant; enemy drops; Call Early | Place; walls | Run / campaign-level |
 
 Start grant = **Battle only**. Free starter parts: **sentry + single + kinetic** (slot 1 pre-filled).
+Place tax is **per part** (25% of that part's Coin per copy already on the board) — repeating Sentry/Single/Kinetic gets expensive; mixed slots stay cheaper.
 Sell tower/wall = Salvager **50%/60%/75%** of **recorded** Battle paid for that instance.
 **No** Battle spending on tower levels. Call Early Coin is claimed once per wave (checkpointed — no Continue double-dip).
 
@@ -64,12 +65,12 @@ Sell tower/wall = Salvager **50%/60%/75%** of **recorded** Battle paid for that 
 - **Base** = envelope + targeting doctrine (+ light innate). No per-tower Target menu.
 - **Barrel** = delivery (Single/Twin/Scatter/Rail/Pulse/Launcher/Flak). Explosion = Launcher. Rail = ballistic pierce.
 - **Payload** = element only (Kinetic/Pyro/Shock/Frost/Poison/Acid/Breach/EMP)
-- Twin barrel = **1.75× ROF** vs Single with reduced range; base+barrel range/ROF mults stack; Arsenal Range/ROF ranks on all bases/barrels
+- Twin barrel = two tubes take turns (**1.75× ROF**, reduced range vs Single); base+barrel range/ROF mults stack; Arsenal Range/ROF ranks on all bases/barrels
 - Bases: Sentry(first), Bulwark(closest), Spire(strongest), Aerie(air→first), Warden(last), Talon(weakest)
 - XP bar → **auto-level** under cap (+pending branch pick); overlay Damage/ROF/Range (`U` = Damage); uniform Dmg/ROF/Range + branch ranks; respect levelCap
 - Damage types; armor flat+%+immunity; DoT; slow cap; freeze at 100%
 - AoE falloff; no FF on towers; chain/motion upgrade paths
-- Flying: ignore walls/towers; Aerie or Rail/Flak (etc.) for air hits
+- Flying: ignore walls/towers; Sentry chips air at half damage (prefers ground); Aerie / Rail / Flak for real air work
 - Homing target lost: launcher detonates AoE at last pos; others coast briefly
 
 ---

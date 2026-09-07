@@ -3,17 +3,12 @@
  * plan cache and alt-toggle live ON STATE: they are the determinism
  * contract the parity traces pin (simParity.mjs). Do not reorder.
  */
-import { PARTS, XP_TO_POINT } from "../../data/parts.js";
-import { ballastPressureFactor, isConductive } from "../../data/enemies.js";
 import { buildAttackPlan, Pattern, planOptsFromParts } from "../attackPlan.js";
 import { INF } from "../boardGrid.js";
-import { allocId, emit, logAction } from "../state.js";
-import { applyStatus as applyStatusRegistry, tickStatus as tickStatusRegistry } from "../combat/status.js";
-import { SYNERGIES, heatBlockActive } from "../combat/synergy.js";
-
-export function invalidatePlans(state) {
-  state.plans.clear();
-}
+import { allocId, emit } from "../state.js";
+import { selectTarget } from "../combat/targeting.js";
+import { applyHit, doChain, tickStatus } from "../combat/hits.js";
+export { invalidatePlans, applyHit, doChain, tickStatus, grantXp } from "../combat/hits.js";
 
 /**
  * Status payloads are plain two-level objects ({burn:{duration,dps,every}},
@@ -104,17 +99,23 @@ function tickTower(state, t) {
   if (!target) return;
   t.cooldown = plan.fireInterval;
 
+  let fireX = t.cell.x + 0.5;
+  let fireY = t.cell.y + 0.5;
   if (plan.pattern === Pattern.PULSE || plan.pattern === Pattern.HYBRID) {
     firePulse(state, t, plan);
   }
   if (plan.pattern === Pattern.PROJECTILE || plan.pattern === Pattern.HYBRID) {
-    fireProjectiles(state, t, plan, target);
+    const muzzle = fireProjectiles(state, t, plan, target);
+    if (muzzle) {
+      fireX = muzzle.x;
+      fireY = muzzle.y;
+    }
   }
   emit(state, "tower_fired", {
     towerId: t.id,
     pattern: plan.pattern,
-    x: t.cell.x + 0.5,
-    y: t.cell.y + 0.5,
+    x: fireX,
+    y: fireY,
     angle: t.aimAngle || 0,
     damageType: plan.damageType,
   });
@@ -149,14 +150,19 @@ function firePulse(state, t, plan) {
 
 function fireProjectiles(state, t, plan, target) {
   let count = plan.projectileCount;
+  let muzzleSign = 0;
   if (plan.alternating) {
     const side = !!state.altToggle.get(t.id);
     state.altToggle.set(t.id, !side);
     count = 1;
+    muzzleSign = side ? 1 : -1;
   }
-  const ox = t.cell.x + 0.5;
-  const oy = t.cell.y + 0.5;
-  const baseAngle = Math.atan2(target.pos.y - oy, target.pos.x - ox);
+  const cx = t.cell.x + 0.5;
+  const cy = t.cell.y + 0.5;
+  const baseAngle = Math.atan2(target.pos.y - cy, target.pos.x - cx);
+  const off = (plan.muzzleOffset || 0) * muzzleSign;
+  const ox = cx + Math.cos(baseAngle + Math.PI / 2) * off;
+  const oy = cy + Math.sin(baseAngle + Math.PI / 2) * off;
   const spreadRad = ((plan.spreadDeg || 0) * Math.PI) / 180;
   const ballistic = !plan.homing && count > 1 && spreadRad > 0;
 
@@ -195,6 +201,7 @@ function fireProjectiles(state, t, plan, target) {
     }
     state.projectiles.push(proj);
   }
+  return { x: ox, y: oy };
 }
 
 function tickProjectiles(state) {
@@ -391,254 +398,4 @@ export function onHit(state, p, target) {
     return false;
   }
   return true;
-}
-
-export function doChain(state, fromEnemy, damage, plan, tower, hit, jumps) {
-  let dmg = damage;
-  let fromX = fromEnemy.pos.x;
-  let fromY = fromEnemy.pos.y;
-  let left = jumps;
-  // Frost x shock (synergy table): chains leap further from a slowed enemy
-  const maxChain =
-    (plan.chainRange || 2.5) *
-    (SYNERGIES.frostShock.when(fromEnemy) ? SYNERGIES.frostShock.chainRangeMult : 1);
-  while (left-- > 0) {
-    dmg *= plan.chainFalloff;
-    let best = null;
-    let bestScore = -1e9;
-    for (const e of state.enemies) {
-      if (hit.has(e.id)) continue;
-      if (e.hp <= 0) continue;
-      if (e.flying && !plan.airCapable) continue;
-      if (e.armorKind === "insulated") continue;
-      const dx = e.pos.x - fromX;
-      const dy = e.pos.y - fromY;
-      if (dx * dx + dy * dy > maxChain * maxChain) continue;
-      const d = Math.hypot(dx, dy);
-      // Prefer conductive plate for shock chains
-      let score = maxChain - d;
-      if (isConductive(e)) score += 1.5;
-      if (score > bestScore) {
-        bestScore = score;
-        best = e;
-      }
-    }
-    if (!best) break;
-    hit.add(best.id);
-    emit(state, "chain_arc", {
-      x0: fromX,
-      y0: fromY,
-      x1: best.pos.x,
-      y1: best.pos.y,
-    });
-    applyHit(state, best, dmg, plan, tower);
-    fromX = best.pos.x;
-    fromY = best.pos.y;
-  }
-}
-
-export function applyHit(state, e, damage, plan, tower, opts = {}) {
-  if ((e.immune || []).includes(plan.damageType)) {
-    emit(state, "hit_immune", { enemyId: e.id });
-    return;
-  }
-
-  const dtype = plan.damageType || "kinetic";
-  const armorKind = e.armorKind || "none";
-
-  // EMP: strip energy block / melt shields
-  if (plan.emp) {
-    if (armorKind === "energy") {
-      // EMP is a permanent strip by design: energy veil gone, resists capped.
-      e.energyBlock = false;
-      e.resist = { ...(e.resist || {}), fire: Math.min(e.resist?.fire || 0, 0.25), shock: Math.min(e.resist?.shock || 0, 0.25) };
-    }
-    if ((e.shieldHp || 0) > 0) {
-      e.shieldHp = Math.max(0, e.shieldHp - Math.max(18, damage * 2.2));
-    }
-  }
-
-  // Energy full-block vs fire/shock until EMP strips the veil
-  if (e.energyBlock && (dtype === "fire" || dtype === "shock") && !plan.emp) {
-    emit(state, "hit_immune", { enemyId: e.id, reason: "energy_block" });
-    e._hitFlash = 0.4;
-    return;
-  }
-
-  let raw = damage;
-  if (opts.pressure) raw *= ballastPressureFactor(e.ballast || "mid");
-
-  // Pyro bonus vs soft (no armor)
-  if (dtype === "fire" && armorKind === "none") raw *= 1.35;
-
-  // Plate / insulated heat block (extra on top of resist map).
-  // Shred synergy: a fully stripped target loses the plate's heat resistance.
-  const heatBlock =
-    dtype === "fire" && (armorKind === "plate" || armorKind === "insulated") &&
-    heatBlockActive(e, plan.armorPierce || 0);
-  if (heatBlock) {
-    raw *= 0.55;
-  }
-  // Insulated shock dampen
-  if (dtype === "shock" && armorKind === "insulated" && !plan.emp) {
-    raw *= 0.35;
-  }
-  // Frost x shock (synergy table): slowed enemies surge — shock bonus
-  if (dtype === "shock" && SYNERGIES.frostShock.when(e)) raw *= SYNERGIES.frostShock.shockDamageMult;
-
-  if (tower) {
-    const ox = tower.cell.x + 0.5;
-    const oy = tower.cell.y + 0.5;
-    const dist = Math.hypot(e.pos.x - ox, e.pos.y - oy);
-    const base = PARTS.bases[tower.base] || {};
-    if ((base.pointBlankMult || 1) > 1 && dist <= (base.pointBlankRange || 0)) {
-      raw *= base.pointBlankMult;
-    }
-    if ((plan.airDamageMult || 1) > 1 && e.flying) raw *= plan.airDamageMult;
-    else if ((base.airDamageMult || 1) > 1 && e.flying) raw *= base.airDamageMult;
-    const thr = base.executeThreshold || 0;
-    if ((base.executeMult || 1) > 1 && thr > 0 && e.maxHp > 0 && e.hp / e.maxHp <= thr) {
-      raw *= base.executeMult;
-    }
-  } else if ((plan.airDamageMult || 1) > 1 && e.flying) {
-    raw *= plan.airDamageMult;
-  }
-  const armor = Math.max(0, (e.armorFlat || 0) + (e.auraArmor || 0) - (e.shred || 0) - (plan.armorPierce || 0));
-  const resist = (e.resist && e.resist[dtype]) || 0;
-  let dmg = Math.max(0, raw - armor) * (1 - Math.min(0.95, resist));
-  if ((e.shieldHp || 0) > 0) {
-    const absorbed = Math.min(e.shieldHp, dmg);
-    e.shieldHp -= absorbed;
-    dmg -= absorbed;
-  }
-  e.hp -= dmg;
-  e._hitFlash = 1;
-  applyStatus(state, e, plan.status || {});
-  if (tower) grantXp(state, tower, 1);
-  emit(state, "hit", {
-    enemyId: e.id,
-    damage: dmg,
-    type: plan.emp ? "shock" : dtype,
-    x: e.pos.x,
-    y: e.pos.y,
-  });
-}
-
-function applyStatus(state, e, status) {
-  return applyStatusRegistry(state, e, status);
-}
-export function tickStatus(state) {
-  tickStatusRegistry(state);
-}
-
-export function grantXp(state, tower, amount) {
-  const cap = Math.max(1, tower.levelCap || 1, state.runLevelCap | 0);
-  tower.levelCap = cap;
-  // At cap: freeze bar — no endless banked points.
-  if ((tower.level | 0) >= cap) {
-    const need = tower.xpToPoint || XP_TO_POINT;
-    tower.xp = Math.min(tower.xp || 0, need - 1);
-    return;
-  }
-  tower.xp = (tower.xp || 0) + amount;
-  const need = tower.xpToPoint || XP_TO_POINT;
-  let gained = 0;
-  while (tower.xp >= need && (tower.level | 0) < cap) {
-    tower.xp -= need;
-    tower.level = (tower.level | 0) + 1;
-    tower.pendingPicks = (tower.pendingPicks | 0) + 1;
-    gained += 1;
-    invalidatePlans(state);
-    emit(state, "tower_leveled", {
-      tower,
-      level: tower.level,
-      pendingPicks: tower.pendingPicks | 0,
-      x: tower.cell.x + 0.5,
-      y: tower.cell.y + 0.5,
-    });
-    emit(state, "level_pick_ready", {
-      tower,
-      pendingPicks: tower.pendingPicks | 0,
-      x: tower.cell.x + 0.5,
-      y: tower.cell.y + 0.5,
-    });
-  }
-  if ((tower.level | 0) >= cap) {
-    tower.xp = Math.min(tower.xp, need - 1);
-  }
-  if (gained > 0) {
-    logAction(state, "auto_level", {
-      id: tower.id,
-      level: tower.level,
-      gained,
-      pendingPicks: tower.pendingPicks | 0,
-    });
-  }
-}
-
-function selectTarget(state, t, plan) {
-  // Fused range + doctrine scan — no candidate array, no filter pass.
-  // Iteration order (state.enemies) and strict-`>` tie-breaking are identical
-  // to the previous two-pass version, so the winner is byte-for-byte the
-  // same; parity traces depend on it.
-  const doctrine = plan.doctrine || PARTS.bases[t.base]?.doctrine || "first";
-  const ox = t.cell.x + 0.5;
-  const oy = t.cell.y + 0.5;
-  let best = null;
-  let bestScore = -Infinity;
-  let bestAir = null;
-  let bestAirScore = -Infinity;
-  for (const e of state.enemies) {
-    if (e.hp <= 0) continue;
-    if (e.flying && !plan.airCapable) continue;
-    const dist = Math.hypot(e.pos.x - ox, e.pos.y - oy);
-    if (dist > plan.rangeCells) continue;
-    if (doctrine === "flying") {
-      if (e.flying) {
-        const s =
-          -state.grid.airDist[state.grid.idx(e.cell.x, e.cell.y)];
-        if (!bestAir || s > bestAirScore) {
-          bestAir = e;
-          bestAirScore = s;
-        }
-      }
-      // Fallback doctrine is "first" over all in-range candidates.
-      const s = e.flying
-        ? -state.grid.airDist[state.grid.idx(e.cell.x, e.cell.y)]
-        : -state.grid.groundDistance(e.cell.x, e.cell.y);
-      if (!best || s > bestScore) {
-        best = e;
-        bestScore = s;
-      }
-    } else {
-      let s = 0;
-      switch (doctrine) {
-        case "last":
-          // furthest from exit among path (rear of pack / leak side)
-          s = e.flying
-            ? state.grid.airDist[state.grid.idx(e.cell.x, e.cell.y)]
-            : state.grid.groundDistance(e.cell.x, e.cell.y);
-          break;
-        case "strongest":
-          s = e.hp;
-          break;
-        case "weakest":
-          s = -e.hp;
-          break;
-        case "closest":
-          s = -dist;
-          break;
-        case "first":
-        default:
-          s = e.flying
-            ? -state.grid.airDist[state.grid.idx(e.cell.x, e.cell.y)]
-            : -state.grid.groundDistance(e.cell.x, e.cell.y);
-      }
-      if (!best || s > bestScore) {
-        best = e;
-        bestScore = s;
-      }
-    }
-  }
-  return doctrine === "flying" ? (bestAir || best) : best;
 }

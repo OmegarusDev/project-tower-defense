@@ -1,83 +1,78 @@
 import { RULES } from "../data/rules.js";
+import { addBattle, spendBattle } from "../sim/systems/economy.js";
 
 /**
- * Undo logic — PURE sim mutations over (sim, stack, entry). No app, no DOM,
- * no synth, no toasts. Each op returns { ok, msg? } and performs the sim
- * mutation; the app adapter handles board invalidation + HUD refresh + UI
- * feedback. The undo stack contract:
- *  - place_* entries pop off; expired entries (missing entity) fail.
- *  - sell_* entries fail (and are RE-PUSHED) when the cell is blocked or
- *    the refund isn't affordable.
+ * Undo logic — pure mutations over (state, stack). No app, no DOM.
+ * Each op returns { ok, msg? }; the app adapter handles HUD / toasts.
  */
-export function undoPlaceTower(sim, entry) {
-  const t = sim.towers.find((x) => x.id === entry.id);
+export function undoPlaceTower(state, entry) {
+  const t = state.towers.find((x) => x.id === entry.id);
   if (!t) return { ok: false, msg: "Undo expired" };
-  // Full refund of paid Coin (undo ≠ sell).
-  sim.economy.addBattle(t.paid | 0);
-  sim.grid.setBlocked(t.cell.x, t.cell.y, false);
-  sim.grid.setTower(t.cell.x, t.cell.y, false);
-  sim.towers = sim.towers.filter((x) => x.id !== t.id);
-  sim.grid.recompute();
+  addBattle(state.economy, t.paid | 0);
+  state.grid.setBlocked(t.cell.x, t.cell.y, false);
+  state.grid.setTower(t.cell.x, t.cell.y, false);
+  state.towers = state.towers.filter((x) => x.id !== t.id);
+  state.towersById.delete(t.id);
+  state.grid.recompute();
   return { ok: true, msg: "Undid tower place" };
 }
 
-export function undoPlaceWall(sim, entry) {
-  const w = sim.walls.find((x) => x.id === entry.id);
+export function undoPlaceWall(state, entry) {
+  const w = state.walls.find((x) => x.id === entry.id);
   if (!w || w.preplaced) return { ok: false, msg: "Undo expired" };
-  sim.economy.addBattle(w.paid | 0);
-  sim.grid.setBlocked(w.cell.x, w.cell.y, false);
-  sim.walls = sim.walls.filter((x) => x.id !== w.id);
-  sim.grid.recompute();
+  addBattle(state.economy, w.paid | 0);
+  state.grid.setBlocked(w.cell.x, w.cell.y, false);
+  state.walls = state.walls.filter((x) => x.id !== w.id);
+  state.grid.recompute();
   return { ok: true, msg: "Undid wall place" };
 }
 
-export function undoRestoreTower(sim, entry) {
+export function undoRestoreTower(state, entry) {
   const t = entry.tower;
   if (!t) return { ok: false, msg: "Undo expired" };
-  if (!sim.grid.isBuildable(t.cell.x, t.cell.y)) {
+  if (!state.grid.isBuildable(t.cell.x, t.cell.y)) {
     return { ok: false, msg: "Can't undo — cell blocked" };
   }
-  if ((sim.economy.battle | 0) < (entry.refund | 0)) {
+  if ((state.economy.battle | 0) < (entry.refund | 0)) {
     return { ok: false, msg: "Need Coin to undo sell" };
   }
-  sim.economy.spendBattle(entry.refund | 0);
-  sim.grid.setBlocked(t.cell.x, t.cell.y, true);
-  sim.grid.setTower(t.cell.x, t.cell.y, true);
-  sim.towers.push(structuredClone(t));
-  sim.grid.recompute();
+  spendBattle(state.economy, entry.refund | 0);
+  state.grid.setBlocked(t.cell.x, t.cell.y, true);
+  state.grid.setTower(t.cell.x, t.cell.y, true);
+  const copy = structuredClone(t);
+  state.towers.push(copy);
+  state.towersById.set(copy.id, copy);
+  state.grid.recompute();
   return { ok: true, msg: "Undid tower sell" };
 }
 
-export function undoRestoreWall(sim, entry) {
+export function undoRestoreWall(state, entry) {
   const w = entry.wall;
   if (!w) return { ok: false, msg: "Undo expired" };
-  if (!sim.grid.isBuildable(w.cell.x, w.cell.y)) {
+  if (!state.grid.isBuildable(w.cell.x, w.cell.y)) {
     return { ok: false, msg: "Can't undo — cell blocked" };
   }
-  if ((sim.economy.battle | 0) < (entry.refund | 0)) {
+  if ((state.economy.battle | 0) < (entry.refund | 0)) {
     return { ok: false, msg: "Need Coin to undo sell" };
   }
-  sim.economy.spendBattle(entry.refund | 0);
-  sim.grid.setBlocked(w.cell.x, w.cell.y, true);
-  sim.walls.push(structuredClone(w));
-  sim.grid.recompute();
+  spendBattle(state.economy, entry.refund | 0);
+  state.grid.setBlocked(w.cell.x, w.cell.y, true);
+  state.walls.push(structuredClone(w));
+  state.grid.recompute();
   return { ok: true, msg: "Undid wall sell" };
 }
 
 /** Pop + apply one entry. Returns { ok, msg } (msg also for empty). */
-export function undoStep(sim, stack) {
+export function undoStep(state, stack) {
   if (!stack.length) return { ok: false, msg: "Nothing to undo" };
   const entry = stack[stack.length - 1];
   let r;
-  if (entry.type === "place_tower") r = undoPlaceTower(sim, entry);
-  else if (entry.type === "place_wall") r = undoPlaceWall(sim, entry);
-  else if (entry.type === "sell_tower") r = undoRestoreTower(sim, entry);
-  else if (entry.type === "sell_wall") r = undoRestoreWall(sim, entry);
+  if (entry.type === "place_tower") r = undoPlaceTower(state, entry);
+  else if (entry.type === "place_wall") r = undoPlaceWall(state, entry);
+  else if (entry.type === "sell_tower") r = undoRestoreTower(state, entry);
+  else if (entry.type === "sell_wall") r = undoRestoreWall(state, entry);
   else return { ok: false, msg: "Undo expired" };
-  if (!r.ok) {
-    // Failed restores keep their entry on the stack (retry later).
-    return r;
-  }
+  if (!r.ok) return r;
   stack.pop();
   return r;
 }

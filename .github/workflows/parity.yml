@@ -44,7 +44,7 @@ jobs:
             | grep -vE ':[0-9]+:[[:space:]]*(\*|//|/\*)' || true)
           if [ -n "$hits" ]; then
             echo "$hits"
-            echo "native dialog call found — use ui/next/modal.js" && exit 1
+            echo "native dialog call found — use ui/modal.js" && exit 1
           fi
 
       - name: No stray debug logging

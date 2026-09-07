@@ -15,7 +15,7 @@ parity tests only — it is never shipped.
 Unit + parse gates (no server needed):
 
 ```bash
-node verify.mjs          # from repo root — runs all 17 test files
+node verify.mjs          # from repo root — parse + import graph + all 17 test files
 ```
 
 Full parity (needs a served copy of `web/`):

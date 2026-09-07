@@ -25,7 +25,7 @@ const step = (name, ok) => {
 async function clickEmptyCell(page, offset = 0) {
   return page.evaluate((off) => {
     const app = window.__app;
-    const s = app.sim._s;
+    const s = app.sim.state;
     const found = [];
     for (let y = 2; y < s.grid.rows; y++) {
       for (let x = 0; x < s.grid.cols; x++) {
@@ -62,7 +62,7 @@ await page.mouse.click(t1.x, t1.y);
 await page.waitForTimeout(300);
 await page.mouse.click(t1.x, t1.y);
 await page.waitForTimeout(500);
-step("tower placed", (await page.evaluate(() => window.__app.sim.towers.length)) === 1);
+step("tower placed", (await page.evaluate(() => window.__app.sim.state.towers.length)) === 1);
 await page.mouse.click(t1.x, t1.y);
 await page.waitForTimeout(400);
 step("tower overlay", await page.evaluate(() => !document.getElementById("towerOverlay")?.classList.contains("hidden")));
@@ -70,7 +70,7 @@ await page.click("[data-act='sell']");
 await page.waitForTimeout(400);
 await page.click("[data-act='undo']");
 await page.waitForTimeout(400);
-step("sell + undo", (await page.evaluate(() => window.__app.sim.towers.length)) === 1);
+step("sell + undo", (await page.evaluate(() => window.__app.sim.state.towers.length)) === 1);
 await page.click(".compose-fab");
 await page.waitForTimeout(400);
 step("compose sheet", await page.evaluate(() => !!document.getElementById("composeSheet")));
@@ -89,7 +89,7 @@ await page.waitForTimeout(300);
 // Spawn the sacrificial enemy on the LIVE trunk path — a hardcoded cell can
 // end up walled off and never leak.
 const leakAt = await page.evaluate(() => {
-  const s = window.__app.sim._s;
+  const s = window.__app.sim.state;
   let x = s.grid.spawn.x, y = s.grid.spawn.y;
   let last = { x, y };
   for (let i = 0; i < 500; i++) {
@@ -104,7 +104,7 @@ const leakAt = await page.evaluate(() => {
 await page.evaluate(({ x: cx, y: cy }) => {
   const sim = window.__app.sim;
   sim.setStartLives(1, { resetCurrent: true });
-  sim.enemies.push({
+  sim.state.enemies.push({
     id: 999, pos: { x: cx + 0.5, y: cy + 0.5 }, cell: { x: cx, y: cy },
     hp: 9999, maxHp: 9999, kind: "mite", silhouette: "mite", speed: 0.5, ballast: "mid", slowAmount: 0,
   });
@@ -127,12 +127,12 @@ step("prep screen", await page.evaluate(() => !!document.querySelector(".prep-la
 await page.click("text=Start Level");
 await page.waitForTimeout(1500);
 await page.evaluate(() => {
-  window.__app.sim._s.wavesToWin = 1;
+  window.__app.sim.state.wavesToWin = 1;
 });
 await page.click(".call-btn");
 await page.waitForTimeout(400);
 await page.evaluate(() => {
-  const s = window.__app.sim._s;
+  const s = window.__app.sim.state;
   s.waves.toSpawn = 0;
   s.enemies.length = 0;
 });

@@ -16,7 +16,7 @@ function _apply(app, html) {
 
 export function showEndlessHub(app) {
   app.screen = "hub";
-  app.score?.toMenu();
+  app.score?.toMenu?.();
   _swapScreen(app, renderHub(endsState(app)));
 }
 

@@ -35,6 +35,19 @@ const THREAT_LABEL = {
   overlord: "Claim",
 };
 
+const FODDER = new Set(["mite", "courier", "grub", "runner"]);
+/** Distinctive Cinder kinds — pin if present so fodder and common plate don't drown them. */
+const DISTINCT = [
+  "claim",
+  "ward_volt",
+  "hauler_ceramite",
+  "duct",
+  "phantom",
+  "kiln",
+  "cask",
+  "siphon",
+];
+
 /** Unique threat tags from a campaign level's authored waves. */
 export function threatTagsForLevel(lv, max = 5) {
   const counts = new Map();
@@ -42,10 +55,25 @@ export function threatTagsForLevel(lv, max = 5) {
     const { queue } = resolveCampaignWave(def, 1);
     for (const k of queue) counts.set(k, (counts.get(k) || 0) + 1);
   }
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, max)
-    .map(([k]) => ({ id: k, label: THREAT_LABEL[k] || enemyDef(k).label || k }));
+  const cap = Math.max(0, max | 0);
+  const picked = [];
+  const used = new Set();
+  const push = (k) => {
+    if (!k || used.has(k) || !counts.has(k) || picked.length >= cap) return;
+    used.add(k);
+    picked.push(k);
+  };
+  for (const k of DISTINCT) push(k);
+  const rest = [...counts.keys()]
+    .filter((k) => !used.has(k))
+    .sort((a, b) => {
+      const af = FODDER.has(a) ? 1 : 0;
+      const bf = FODDER.has(b) ? 1 : 0;
+      if (af !== bf) return af - bf;
+      return counts.get(b) - counts.get(a) || a.localeCompare(b);
+    });
+  for (const k of rest) push(k);
+  return picked.map((k) => ({ id: k, label: THREAT_LABEL[k] || enemyDef(k).label || k }));
 }
 
 /** Compact HTML for full roster peek (all unlocked slots). */

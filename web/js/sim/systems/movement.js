@@ -3,9 +3,10 @@
  * gliding, leaks, game-over. The iteration order and float sequence are the
  * parity contract (simParity.mjs).
  */
-import { ballastSlowFactor } from "../../data/enemies.js";
+import { ballastSlowFactor, forgeDropAmount } from "../../data/enemies.js";
 import { emit } from "../state.js";
 import { makeEnemy } from "./waves.js";
+import { addForge } from "./economy.js";
 
 export function tickEnemies(state) {
   const enemies = state.enemies;
@@ -13,6 +14,8 @@ export function tickEnemies(state) {
     const e = enemies[i];
     if (e.hp <= 0) {
       state.economy.battle += e.battleDrop || 1;
+      const forge = forgeDropAmount(e, state.runSeed);
+      if (forge) addForge(state.economy, forge);
       if ((e.splitsInto | 0) > 0) {
         const childKind = e.splitKind || "mite";
         for (let s = 0; s < e.splitsInto; s++) {
@@ -30,7 +33,7 @@ export function tickEnemies(state) {
         }
       }
       state.killCount = (state.killCount | 0) + 1;
-      emit(state, "enemy_killed", { enemy: e, drop: e.battleDrop || 1 });
+      emit(state, "enemy_killed", { enemy: e, drop: e.battleDrop || 1, forge });
       state.enemiesById.delete(e.id);
       enemies.splice(i, 1);
       continue;

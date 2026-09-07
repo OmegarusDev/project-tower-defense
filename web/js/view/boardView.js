@@ -7,12 +7,10 @@
 import { buildAttackPlan, planOptsFromParts } from "../sim/attackPlan.js";
 import { XP_TO_POINT } from "../data/parts.js";
 import * as S from "./boardScene.js";
-import { PortalAnimator } from "./boardScene.js";
+import { PortalAnimator, UNIT_SCALE } from "./boardScene.js";
 import { VIEW25, setPitch, BoardCamera } from "./camera.js";
 import { renderTowerNext } from "./renderTower.js";
 
-/** Draw towers/enemies a bit larger than the cell footprint. */
-const UNIT_SCALE = 1.22;
 const ZOOM_MIN = 0.72;
 const ZOOM_MAX = 1.85;
 
@@ -201,7 +199,7 @@ export class BoardView {
   }
 
   setWallPreview(cell, cost, canAfford) {
-    if (cell && this.sim && this.sim.grid.inBounds(cell.x, cell.y)) {
+    if (cell && this.sim && this.sim.state.grid.inBounds(cell.x, cell.y)) {
       this._wallPreview = { x: cell.x, y: cell.y, cost, canAfford };
     } else {
       this._wallPreview = null;
@@ -238,7 +236,7 @@ export class BoardView {
   zoomAtGridCenter(z) {
     if (!this.sim) return;
     this._zoomT = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
-    const g = this.sim.grid;
+    const g = this.sim.state.grid;
     const gridCenterX = (g.cols - 1) * 0.5;
     const gridCenterY = (g.rows - 1) * 0.5;
     const p = this.cam.project(gridCenterX, gridCenterY);
@@ -266,7 +264,7 @@ export class BoardView {
 
   _fit(force = false) {
     if (!this.sim) return;
-    const g = this.sim.grid;
+    const g = this.sim.state.grid;
     const cssW = this.canvas.clientWidth || 360;
     const cssH = this.canvas.clientHeight || 640;
     const dpr = this._resolveDpr();
@@ -311,7 +309,7 @@ export class BoardView {
       g.cols,
       g.rows,
       VIEW25.pitchDeg | 0,
-      this.sim.walls.length,
+      this.sim.state.walls.length,
     ].join("|");
     const canvasW = Math.floor(cssW * dpr);
     const canvasH = Math.floor(cssH * dpr);
@@ -368,7 +366,7 @@ export class BoardView {
     const dist = this._pointerDist();
     if (!mid || dist < 8) return;
     // Anchor zoom at grid center (board coordinates)
-    const g = this.sim.grid;
+    const g = this.sim.state.grid;
     const gridCenterX = (g.cols - 1) * 0.5;
     const gridCenterY = (g.rows - 1) * 0.5;
     const anchorBoard = { x: gridCenterX, y: gridCenterY };
@@ -502,7 +500,7 @@ export class BoardView {
     const { x, y } = this._toCanvas(e.clientX, e.clientY);
     const c = this._cellAt(x, y);
     // Click off-grid clears hand
-    if (!this.sim.grid.inBounds(c.x, c.y)) {
+    if (!this.sim.state.grid.inBounds(c.x, c.y)) {
       if (this._handSlot != null && this.onPanStart) this.onPanStart();
       return;
     }
@@ -556,7 +554,7 @@ export class BoardView {
     }
 
     const ctx = this.ctx;
-    const g = this.sim.grid;
+    const g = this.sim.state.grid;
     const cssW = this.canvas.clientWidth;
     const cssH = this.canvas.clientHeight;
     const dpr = this._resolveDpr();
@@ -592,7 +590,7 @@ export class BoardView {
     } else {
       this._drawBoardShadow();
       this._drawField(g);
-      for (const w of this.sim.walls) this._drawWall(w.cell.x, w.cell.y);
+      for (const w of this.sim.state.walls) this._drawWall(w.cell.x, w.cell.y);
     }
 
     this._drawStains();
@@ -605,15 +603,15 @@ export class BoardView {
     // buffers are reused; Array#sort runs in place on them.
     const towers = this._scratchTowers;
     towers.length = 0;
-    for (const t of this.sim.towers) towers.push(t);
+    for (const t of this.sim.state.towers) towers.push(t);
     towers.sort((a, b) => a.cell.y - b.cell.y || a.cell.x - b.cell.x);
     for (const t of towers) this._drawTower(t);
     const enemies = this._scratchEnemies;
     enemies.length = 0;
-    for (const e of this.sim.enemies) enemies.push(e);
+    for (const e of this.sim.state.enemies) enemies.push(e);
     enemies.sort((a, b) => a.pos.y - b.pos.y);
     for (const e of enemies) this._drawEnemy(e);
-    for (const p of this.sim.projectiles) this._drawProjectile(p);
+    for (const p of this.sim.state.projectiles) this._drawProjectile(p);
 
     if (this.fx) {
       if (!this._dmgForType) this._dmgForType = (type) => this.palette.dmg(type);
@@ -656,11 +654,11 @@ export class BoardView {
     // Render the board at a neutral origin (0,0) — pan is applied at draw time.
     this.ctx = lctx;
     this.origin = { x: 0, y: 0 };
-    this.cam.configure(0, 0, this.cell, this.sim.grid.cols, this.sim.grid.rows);
-    const g = this.sim.grid;
+    this.cam.configure(0, 0, this.cell, this.sim.state.grid.cols, this.sim.state.grid.rows);
+    const g = this.sim.state.grid;
     this._drawBoardShadow();
     this._drawField(g);
-    for (const wall of this.sim.walls) this._drawWall(wall.cell.x, wall.cell.y);
+    for (const wall of this.sim.state.walls) this._drawWall(wall.cell.x, wall.cell.y);
     this.ctx = prevCtx;
     // Restore the live camera for everything else (stains/bastion/path/towers).
     this.origin = prevOrigin;
@@ -692,7 +690,7 @@ export class BoardView {
   }
 
   _drawPath(g, dt = 1 / 60) {
-    const portalX = this.sim?.portal?.x ?? g.spawn.x;
+    const portalX = this.sim?.state?.portal?.x ?? g.spawn.x;
     const t = performance.now() * 0.001;
 
     // Trunk hand-off: when the seam migrates (or walls reroute the flow),
@@ -734,11 +732,11 @@ export class BoardView {
     // hand-off before drawing (drawPath owns its own stroke styling).
     const { trunkCells } = S.flowCellPaths(g, portalX, { maxPaths: 1 });
     this._lastTrunkPts = trunkCells.map((c) => this.cam.projectCell(c.x, c.y));
-    S.drawPath(this.ctx, this.cam, g, portalX, this.cell, t, this.sim?.enemies?.length || 0);
+    S.drawPath(this.ctx, this.cam, g, portalX, this.cell, t, this.sim?.state?.enemies?.length || 0);
   }
 
   _drawPortal(g) {
-    const p = this.sim?.portal || g.spawn;
+    const p = this.sim?.state?.portal || g.spawn;
     if (this._prevPortalX !== p.x) {
       // Seam re-opened: puff at the new cell (and mark the old one closing)
       this._prevPortalX = p.x;
@@ -754,7 +752,7 @@ export class BoardView {
     if (!this.fx) return;
     this._portalAcc += 1;
     if (this._portalAcc % 8 !== 0) return;
-    const p = this.sim?.portal || g.spawn;
+    const p = this.sim?.state?.portal || g.spawn;
     this.fx.portalMote(p.x + 0.5, p.y + 0.5);
   }
 
@@ -769,8 +767,8 @@ export class BoardView {
     const selected = t.id === this.selectedTowerId;
     let plan = null;
     if (selected) {
-      const up = this.sim.partUpgrades || {};
-      const g = this.sim.globalMods || {};
+      const up = this.sim.state.partUpgrades || {};
+      const g = this.sim.state.globalMods || {};
       plan = buildAttackPlan(
         t.base,
         t.barrel,
@@ -827,8 +825,8 @@ export class BoardView {
     };
     renderTowerNext(this.ctx, this.palette, mockTower, px, py, s, { selected: false });
     // Range ring — projected through camera from board space
-    const up = this.sim?.partUpgrades || {};
-    const g = this.sim?.globalMods || {};
+    const up = this.sim?.state?.partUpgrades || {};
+    const g = this.sim?.state?.globalMods || {};
     const plan = buildAttackPlan(
       loadout.base,
       loadout.barrel,
@@ -878,7 +876,7 @@ export class BoardView {
   _drawAtmosphere(cssW, cssH) {
     const t = performance.now() * 0.001;
     if (this._themePulse > 0) this._themePulse = Math.max(0, this._themePulse - 0.035);
-    const bossOnField = this.sim?.enemies?.some((e) => e.boss);
+    const bossOnField = this.sim?.state?.enemies?.some((e) => e.boss);
     this._bossVignette += ((bossOnField ? 1 : 0) - this._bossVignette) * 0.08;
     S.drawAtmosphere(this.ctx, this.palette, cssW, cssH, t, this._motes, {
       themePulse: this._themePulse,

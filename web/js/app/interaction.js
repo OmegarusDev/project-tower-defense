@@ -5,9 +5,7 @@
  * game's "what is the player doing right now" state across app.js + every
  * delegate (place/input/chrome/...). They now live in one object, created here.
  *
- * App re-exposes them as thin getters/setters (see app.js) so delegate code
- * keeps calling `app.interaction.tool` / `app.interaction.selectedTowerId` unchanged — the state is
- * extracted without touching every call site.
+ * Callers read `app.interaction.tool` / `app.interaction.selectedTowerId` directly.
  */
 export function createInteraction() {
   return {

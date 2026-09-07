@@ -31,10 +31,10 @@ export function runSim(opts = {}) {
   const sim = opts.simFactory ? opts.simFactory() : new Sim();
   // Match the shipped endless map — the balance bot must measure the real game.
   sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, seed, true);
-  sim.runSeed = seed >>> 0 || 1;
-  sim.runLevelCap = runLevelCap;
+  sim.state.runSeed = seed >>> 0 || 1;
+  sim.state.runLevelCap = runLevelCap;
   sim.setStartLives(opts.startLives | 0 || 3, { resetCurrent: true });
-  sim.economy.battle = opts.startBattle != null ? opts.startBattle | 0 : BASE_START_CASH;
+  sim.state.economy.battle = opts.startBattle != null ? opts.startBattle | 0 : BASE_START_CASH;
   if (opts.partUpgrades) sim.setPartUpgrades(opts.partUpgrades);
   if (opts.globalMods) sim.setGlobalMods(opts.globalMods);
 
@@ -54,16 +54,16 @@ export function runSim(opts = {}) {
 
   sim.on("game_over", () => {
     gameOver = true;
-    sim.running = false;
+    sim.state.running = false;
   });
   sim.on("victory", () => {
     victory = true;
-    sim.running = false;
+    sim.state.running = false;
   });
   sim.on("wave_cleared", () => {
     wavesCleared += 1;
-    sim.running = false;
-    sim.checkpointPhase = "betweenWaves";
+    sim.state.running = false;
+    sim.state.checkpointPhase = "betweenWaves";
   });
   sim.on("leak", () => {
     leaks += 1;
@@ -83,13 +83,13 @@ export function runSim(opts = {}) {
 
   let ticks = 0;
   while (ticks < maxTicks && !gameOver && !victory) {
-    if (sim.waveIndex >= maxWaves && !sim.waves.waveActive && sim.enemies.length === 0) {
+    if (sim.state.waves.index >= maxWaves && !sim.state.waves.active && sim.state.enemies.length === 0) {
       break;
     }
 
-    if (!sim.running) {
+    if (!sim.state.running) {
       // Between waves — build then Call next (unless hit wave cap)
-      if (sim.waveIndex >= maxWaves) break;
+      if (sim.state.waves.index >= maxWaves) break;
       act("betweenWaves");
       if (gameOver) break;
       sim.startWave({ earlyBonus: 0 });
@@ -103,17 +103,17 @@ export function runSim(opts = {}) {
     ticks += 1;
   }
 
-  const peakLevel = sim.towers.reduce((m, t) => Math.max(m, t.level | 0), 1);
-  const branchPicks = sim.towers.reduce((n, t) => n + ((t.branch?.damage | 0) + (t.branch?.rof | 0) + (t.branch?.range | 0)), 0);
+  const peakLevel = sim.state.towers.reduce((m, t) => Math.max(m, t.level | 0), 1);
+  const branchPicks = sim.state.towers.reduce((n, t) => n + ((t.branch?.damage | 0) + (t.branch?.rof | 0) + (t.branch?.range | 0)), 0);
 
   return {
     seed,
     wavesCleared,
-    waveIndex: sim.waveIndex | 0,
-    lives: sim.lives | 0,
-    battle: sim.economy.battle | 0,
-    towers: sim.towers.length,
-    walls: sim.walls.filter((w) => !w.preplaced).length,
+    waveIndex: sim.state.waves.index | 0,
+    lives: sim.state.lives | 0,
+    battle: sim.state.economy.battle | 0,
+    towers: sim.state.towers.length,
+    walls: sim.state.walls.filter((w) => !w.preplaced).length,
     ticks,
     simSeconds: ticks * TICK_DT,
     gameOver,
@@ -122,7 +122,7 @@ export function runSim(opts = {}) {
     kills,
     peakLevel,
     branchPicks,
-    reachedMaxWaves: wavesCleared >= maxWaves || sim.waveIndex >= maxWaves,
+    reachedMaxWaves: wavesCleared >= maxWaves || sim.state.waves.index >= maxWaves,
     timedOut: ticks >= maxTicks && !gameOver && !victory,
   };
 }

@@ -53,11 +53,11 @@ Forge; the enemy is its waste, given will.
 
 | File | Current | New |
 |---|---|---|
-| `ui/next/screens.js` (title credit) | `Bastion vs Slag Host` | `Bastion vs the Cinder` |
-| `ui/next/screens.js` (campaign blurb) | `Seal each Yard before the Claim walks it.` | `Seal each Yard before the Cinder walks it.` |
+| `ui/screens.js` (title credit) | `Bastion vs Slag Host` | `Bastion vs the Cinder` |
+| `ui/screens.js` (campaign blurb) | `Seal each Yard before the Claim walks it.` | `Seal each Yard before the Cinder walks it.` |
 | `data/enemies.js` (header, 2 comments) | `Slag Host archetypes` / `→ Slag Host kinds` | `the Cinder archetypes` / `→ the Cinder kinds` |
 | `data/waveScripts.js` (comment) | `(Slag Host ids)` | `(Cinder ids)` |
-| `view/next/enemyVisuals.js` (comment) | `the Slag Host silhouettes` | `the Cinder silhouettes` |
+| `view/enemyVisuals.js` (comment) | `the Slag Host silhouettes` | `the Cinder silhouettes` |
 | `css/tokens.css` (comment) | `slag blooms` | `ember blooms` |
 
 ### Consequences
@@ -111,7 +111,7 @@ Replace all `confirm()` with an in-game modal — a **Cinder-sheet** (same visua
 family as the pause sheet: plate, backdrop, brass action row). Promise-based so
 call sites stay synchronous in shape.
 
-### The modal spec (`ui/next/modal.js`)
+### The modal spec (`ui/modal.js`)
 
 ```js
 // API — one function, promise-based:
@@ -184,7 +184,7 @@ window becomes the slot navigator:
   - ROF = `1 / plan.fireInterval` (0–5 scale, clamp)
   - RNG = `plan.rangeCells` (0–8 scale, clamp)
 - Bar rendering: filled portion + label + value. Empty slot → zeroed bars,
-  grey. Bars are pure HTML (`ui/next/screens.js` — `forgeStatBars(plan)`),
+  grey. Bars are pure HTML (`ui/screens.js` — `forgeStatBars(plan)`),
   part of the forge render + `refreshForgeUi` patch.
 - Damage-type tag + the existing `forgePlanSummary` line stay under the bars.
 
@@ -276,7 +276,7 @@ Priority-ordered, each with a decision:
 
 1. **Copy + faction rename** (§1, §2): mechanical string changes; re-capture
    `out/ui/*` + `out/screens/*`; review the diffs (only copy lines changed).
-2. **Game dialogs** (§3): `ui/next/modal.js` + the three call sites; update
+2. **Game dialogs** (§3): `ui/modal.js` + the three call sites; update
    `smokeWalk.mjs` (click modals, drop `page.on("dialog")`); add the CI
    grep-gate banning `confirm(/alert(/prompt(` in `web/js`.
 3. **Forge UX rework** (§4): `forgeStatBars`, slot cycling actions, unlock

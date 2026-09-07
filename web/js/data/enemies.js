@@ -1,3 +1,5 @@
+import { mulberry32 } from "../sim/rng.js";
+
 /**
  * the Cinder archetypes — Vein Claim reclaimers.
  * Stats are base values; WaveManager scales HP (and endless speed) by wave.
@@ -200,6 +202,42 @@ const RESIST_TYPES = new Set(["kinetic", "fire", "shock", "frost", "poison", "ac
 })();
 
 Object.freeze(ENEMY_KINDS);
+
+/**
+ * Kill → Forge Parts. Chance of +1, plus a guaranteed lump for elites.
+ * Fodder is a trickle (wave-1 mites should not buy a Rail by themselves).
+ */
+export const FORGE_DROPS = {
+  mite: { chance: 0.15 },
+  courier: { chance: 0.15 },
+  duct: { chance: 0.25 },
+  phantom: { chance: 0.25 },
+  hauler: { chance: 0.4 },
+  ward: { chance: 0.4 },
+  cask: { chance: 0.4 },
+  siphon: { chance: 0.45 },
+  skulk: { chance: 0.5 },
+  hauler_ceramite: { chance: 0.5 },
+  ward_volt: { chance: 0.5 },
+  kiln: { chance: 0.6 },
+  claim: { parts: 3 },
+};
+
+export function forgeDropSpec(kind) {
+  const row = FORGE_DROPS[kind] || {};
+  return { chance: row.chance || 0, parts: row.parts | 0 };
+}
+
+/** Deterministic Parts drop for a spawned enemy (seeded by run + id). */
+export function forgeDropAmount(enemy, runSeed) {
+  let n = enemy.forgeParts | 0;
+  const p = enemy.forgeChance || 0;
+  if (p > 0) {
+    const seed = ((runSeed || 1) ^ ((enemy.id | 0) * 0x9e3779b9) ^ 0xa11d) >>> 0;
+    if (mulberry32(seed)() < p) n += 1;
+  }
+  return n;
+}
 
 /** Legacy + paper-TD ids → the Cinder kinds. */
 const ENEMY_ALIASES = {

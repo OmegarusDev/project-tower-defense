@@ -14,6 +14,9 @@ import {
 } from "../data/parts.js";
 import { forgePlanSummary, rosterSlotButtonsHtml } from "./screens.js";
 import { partIconHtml } from "./partIcons.js";
+import { wallCost } from "../sim/systems/economy.js";
+import { playerWallCount } from "../sim/systems/towers.js";
+import { getCampaignLevel } from "../data/campaign.js";
 
 /** The chrome shell (renderGameChrome's template) — pure over state. */
 export function chromeHtml(state) {
@@ -131,9 +134,9 @@ export function composeSheetHtml(state) {
 export function pauseSheetHtml(state) {
   const sim = state.sim;
   const endless = !!sim.modeEndless;
-  const wave = sim.waveIndex | 0;
+  const wave = sim.waves.index | 0;
   const quitLabel = endless ? "Endless Menu" : "Campaign Menu";
-  const between = endless && !state.waveBusy();
+  const between = endless && !state.waveBusy;
   const note = state.playtestFromEditor
     ? "Editor playtest"
     : endless
@@ -173,24 +176,24 @@ export function statChipsHtml(state) {
 /** Dock slot-line meta (syncBuildDock) — pure over state. */
 export function slotLineHtml(state) {
   const sim = state.sim;
-  const wallCost = sim.economy.wallCost(sim.playerWallCount());
+  const wallCostN = wallCost(sim.economy, playerWallCount(sim));
   if (state.tool === "wall") {
-    return `<span class="dock-meta-k">Wall</span><span class="dock-meta-v">${wallCost} Coin</span>`;
+    return `<span class="dock-meta-k">Wall</span><span class="dock-meta-v">${wallCostN} Coin</span>`;
   }
-  const q = state.quote(state.slot);
+  const q = state.quotes[state.slot] || state.emptyQuote;
   if (!q.complete) {
     return `<span class="dock-meta-k">Slot ${state.slot + 1}</span><span class="dock-meta-v warn">Set loadout in Forge</span>`;
   }
   const s = q.loadout;
-  const tax = q.surcharge ? ` · +${q.surcharge} tax` : "";
+  const tax = q.surcharge ? ` · +${q.surcharge} part tax` : "";
   return `<span class="dock-meta-k">${partLabel(s.base)} · ${partLabel(s.barrel)} · ${partLabel(s.payload)}</span><span class="dock-meta-v">${q.total} Coin${tax}</span>`;
 }
 
 /** Call button state (refreshHud's callBtn block) — pure over state. */
 export function callButtonState(state) {
   const sim = state.sim;
-  const busy = state.waveBusy();
-  const done = !sim.modeEndless && sim.wavesToWin > 0 && sim.waveIndex >= sim.wavesToWin;
+  const busy = state.waveBusy;
+  const done = !sim.modeEndless && sim.wavesToWin > 0 && sim.waves.index >= sim.wavesToWin;
   const ff = !!state.ffHeld;
   if (state.ghost) {
     const next = state.ghost.log?.[state.ghost.i];
@@ -216,7 +219,7 @@ export function callButtonState(state) {
         ? `Hold for ${ffSpeed}×`
         : `Tap to deploy · hold for ${ffSpeed}×`,
     kicker: ff ? `${ffSpeed}×` : done ? "Done" : busy ? "Hold" : "Deploy",
-    label: ff ? "Speed" : busy ? "Live" : done ? "Clear" : `Wave ${sim.waveIndex + 1}`,
+    label: ff ? "Speed" : busy ? "Live" : done ? "Clear" : `Wave ${sim.waves.index + 1}`,
   };
 }
 
@@ -224,22 +227,23 @@ export function callButtonState(state) {
 export function syncWaveAndStatus(container, state) {
   const sim = state.sim;
   const waveLabel = !sim.modeEndless && sim.wavesToWin
-    ? `${sim.waveIndex}/${sim.wavesToWin}`
-    : `${sim.waveIndex}`;
+    ? `${sim.waves.index}/${sim.wavesToWin}`
+    : `${sim.waves.index}`;
   const waveNum = container.querySelector("#waveNum");
   if (waveNum) waveNum.textContent = waveLabel;
   const waveSub = container.querySelector("#waveSub");
   if (waveSub) {
     if (!sim.modeEndless) {
-      waveSub.textContent = `Lv ${sim.campaignLevelId}`;
+      const name = getCampaignLevel(sim.campaignLevelId)?.name;
+      waveSub.textContent = name || `Lv ${sim.campaignLevelId}`;
       waveSub.classList.remove("hidden");
     } else {
       waveSub.textContent = "";
       waveSub.classList.add("hidden");
     }
   }
-  const theme = sim.waves?.lastTheme;
-  const event = sim.waves?.lastEvent;
+  const theme = sim.waves?.theme;
+  const event = sim.waves?.event;
   const chip = container.querySelector("#themeChip");
   if (chip) {
     const label = event || (theme && theme !== "campaign" ? theme : "");
@@ -264,20 +268,20 @@ export function syncBuildDock(container, state) {
   for (let i = 0; i < MAX_ROSTER_SLOTS; i++) {
     const btn = container.querySelector(`[data-build-slot="${i}"]`);
     if (!btn) continue;
-    const q = state.quote(i);
+    const q = state.quotes[i] || state.emptyQuote;
     const costEl = btn.querySelector(".slot-tile-cost");
     if (costEl) costEl.textContent = q.costLabel;
     btn.title = q.tip;
     btn.classList.toggle("active", state.tool === "tower" && i === state.slot);
     btn.classList.toggle("empty", !q.complete);
   }
-  const wallCost = sim.economy.wallCost(sim.playerWallCount());
+  const wallCostN = wallCost(sim.economy, playerWallCount(sim));
   const wallCostEl = container.querySelector("#wallCost");
-  if (wallCostEl) wallCostEl.textContent = `${wallCost}`;
+  if (wallCostEl) wallCostEl.textContent = `${wallCostN}`;
   const wallBtn = container.querySelector("#wallBtn");
   if (wallBtn) {
     wallBtn.classList.toggle("active", state.tool === "wall");
-    wallBtn.title = `Wall · ${wallCost} Coin`;
+    wallBtn.title = `Wall · ${wallCostN} Coin`;
   }
   const slotLine = container.querySelector("#slotline");
   if (slotLine) setHtmlIfChanged(slotLine, slotLineHtml(state));
@@ -339,7 +343,8 @@ export function syncTowerOverlay(container, state) {
     if (sellBtn) sellBtn.textContent = `Sell · ${refund}`;
   }
 
-  const c = state.board.cellScreenCenter(cell.x, cell.y);
+  const c = state.overlayAnchor;
+  if (!c) return;
   const pad = 8;
   // offsetWidth/Height force synchronous layout — only remeasure when the
   // card's text content (the thing that drives its size) actually changed.
@@ -357,7 +362,7 @@ export function syncTowerOverlay(container, state) {
   const appH = state.uiHeight;
   let left = c.x;
   left = Math.max(pad + w / 2, Math.min(appW - pad - w / 2, left));
-  let top = c.y - state.board.cell * 0.55;
+  let top = c.y - state.cellSize * 0.55;
   top = Math.max(pad + h, Math.min(appH - pad, top));
   overlay.style.left = `${left}px`;
   overlay.style.top = `${top}px`;

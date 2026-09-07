@@ -94,6 +94,20 @@ export class FxSystem {
     });
   }
 
+  partsDrop(x, y, n) {
+    if (!(n > 0)) return;
+    this._pushFloat({
+      x: x + 0.12,
+      y: y - 0.28,
+      text: n === 1 ? "+1 Part" : `+${n} Parts`,
+      life: 0.95,
+      max: 0.95,
+      type: "parts",
+      color: "#c9a227",
+      vy: -0.65,
+    });
+  }
+
   chain(x0, y0, x1, y1) {
     this._pushItem({
       kind: "bolt",
@@ -459,7 +473,7 @@ export class FxSystem {
     for (const f of this.floats) {
       const a = Math.max(0, f.life / f.max);
       const p = cam.project(f.x * cell, f.y * cell);
-      const col = colorFn(f.type);
+      const col = f.color || colorFn(f.type);
       ctx.globalAlpha = a;
       ctx.font = `700 ${Math.max(10, 13 * p.s)}px "Chakra Petch", sans-serif`;
       ctx.textAlign = "center";

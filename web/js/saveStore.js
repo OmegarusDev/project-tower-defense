@@ -190,6 +190,7 @@ export function saveMeta(meta) {
 
 /** localStorage.setItem that never throws mid-gameplay (quota/private mode). */
 function setItemGuarded(key, json) {
+  if (typeof localStorage === "undefined") return false;
   try {
     localStorage.setItem(key, json);
     return true;

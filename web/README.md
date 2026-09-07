@@ -37,23 +37,25 @@ web/
   css/            # tokens → shell → title → forge → tech → game-hud → meta → editor
   js/
     main.js app.js saveStore.js
-    app/          # run / chrome / input / ends / forge / tech / undo modules (take `app`)
-    ui/           # menuScreens, forgeScreen, techScreen, endScreens, levelEditor, metaUi
-    ui/next/      # actions (runAction), screens, registry, chrome, modal, stateOf
+    app/          # run / chrome / input / ends / forge / tech / undo / fastForward
+    ui/           # actions, screens (+ screens/*), registry, chrome, modal, stateOf,
+                  # menuScreens, forgeScreen, techScreen, endScreens, levelEditor
     data/         # parts, techTree, campaign, enemies, waveScripts, endlessGrid, rules
-    sim/          # BoardGrid, AttackPlan, rng
-    sim/next/     # state, sim (Sim facade), systems/*, combat/*
+    sim/          # boardGrid, attackPlan, rng, state, sim (commands over state),
+                  # systems/*, combat/{status,synergy,targeting,hits}
     balance/      # headless runSim + greedyBot + scenarios
-    view/         # palette, drawUtil, prims25, fx, titleView, view25 (camera)
-    view/next/    # boardScene, boardView, enemyVisuals, partVisuals, renderEnemy, renderTower
+    view/         # palette, drawUtil, primitives, fx, titleView, camera (Anvil Engine),
+                  # boardScene (+ boardScene/*), boardView, enemyVisuals, partVisuals
     audio/        # Web Audio SFX + generative ambient
     tests/        # node smoke tests (run via verify.mjs)
 ```
 
 ## Tests
 
+From the repo root (not `web/`):
+
 ```bash
-for f in js/tests/*.mjs; do node "$f"; done
+node verify.mjs
 ```
 
 ## Balance bot

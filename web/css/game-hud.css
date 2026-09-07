@@ -97,6 +97,10 @@
   text-transform: uppercase;
   color: #a89878;
   line-height: 1;
+  max-width: 8.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wave-badge-sub.hidden {

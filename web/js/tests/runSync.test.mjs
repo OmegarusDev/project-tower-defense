@@ -15,17 +15,17 @@ function assert(cond, msg) {
   const sim = new Sim();
   sim.setup(11, 14, 5, true);
   for (let i = 0; i < 4; i++) sim.startWave();
-  assert(sim.waveIndex === 4, "four waves started");
+  assert(sim.state.waves.index === 4, "four waves started");
   const blob = sim.checkpoint();
   assert(blob.wave === 4 && blob.phase === "inWave", "checkpoint stores wave + inWave phase");
 
   const resumed = new Sim();
   resumed.loadCheckpoint(blob);
   const savedWave = blob.wave | 0;
-  if (blob.phase !== "betweenWaves" && savedWave > 0) resumed.waveIndex = savedWave - 1;
-  assert(resumed.waveIndex === 3, "inWave resume rolls back so Call starts saved wave");
+  if (blob.phase !== "betweenWaves" && savedWave > 0) resumed.state.waves.index = savedWave - 1;
+  assert(resumed.state.waves.index === 3, "inWave resume rolls back so Call starts saved wave");
   resumed.startWave();
-  assert(resumed.waveIndex === 4, "Call Wave after continue starts the saved wave");
+  assert(resumed.state.waves.index === 4, "Call Wave after continue starts the saved wave");
 }
 
 // betweenWaves continue contract: no rollback — Call starts next wave.
@@ -33,17 +33,17 @@ function assert(cond, msg) {
   const sim = new Sim();
   sim.setup(11, 14, 5, true);
   sim.startWave();
-  sim.checkpointPhase = "betweenWaves"; // as wave_cleared hands off
+  sim.state.checkpointPhase = "betweenWaves"; // as wave_cleared hands off
   const blob = sim.checkpoint();
   assert(blob.phase === "betweenWaves", "checkpoint stores betweenWaves phase");
 
   const resumed = new Sim();
   resumed.loadCheckpoint(blob);
   const savedWave = blob.wave | 0;
-  if (blob.phase !== "betweenWaves" && savedWave > 0) resumed.waveIndex = savedWave - 1;
-  assert(resumed.waveIndex === 1, "betweenWaves keeps cleared index");
+  if (blob.phase !== "betweenWaves" && savedWave > 0) resumed.state.waves.index = savedWave - 1;
+  assert(resumed.state.waves.index === 1, "betweenWaves keeps cleared index");
   resumed.startWave();
-  assert(resumed.waveIndex === 2, "Call starts wave 2 with board intact");
+  assert(resumed.state.waves.index === 2, "Call starts wave 2 with board intact");
 }
 
 // setStartLives can update budget without healing.
@@ -51,19 +51,19 @@ function assert(cond, msg) {
   const sim = new Sim();
   sim.setup(11, 14, 1, true);
   sim.setStartLives(3, { resetCurrent: true });
-  sim.lives = 1;
+  sim.state.lives = 1;
   sim.setStartLives(5, { resetCurrent: false });
-  assert(sim.startLives === 5, "life budget updates");
-  assert(sim.lives === 1, "current lives preserved when resetCurrent=false");
+  assert(sim.state.startLives === 5, "life budget updates");
+  assert(sim.state.lives === 1, "current lives preserved when resetCurrent=false");
   sim.setStartLives(4, { resetCurrent: true });
-  assert(sim.lives === 4, "resetCurrent refills lives");
+  assert(sim.state.lives === 4, "resetCurrent refills lives");
 }
 
 // Placed towers take runLevelCap when higher than loadout cap.
 {
   const sim = new Sim();
   sim.setup(11, 14, 1, true);
-  sim.runLevelCap = 4;
+  sim.state.runLevelCap = 4;
   sim.setRoster([
     {
       base: "sentry",
@@ -74,11 +74,11 @@ function assert(cond, msg) {
       levelCap: 2,
     },
   ]);
-  sim.economy.battle = 500;
+  sim.state.economy.battle = 500;
   let open = null;
-  for (let y = 2; y < sim.grid.rows - 2 && !open; y++) {
-    for (let x = 2; x < sim.grid.cols - 2; x++) {
-      if (sim.grid.isBuildable(x, y)) {
+  for (let y = 2; y < sim.state.grid.rows - 2 && !open; y++) {
+    for (let x = 2; x < sim.state.grid.cols - 2; x++) {
+      if (sim.state.grid.isBuildable(x, y)) {
         open = { x, y };
         break;
       }

@@ -5,22 +5,32 @@ import {
 } from "../saveStore.js";
 import { partLabel } from "../data/parts.js";
 import { RULES } from "../data/rules.js";
+import { injectMeta } from "../sim/systems/economy.js";
 import { exportReplayBlob, applyReplayAction } from "../ui/replay.js";
 import * as ends from "../ui/endScreens.js";
+import { applyEndlessBestBonus } from "../ui/endScreens.js";
+import { clearUndoStack, pushUndo, clearPlaceConfirm } from "./placeUndo.js";
+import { chromeState } from "../ui/stateOf.js";
+import { syncWaveAndStatus, syncTowerOverlay } from "../ui/chrome.js";
+import { refreshHud, renderGameChrome } from "./gameChrome.js";
+import { waveBusy } from "./waveBusy.js";
+import { persistMeta, syncMetaProgress } from "./metaSync.js";
+import { grantCampaignFirstClear } from "./endsLogic.js";
+import { newRun } from "./runLifecycle.js";
 
 export function onSimEvent(app, e) {
   switch (e.kind) {
     case "wave_checkpoint":
-      app.clearUndoStack();
-      if (app.sim.modeEndless && !app._ghost) {
-        app.sim.checkpointPhase = "inWave";
+      clearUndoStack(app);
+      if (app.sim.state.modeEndless && !app._ghost) {
+        app.sim.state.checkpointPhase = "inWave";
         saveEndless(app.sim.checkpoint());
       }
       break;
     case "wave_composition": {
       const theme = e.theme || "";
       const event = e.event || "";
-      if (app.sim.modeEndless) {
+      if (app.sim.state.modeEndless) {
         const atmo = event || theme;
         if (atmo && atmo !== "campaign") {
           app.board?.setAtmosphere?.(atmo);
@@ -32,7 +42,7 @@ export function onSimEvent(app, e) {
           if (!app._ghost) app.toast(`Theme · ${theme}`);
         }
       }
-      app._refreshThemeChip?.(theme, event);
+      syncWaveAndStatus(app.ui, chromeState(app));
       break;
     }
     case "enemy_killed":
@@ -44,28 +54,29 @@ export function onSimEvent(app, e) {
           e.enemy.armorKind || "none"
         );
         app.board?.addStain?.(e.enemy.pos.x, e.enemy.pos.y, e.enemy.boss ? "fire" : "kinetic");
+        if ((e.forge | 0) > 0) app.fx.partsDrop(e.enemy.pos.x, e.enemy.pos.y, e.forge);
       }
       if (e.enemy?.boss) app.board?.punch?.(3.5);
       break;
     case "tower_placed":
-      if (e.tower?.id != null) app.pushUndo({ type: "place_tower", id: e.tower.id });
+      if (e.tower?.id != null) pushUndo(app, { type: "place_tower", id: e.tower.id });
       app.board?.invalidateStatic?.();
-      app.refreshHud();
+      refreshHud(app);
       break;
     case "wall_placed":
-      if (e.wall?.id != null) app.pushUndo({ type: "place_wall", id: e.wall.id });
+      if (e.wall?.id != null) pushUndo(app, { type: "place_wall", id: e.wall.id });
       app.board?.invalidateStatic?.();
-      app.refreshHud();
+      refreshHud(app);
       break;
     case "tower_sold":
     case "wall_sold":
       app.board?.invalidateStatic?.();
-      app.refreshHud();
+      refreshHud(app);
       break;
     case "grid_grew":
       app.toast(`Map expands · ${e.rows} rows deep`);
       app.board?.onGridGrew?.();
-      app.refreshHud();
+      refreshHud(app);
       break;
     case "portal_unstable":
       app.toast("Portal destabilizing — it may shift!");
@@ -100,7 +111,7 @@ export function onSimEvent(app, e) {
     case "leak":
       app.board?.bastionFlinch?.();
       app.synth.play("explode", 0.85);
-      app.refreshHud();
+      refreshHud(app);
       break;
     case "chain_arc":
       if (app.meta.settings?.particles !== false) {
@@ -114,31 +125,31 @@ export function onSimEvent(app, e) {
       break;
     case "wave_cleared":
       app.synth.play("confirm");
-      app.score.setWave(app.sim.waveIndex);
+      app.score.setWave(app.sim.state.waves.index);
       app.score.setPhase("betweenWaves");
-      app.sim.running = false;
-      app.sim.checkpointPhase = "betweenWaves";
+      app.sim.state.running = false;
+      app.sim.state.checkpointPhase = "betweenWaves";
       if (app._ghost) break;
       {
-        const gained = app.syncMetaProgress();
-        if (app.sim.modeEndless) saveEndless(app.sim.checkpoint());
+        const gained = syncMetaProgress(app);
+        if (app.sim.state.modeEndless) saveEndless(app.sim.checkpoint());
         const won =
-          !app.sim.modeEndless &&
-          app.sim.wavesToWin > 0 &&
-          app.sim.waveIndex >= app.sim.wavesToWin;
+          !app.sim.state.modeEndless &&
+          app.sim.state.wavesToWin > 0 &&
+          app.sim.state.waves.index >= app.sim.state.wavesToWin;
         if (!won) {
           const bits = [`+${e.coin | 0} Coin`];
           if (e.parts) bits.push(`+${e.parts} Parts`);
           if (e.aether) bits.push(`+${e.aether} Aether`);
           const gift = gained.length ? ` · unlocked ${gained.join(", ")}` : "";
-          app.toast(`Wave ${app.sim.waveIndex} cleared · ${bits.join(" · ")}${gift}`);
-          app.refreshHud();
+          app.toast(`Wave ${app.sim.state.waves.index} cleared · ${bits.join(" · ")}${gift}`);
+          refreshHud(app);
         }
       }
       break;
     case "victory":
       app.synth.play("confirm");
-      if (!app._ghost) app.onCampaignVictory();
+      if (!app._ghost) onCampaignVictory(app);
       break;
     case "game_over":
       app.synth.play("explode");
@@ -148,11 +159,11 @@ export function onSimEvent(app, e) {
       }
       {
         const prevBest = app.meta.bestWave | 0;
-        app._endBestBonus = app._applyEndlessBestBonus(prevBest);
-        app.syncMetaProgress();
+        app._endBestBonus = applyEndlessBestBonus(app, prevBest);
+        syncMetaProgress(app);
       }
       app._lastReplay = exportReplayBlob(app.sim);
-      if (app.sim.modeEndless) clearEndless();
+      if (app.sim.state.modeEndless) clearEndless();
       app.score.fadeStop(1.5);
       ends.showGameOver(app);
       break;
@@ -163,11 +174,11 @@ export function onSimEvent(app, e) {
         app.fx.statusPuff(e.x, e.y, "shock");
       }
       if (!app._ghost) app.toast(`${partLabel(e.tower?.base)} → L${e.level}`);
-      app.syncTowerOverlay();
+      syncTowerOverlay(app.ui, chromeState(app));
       break;
     case "level_pick_ready":
     case "level_branch":
-      app.syncTowerOverlay();
+      syncTowerOverlay(app.ui, chromeState(app));
       break;
     default:
       break;
@@ -176,53 +187,55 @@ export function onSimEvent(app, e) {
 }
 
 export function onCampaignVictory(app) {
-  const id = app.sim.campaignLevelId | 0;
+  const id = app.sim.state.campaignLevelId | 0;
   const cleared = new Set(app.meta.campaign?.cleared || []);
   const first = !cleared.has(id);
   if (id > 0) {
     cleared.add(id);
     app.meta.campaign = { cleared: [...cleared].sort((a, b) => a - b) };
   }
-  app.syncMetaProgress();
-  if (first && id > 0) {
-    app.meta.aether = (app.meta.aether | 0) + RULES.FIRST_CLEAR_AETHER;
-    app.sim.economy.injectMeta(app.meta.forge, app.meta.aether);
+  syncMetaProgress(app);
+  const bonus = grantCampaignFirstClear(app.meta, { first, levelId: id });
+  if (bonus) {
+    injectMeta(app.sim.state.economy, app.meta.forge, app.meta.aether);
   }
-  app.persistMeta();
+  persistMeta(app);
   app.score.fadeStop(1.5);
-  app.status = first && id > 0 ? `First clear · +${RULES.FIRST_CLEAR_AETHER} Aether` : "Level cleared";
-  ends.showVictory(app, { firstClear: first && id > 0 });
+  app.status = bonus
+    ? `First clear · +${bonus.aether} Aether · +${bonus.parts} Parts`
+    : "Level cleared";
+  ends.showVictory(app, { firstClear: !!bonus });
   
 }
 
 export function callEarly(app) {
   if (!app.sim || app.paused) return;
-  if (app.waveBusy()) {
+  if (waveBusy(app)) {
     app.toast("Finish the current wave first");
     return;
   }
   if (
-    !app.sim.modeEndless &&
-    app.sim.wavesToWin > 0 &&
-    app.sim.waveIndex >= app.sim.wavesToWin
+    !app.sim.state.modeEndless &&
+    app.sim.state.wavesToWin > 0 &&
+    app.sim.state.waves.index >= app.sim.state.wavesToWin
   ) {
     app.toast("Level already complete");
     return;
   }
-  app.clearPlaceConfirm();
+  clearPlaceConfirm(app);
   app.paused = false;
-  const earlyBonus = RULES.CALL_EARLY_BASE + Math.floor(app.sim.waveIndex * RULES.CALL_EARLY_PER_WAVE);
+  const earlyBonus = RULES.CALL_EARLY_BASE + Math.floor(app.sim.state.waves.index * RULES.CALL_EARLY_PER_WAVE);
   const res = app.sim.startWave({ earlyBonus });
   app.synth.play("wave");
-  app.score.setWave(app.sim.waveIndex);
+  app.score.setWave(app.sim.state.waves.index);
   app.score.setPhase("inWave");
   const got = res?.earlyBonus | 0;
   app.toast(
     got > 0
-      ? `Wave ${app.sim.waveIndex} · +${got} Coin early`
-      : `Wave ${app.sim.waveIndex}`
+      ? `Wave ${app.sim.state.waves.index} · +${got} Coin early`
+      : `Wave ${app.sim.state.waves.index}`
   );
-  app.renderGameChrome();
+  renderGameChrome(app);
   
 }
 
@@ -240,13 +253,13 @@ export function startGhostReplay(app) {
   if (Array.isArray(blob.roster) && blob.roster.length) {
     app.meta.roster = blob.roster;
   }
-  app.newRun(blob.runSeed, { skipConfirm: true });
+  newRun(app, blob.runSeed, { skipConfirm: true });
   app.meta.roster = rosterBackup;
   if (!app.sim) return;
   // Ghost owns the action log — clear live log so we don't double-record
-  app.sim.actionLog = [];
+  app.sim.state.actionLog = [];
   app._ghost = { log: blob.actionLog, i: 0, wait: 0.45, speed: 1 };
-  app.renderGameChrome();
+  renderGameChrome(app);
   app.toast("Ghost replay — speed / skip controls on top");
   
 }
@@ -265,7 +278,7 @@ export function ghostSetSpeed(app, n) {
   if (!app._ghost) return;
   app._ghost.speed = n;
   app.toast(`Replay ${n}×`);
-  app.renderGameChrome();
+  renderGameChrome(app);
   
 }
 
@@ -286,10 +299,10 @@ export function tickGhost(app, dt) {
   }
   // Wait for waves to clear before next call
   const act = g.log[g.i];
-  if (act.type === "call" && app.waveBusy()) return;
+  if (act.type === "call" && waveBusy(app)) return;
   applyReplayAction(app.sim, act);
   g.i += 1;
   g.wait = act.type === "call" ? 0.2 : 0.15;
-  app.refreshHud();
+  refreshHud(app);
   
 }

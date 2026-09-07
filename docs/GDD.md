@@ -84,15 +84,15 @@ Main Menu entry at launch: grid, spawn/exit, pre-walls, wave scripts or formula,
 
 | ID | Name | Earn | Spend | Persistence |
 |----|------|------|-------|-------------|
-| `aether` | Aether | Every **5th** wave cleared (scales with wave); campaign **level** first-clear bonus | Tech graph | Meta |
-| `forge` | Forge parts | Every **3rd** wave cleared (scales with wave); campaign clear bonus TBD | Buy / upgrade parts | Meta |
+| `aether` | Aether | Every **5th** wave cleared (scales with wave); campaign **level first-clear** (+12) | Tech graph | Meta |
+| `forge` | Forge parts | **Kill drops** (fodder = chance of 1; elites guaranteed); every **3rd** wave cleared (scales); campaign **level first-clear** (+6 Parts) | Buy / upgrade parts | Meta |
 | `battle` | Coin | Start grant; enemy drops; **every** wave-clear payout (scales with wave) | Place towers; walls | Per run / per campaign level |
 
 **Start of run/level:** Battle grant only. Forge and Aether balances carry from meta (may be 0). No Forge/Aether start grant.
 
 **Starter ownership (free, no Forge):** `sentry`, `single`, `kinetic`. Slot 1 pre-equipped with that triad. Other parts locked until purchased (Forge).
 
-**Place cost:** sum of part costs after discounts, paid in Battle. Optional board-density surcharge after the first towers.  
+**Place cost:** sum of part costs after discounts, paid in Battle. **Part copy tax:** each already-placed copy of a part (base, barrel, or payload) adds 25% of that part's Coin cost to the next tower that uses it. First copy of a part is untaxed. Quotes for every slot update, so repeating Sentry on a different barrel still pays Sentry tax.  
 **Sell tower/wall:** Salvager tech sets refund **50% / 60% / 75%** of **that instance’s recorded Battle paid** (levels/branch ranks not refunded).
 
 ---
@@ -104,7 +104,7 @@ Main Menu entry at launch: grid, spawn/exit, pre-walls, wave scripts or formula,
 - Spawn top, exit bottom; no diagonals
 - Towers + walls block **ground** path; illegal to seal ground path
 - Ground pathfinding: shortest path to exit; soft tower-avoid for most enemies; fair hash tie-split among equal steps; never seal spawn→exit
-- **Flying:** air layer; ignore walls/towers; shortest air route; only air-capable turrets hit them
+- **Flying:** air layer; ignore walls/towers; shortest air route. Sentry chips air at **half damage** (still prefers ground in range). Aerie / Rail / Flak deal full or bonus air damage. Other bases need an air barrel.
 - Player-facing HP (internal field remains `lives`); start Battle shown as **Coin** in meta UI
 - Wall cost rises with walls currently owned
 - PINNED later: env tiles, special walls
@@ -130,10 +130,10 @@ Starter free parts: **Sentry + Single + Kinetic**.
 
 | Base | Doctrine | Role |
 |------|----------|------|
-| Sentry | First | Lane clearer (starter) |
+| Sentry | First | Lane clearer (starter); half damage vs air |
 | Bulwark | Closest | Point defense; short/fast; point-blank amp |
 | Spire | Strongest | Elite / boss hunter; long/slow |
-| Aerie | Flying → First | Air wing; can engage air layer |
+| Aerie | Flying → First | Air wing; full air damage + flying-first |
 | Warden | Last | Exit / leak watch |
 | Talon | Weakest | Finisher; execute amp on wounded |
 
@@ -142,7 +142,7 @@ Starter free parts: **Sentry + Single + Kinetic**.
 | Barrel | Delivery |
 |--------|----------|
 | Single | One projectile |
-| Twin | Alternating dual; **1.75× ROF**, reduced range vs Single |
+| Twin | Two tubes take turns; **1.75× ROF**, reduced range vs Single |
 | Scatter | Cone multi |
 | Rail | Long pierce (ballistic); air-capable |
 | Pulse | Self-centered area ticks |
@@ -167,9 +167,15 @@ If launcher target dies in flight: detonate AoE at last position; other homing s
 - Each auto-level slightly buffs damage, ROF, and range together; branch ranks stack on top
 - At cap: XP bar freezes — no endless banked points
 
-## 10. Upgrade orthogonality
+## 10. Composition & synergies
 
-Tags + channels + stack mode (`add`/`mult`/`max`/`override`). Mutex one base/barrel/payload. Documented synergies only. Flat levels + branch nodes; ranks permanent (no respec). Validate max combos in tests.
+One base, one barrel, one payload per tower (mutex). Ranks stack by channel (`add`/`mult`/`max`/`override`). Flat levels + branch nodes; ranks permanent (tech respec is the tree, not the tower).
+
+**Parts compose through verbs, not a combo wiki.** The barrel is how the payload exists in the world (pulse ticks the element in a radius; launcher splashes it; rail applies it per pierce). Do not author arbitrary “this pair of parts gets +X%” tables.
+
+**World chemistry** (status sitting on an enemy — often from two different towers) may be a small explicit table, because those are properties of the target: burn+poison, shred+fire, frost+shock. That is not the same as naming a triad combo.
+
+No fourth compose axis. Variety is using the triad fully (doctrine × delivery × element), plus the copy tax that makes repeating the same parts expensive.
 
 ## 11. Enemies & waves
 

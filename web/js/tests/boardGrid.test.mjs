@@ -12,23 +12,23 @@ function assert(cond, msg) {
   // used to re-roll the tie every tick (tick-mixed hash) and jitter forever.
   const sim = new Sim();
   sim.setup(9, 8, 1, true);
-  sim.grid.setBlocked(4, 2, true);
-  sim.grid.setBlocked(4, 3, true);
-  sim.grid.recompute();
-  sim.lives = 5000;
-  sim.waves.queue = Array(12).fill("mite");
-  sim.waves.toSpawn = 12;
-  sim.waves.spawnTimer = 0;
+  sim.state.grid.setBlocked(4, 2, true);
+  sim.state.grid.setBlocked(4, 3, true);
+  sim.state.grid.recompute();
+  sim.state.lives = 5000;
+  sim.state.waves.queue = Array(12).fill("mite");
+  sim.state.waves.toSpawn = 12;
+  sim.state.waves.spawnTimer = 0;
   sim.startWave({ earlyBonus: 0 });
   for (let t = 0; t < 600; t++) sim.tick();
-  const stuck = sim.enemies.filter((e) => e.cell.y < 2).length;
+  const stuck = sim.state.enemies.filter((e) => e.cell.y < 2).length;
   assert(stuck === 0, `no enemy frozen at the fork (got ${stuck})`);
 
   // Traffic split: enemies that exited the board must have used different
   // branches (at least one went left and one went right).  We check the
   // total kill+leak count — enemies reaching the bottom row via different
   // x-channels proves the fork didn't collapse to a single lane.
-  const exited = sim._s.killCount + sim._s.leakCount;
+  const exited = sim.state.killCount + sim.state.leakCount;
   assert(exited >= 2, `at least 2 enemies exited via different branches (exited=${exited})`);
 }
 
@@ -131,17 +131,17 @@ assert(g2.airDist[g2.idx(g2.spawn.x, g2.spawn.y)] < INF, "air ok");
   // never ends. Walls that leave a downhill route stay legal.
   const sim = new Sim();
   sim.setup(9, 8, 5, true);
-  sim.lives = 5000;
-  sim.economy.battle = 5000;
-  sim.waves.queue = Array(1).fill("mite");
-  sim.waves.toSpawn = 1;
-  sim.waves.spawnTimer = 0;
+  sim.state.lives = 5000;
+  sim.state.economy.battle = 5000;
+  sim.state.waves.queue = Array(1).fill("mite");
+  sim.state.waves.toSpawn = 1;
+  sim.state.waves.spawnTimer = 0;
   sim.startWave({ earlyBonus: 0 });
   // startWave re-composes the queue — pin it to a single mite.
-  sim.waves.queue = ["mite"];
-  sim.waves.toSpawn = 1;
+  sim.state.waves.queue = ["mite"];
+  sim.state.waves.toSpawn = 1;
   for (let t = 0; t < 240; t++) sim.tick(); // mite walks to mid-board
-  const e = sim.enemies[0];
+  const e = sim.state.enemies[0];
   assert(e, "mite spawned");
   const cx = e.cell.x;
   const cy = e.cell.y;
@@ -157,10 +157,10 @@ assert(g2.airDist[g2.idx(g2.spawn.x, g2.spawn.y)] < INF, "air ok");
     assert(r.ok, "box side wall places");
   }
   const mouth = { x: cx, y: cy + 1 };
-  assert(sim.grid.isBuildable(mouth.x, mouth.y), "mouth open");
+  assert(sim.state.grid.isBuildable(mouth.x, mouth.y), "mouth open");
   const res = sim.tryPlaceWall(mouth.x, mouth.y);
   assert(res.reason === "seals_enemy", `closing the pocket rejected (got ${res.reason || res.ok})`);
-  assert(!sim.walls.some((w) => w.cell.x === mouth.x && w.cell.y === mouth.y), "sealing wall not placed");
+  assert(!sim.state.walls.some((w) => w.cell.x === mouth.x && w.cell.y === mouth.y), "sealing wall not placed");
 }
 
 console.log("ALL boardGrid tests passed");

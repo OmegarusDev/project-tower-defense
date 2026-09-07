@@ -53,11 +53,11 @@ function world() {
   const meta = freshMeta({ startCashBonus: 5 });
   const sim = world();
   applyRunTechData(meta, sim, { battleBase: 55 });
-  assert(sim.economy.battle === 60, "battle = base + cash bonus");
-  assert(sim.economy.forge === meta.forge, "vault forge seeded");
-  assert(sim.economy.aether === meta.aether, "vault aether seeded");
-  assert(sim.lives === meta.startLives, "lives refilled");
-  assert(sim.roster.length === 3, "roster pushed");
+  assert(sim.state.economy.battle === 60, "battle = base + cash bonus");
+  assert(sim.state.economy.forge === meta.forge, "vault forge seeded");
+  assert(sim.state.economy.aether === meta.aether, "vault aether seeded");
+  assert(sim.state.lives === meta.startLives, "lives refilled");
+  assert(sim.state.roster.length === 3, "roster pushed");
 }
 
 // syncSimFromMetaData: no battle/lives touch without flags
@@ -70,17 +70,17 @@ function world() {
   assert(derivedLives === 7, `iron-guard rank 2 derives 7 HP (got ${derivedLives})`);
   const sim = world();
   sim.setStartLives(derivedLives, { resetCurrent: true });
-  sim.economy.battle = 123;
-  sim.economy.forge = 0;
-  sim.lives = 1;
+  sim.state.economy.battle = 123;
+  sim.state.economy.forge = 0;
+  sim.state.lives = 1;
   syncSimFromMetaData(meta, sim);
-  assert(sim.economy.battle === 123, "battle untouched without seedVault");
-  assert(sim.lives === 1, "lives untouched without resetLives");
-  sim.economy.battle = 99;
+  assert(sim.state.economy.battle === 123, "battle untouched without seedVault");
+  assert(sim.state.lives === 1, "lives untouched without resetLives");
+  sim.state.economy.battle = 99;
   syncSimFromMetaData(meta, sim, { seedVault: true, resetLives: true });
-  assert(sim.economy.forge === meta.forge, "vault injected");
-  assert(sim.lives === derivedLives, "lives refilled to the derived budget");
-  assert(sim.runLevelCap === meta.levelCap, "levelCap pushed");
+  assert(sim.state.economy.forge === meta.forge, "vault injected");
+  assert(sim.state.lives === derivedLives, "lives refilled to the derived budget");
+  assert(sim.state.runLevelCap === meta.levelCap, "levelCap pushed");
 }
 
 // Run mods + roster caps pushed (mods are tech-derived via syncTechDerived)
@@ -89,27 +89,27 @@ function world() {
   syncTechDerived(meta);
   const sim = world();
   syncSimFromMetaData(meta, sim);
-  assert(sim.economy.towerCostMult === 0.8, "bargainer mult pushed");
-  assert(sim.runLevelCap === meta.levelCap, "runLevelCap pushed");
+  assert(sim.state.economy.towerCostMult === 0.8, "bargainer mult pushed");
+  assert(sim.state.runLevelCap === meta.levelCap, "runLevelCap pushed");
 }
 
 // syncMetaProgressData: delta-merge only, vault aligned, best wave recorded
 {
   const meta = freshMeta({ forge: 10, aether: 20 });
   const sim = world();
-  sim.modeEndless = true;
-  sim.waveIndex = 6;
-  sim.economy.runWaveGains.parts = 6;
-  sim.economy.runWaveGains.aether = 4;
-  sim.economy.forge = 10;
-  sim.economy.aether = 20;
+  sim.state.modeEndless = true;
+  sim.state.waves.index = 6;
+  sim.state.economy.runWaveGains.parts = 6;
+  sim.state.economy.runWaveGains.aether = 4;
+  sim.state.economy.forge = 10;
+  sim.state.economy.aether = 20;
   const appStub = { _ghost: false, playtestFromEditor: false };
   const r = mergeRunGains(meta, sim);
   assert(Array.isArray(r) && r.length === 0, "returns empty unlock list");
   assert(meta.forge === 16, "parts merged");
   assert(meta.aether === 24, "aether merged");
   assert(meta.bestWave === 6, "best wave recorded");
-  assert(sim.economy.forge === meta.forge, "sim vault aligned after merge");
+  assert(sim.state.economy.forge === meta.forge, "sim vault aligned after merge");
   // second call merges nothing (already applied)
   const r2 = mergeRunGains(meta, sim);
   assert(meta.forge === 16 && r2.length === 0, "no double-merge");

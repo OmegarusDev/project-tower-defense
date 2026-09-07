@@ -7,7 +7,7 @@
  *
  *   node tools/corpus/simParity.mjs [--presets fresh,earlyAA] [--seeds 1,42]
  */
-import { Sim } from "../../web/js/sim/next/sim.js";
+import { Sim } from "../../web/js/sim/sim.js";
 import { scenarioByName } from "../../web/js/balance/scenarios.js";
 import { makeSlot } from "../../web/js/data/parts.js";
 import { ENDLESS_GRID } from "../../web/js/data/endlessGrid.js";
@@ -31,10 +31,10 @@ const round = (n) => Math.round((Number(n) || 0) * 1e6) / 1e6;
 
 function setupBase(sim, base, seed) {
   sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, seed, true);
-  sim.runSeed = seed;
-  sim.runLevelCap = base.runLevelCap;
+  sim.state.runSeed = seed;
+  sim.state.runLevelCap = base.runLevelCap;
   sim.setStartLives(base.startLives, { resetCurrent: true });
-  sim.economy.battle = base.startBattle;
+  sim.state.economy.battle = base.startBattle;
   if (base.partUpgrades) sim.setPartUpgrades(base.partUpgrades);
   if (base.globalMods) sim.setGlobalMods(base.globalMods);
   sim.setRoster(
@@ -46,11 +46,11 @@ function setupBase(sim, base, seed) {
 function runTrace(sim, base, maxTicks) {
   // Recorder mirrors simTrace.mjs EXACTLY — the corpus format is the contract.
   const events = [];
-  const rec = (type, data = {}) => events.push({ t: sim.tickIndex, type, ...data });
+  const rec = (type, data = {}) => events.push({ t: sim.state.tickIndex, type, ...data });
   const round2 = (n) => Math.round((Number(n) || 0) * 1e6) / 1e6;
   sim.on("wave_cleared", (e) => {
     rec("wave_cleared", { wave: e.wave });
-    sim.running = false;
+    sim.state.running = false;
   });
   sim.on("leak", (e) => rec("leak", { kind: e.enemy?.kind, lives: e.lives, x: round2(e.enemy?.pos?.x), y: round2(e.enemy?.pos?.y) }));
   sim.on("enemy_killed", (e) => rec("kill", { kind: e.enemy?.kind }));
@@ -66,9 +66,9 @@ function runTrace(sim, base, maxTicks) {
   sim.startWave({ earlyBonus: 0 });
   let ticks = 0;
   while (ticks < maxTicks && !gameOver) {
-    if (sim.waveIndex >= base.maxWaves && !sim.waves.waveActive && sim.enemies.length === 0) break;
-    if (!sim.running) {
-      if (sim.waveIndex >= base.maxWaves) break;
+    if (sim.state.waves.index >= base.maxWaves && !sim.state.waves.active && sim.state.enemies.length === 0) break;
+    if (!sim.state.running) {
+      if (sim.state.waves.index >= base.maxWaves) break;
       base.bot.act(sim, "betweenWaves");
       if (gameOver) break;
       sim.startWave({ earlyBonus: 0 });
@@ -84,17 +84,17 @@ function runTrace(sim, base, maxTicks) {
 function stateHash(sim) {
   // MUST match simTrace.mjs's hash exactly — the corpus format is the contract.
   return JSON.stringify({
-    waveIndex: sim.waveIndex,
-    lives: sim.lives,
-    startLives: sim.startLives,
-    battle: sim.economy.battle,
-    portal: sim.portal,
-    towers: sim.towers.map((t) => [t.id, t.cell.x, t.cell.y, t.base, t.barrel, t.payload, t.level, t.branch]),
-    walls: sim.walls.map((w) => [w.id, w.cell.x, w.cell.y]),
-    enemies: sim.enemies.map((e) => [e.id, e.kind, round(e.pos.x), round(e.pos.y), round(e.hp)]),
-    tick: sim.tickIndex,
-    leaks: sim.leakCount,
-    kills: sim.killCount,
+    waveIndex: sim.state.waves.index,
+    lives: sim.state.lives,
+    startLives: sim.state.startLives,
+    battle: sim.state.economy.battle,
+    portal: sim.state.portal,
+    towers: sim.state.towers.map((t) => [t.id, t.cell.x, t.cell.y, t.base, t.barrel, t.payload, t.level, t.branch]),
+    walls: sim.state.walls.map((w) => [w.id, w.cell.x, w.cell.y]),
+    enemies: sim.state.enemies.map((e) => [e.id, e.kind, round(e.pos.x), round(e.pos.y), round(e.hp)]),
+    tick: sim.state.tickIndex,
+    leaks: sim.state.leakCount,
+    kills: sim.state.killCount,
   });
 }
 

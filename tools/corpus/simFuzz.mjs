@@ -8,7 +8,7 @@
  *
  *   node tools/corpus/simFuzz.mjs [--seeds 1,2,3] [--runs 4] [--maxTicks 8000]
  */
-import { Sim } from "../../web/js/sim/next/sim.js";
+import { Sim } from "../../web/js/sim/sim.js";
 import { scenarioByName } from "../../web/js/balance/scenarios.js";
 import { makeSlot } from "../../web/js/data/parts.js";
 import { ENDLESS_GRID } from "../../web/js/data/endlessGrid.js";
@@ -36,45 +36,45 @@ function lcg(seed) {
 
 function stateHash(sim) {
   return JSON.stringify({
-    waveIndex: sim.waveIndex,
-    lives: sim.lives,
-    battle: round(sim.economy?.battle),
-    portal: sim.portal,
-    tick: sim.tickIndex,
-    leaks: sim.leakCount,
-    kills: sim.killCount,
-    towers: sim.towers.map((t) => [
+    waveIndex: sim.state.waves.index,
+    lives: sim.state.lives,
+    battle: round(sim.state.economy?.battle),
+    portal: sim.state.portal,
+    tick: sim.state.tickIndex,
+    leaks: sim.state.leakCount,
+    kills: sim.state.killCount,
+    towers: sim.state.towers.map((t) => [
       t.id, t.cell.x, t.cell.y, t.base, t.barrel, t.payload, t.level, t.branch,
       t.xp | 0, t.pendingPicks | 0, round(t.cooldown), round(t.aimAngle), t.targetId,
     ]),
-    walls: sim.walls.map((w) => [w.id, w.cell.x, w.cell.y, w.preplaced ? 1 : 0]),
-    enemies: sim.enemies.map((e) => [
+    walls: sim.state.walls.map((w) => [w.id, w.cell.x, w.cell.y, w.preplaced ? 1 : 0]),
+    enemies: sim.state.enemies.map((e) => [
       e.id, e.kind, round(e.pos.x), round(e.pos.y), round(e.hp), round(e.shieldHp),
       e.burnT | 0, round(e.burnAcc), e.poisonT | 0, round(e.poisonAcc),
       e.slowT | 0, round(e.slowAmount), e.shred | 0, e.shredT | 0,
       round(e._regenAcc), e._spawnAcc | 0, e.spawnedTotal | 0, e.auraArmor | 0,
     ]),
-    projectiles: sim.projectiles.map((pr) => [
+    projectiles: sim.state.projectiles.map((pr) => [
       pr.id, round(pr.pos.x), round(pr.pos.y), round(pr.traveled), pr.pierce | 0,
     ]),
-    log: sim.actionLog,
+    log: sim.state.actionLog,
   });
 }
 
 function makeRun(base, seed, rec) {
   const sim = new Sim();
   sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, seed, true);
-  sim.runSeed = seed;
-  sim.runLevelCap = base.runLevelCap;
+  sim.state.runSeed = seed;
+  sim.state.runLevelCap = base.runLevelCap;
   sim.setStartLives(base.startLives, { resetCurrent: true });
-  sim.economy.battle = base.startBattle;
+  sim.state.economy.battle = base.startBattle;
   if (base.partUpgrades) sim.setPartUpgrades(base.partUpgrades);
   if (base.globalMods) sim.setGlobalMods(base.globalMods);
   sim.setRoster(
     base.roster.map((s) => makeSlot(s.base, s.barrel, s.payload, s.levelCap || base.runLevelCap))
   );
   sim.setSellRefundMult(0.7);
-  const tk = () => sim.tickIndex;
+  const tk = () => sim.state.tickIndex;
   const wire = (type, fn) => sim.on(type, (e) => rec(tk(), type, fn ? fn(e) : ""));
   wire("enemy_spawned", (e) => [e.enemy?.kind, round(e.enemy?.pos?.x), round(e.enemy?.pos?.y)]);
   wire("portal_moved", (e) => e.x);
@@ -118,27 +118,27 @@ function drive(rand, sim, maxTicks) {
     }
   };
   while (ticks < maxTicks && !gameOver && !bad) {
-    if (!sim.running && sim.enemies.length === 0 && ticks > 0) {
+    if (!sim.state.running && sim.state.enemies.length === 0 && ticks > 0) {
       tryAct(() => sim.startWave({ earlyBonus: 0 }));
     }
     const roll = rand();
-    if (roll < 0.22 && sim.running) {
+    if (roll < 0.22 && sim.state.running) {
       const x = Math.floor(rand() * cols);
       const y = 1 + Math.floor(rand() * (rows - 2));
       const slot = Math.floor(rand() * 3);
       tryAct(() => sim.tryPlaceTower(x, y, slot));
-    } else if (roll < 0.3 && sim.running) {
+    } else if (roll < 0.3 && sim.state.running) {
       const x = Math.floor(rand() * cols);
       const y = 1 + Math.floor(rand() * (rows - 2));
       tryAct(() => sim.tryPlaceWall(x, y));
-    } else if (roll < 0.36 && sim.towers.length) {
-      const t = sim.towers[Math.floor(rand() * sim.towers.length)];
+    } else if (roll < 0.36 && sim.state.towers.length) {
+      const t = sim.state.towers[Math.floor(rand() * sim.state.towers.length)];
       tryAct(() => sim.trySellTower(t.id));
-    } else if (roll < 0.4 && sim.walls.length) {
-      const w = sim.walls[Math.floor(rand() * sim.walls.length)];
+    } else if (roll < 0.4 && sim.state.walls.length) {
+      const w = sim.state.walls[Math.floor(rand() * sim.state.walls.length)];
       tryAct(() => sim.trySellWall(w.id));
-    } else if (roll < 0.44 && sim.towers.length) {
-      const t = sim.towers.find((tw) => (tw.pendingPicks | 0) > 0);
+    } else if (roll < 0.44 && sim.state.towers.length) {
+      const t = sim.state.towers.find((tw) => (tw.pendingPicks | 0) > 0);
       if (t) {
         const branch = ["damage", "rof", "range"][Math.floor(rand() * 3)];
         tryAct(() => sim.tryChooseLevelBranch(t.id, branch));
@@ -146,10 +146,10 @@ function drive(rand, sim, maxTicks) {
     }
     const burst = 1 + Math.floor(rand() * 24);
     for (let i = 0; i < burst && ticks < maxTicks; i++) {
-      if (sim.running) sim.tick();
+      if (sim.state.running) sim.tick();
       ticks++;
     }
-    if (sim.lives <= 0) gameOver = true;
+    if (sim.state.lives <= 0) gameOver = true;
     if (ticks % 997 === 0) {
       const h = stateHash(sim);
       if (/NaN|Infinity|null/.test(h)) {

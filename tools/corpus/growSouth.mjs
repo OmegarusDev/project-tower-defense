@@ -6,7 +6,7 @@
  * area (buildable share stays sane). Node-only — no gates to touch unless we
  * change balance, which we only do after seeing the numbers.
  */
-import { Sim as SimWorld } from "../../web/js/sim/next/sim.js";
+import { Sim as SimWorld } from "../../web/js/sim/sim.js";
 import { ENDLESS_GRID } from "../../web/js/data/endlessGrid.js";
 
 const TARGET_WAVES = 40;
@@ -19,7 +19,7 @@ for (let seed = 1; seed <= 3; seed++) {
 
   const growth = [];
   let cleared = 0;
-  let lastRows = sim.grid.rows;
+  let lastRows = sim.state.grid.rows;
 
   sim.on("grid_grew", (e) => {
     growth.push({ wave: cleared, rows: e.rows, cols: e.cols });
@@ -28,24 +28,24 @@ for (let seed = 1; seed <= 3; seed++) {
   let guard = 0;
   while (cleared < TARGET_WAVES && guard++ < 5_000_000) {
     let tickGuard = 0;
-    while (sim.waves.waveActive && tickGuard++ < 500_000) sim.tick();
+    while (sim.state.waves.active && tickGuard++ < 500_000) sim.tick();
     cleared++;
     // post-clear checks
-    if (!sim.grid.hasGroundPath()) {
+    if (!sim.state.grid.hasGroundPath()) {
       results.push({ seed, error: `ground path sealed after wave ${cleared}` });
       break;
     }
-    const pc = sim.portal;
-    if (!pc || sim.grid.groundDist[sim.grid.idx(pc.x, pc.y)] >= 1_000_000) {
+    const pc = sim.state.portal;
+    if (!pc || sim.state.grid.groundDist[sim.state.grid.idx(pc.x, pc.y)] >= 1_000_000) {
       results.push({ seed, error: `portal unreachable after wave ${cleared}` });
       break;
     }
-    if (sim.grid.rows > lastRows) lastRows = sim.grid.rows;
+    if (sim.state.grid.rows > lastRows) lastRows = sim.state.grid.rows;
     if (cleared < TARGET_WAVES) sim.startWave();
   }
 
   // buildable share at final size
-  const g = sim.grid;
+  const g = sim.state.grid;
   let buildable = 0;
   for (let y = 0; y < g.rows; y++) {
     for (let x = 0; x < g.cols; x++) {
@@ -60,7 +60,7 @@ for (let seed = 1; seed <= 3; seed++) {
     finalRows: g.rows,
     maxRows: ENDLESS_GRID.maxRows,
     buildableShare: +((buildable / total) * 100).toFixed(1),
-    portalFinal: sim.portal ? `${sim.portal.x},${sim.portal.y}` : "none",
+    portalFinal: sim.state.portal ? `${sim.state.portal.x},${sim.state.portal.y}` : "none",
   });
 }
 

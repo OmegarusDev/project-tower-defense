@@ -6,14 +6,14 @@
 export function exportReplayBlob(sim) {
   if (!sim) return null;
   return {
-    runSeed: sim.runSeed || sim.seed,
-    cols: sim.grid.cols,
-    rows: sim.grid.rows,
-    modeEndless: !!sim.modeEndless,
-    campaignLevelId: sim.campaignLevelId | 0,
-    wavesToWin: sim.wavesToWin | 0,
-    actionLog: structuredClone(sim.actionLog || []),
-    roster: structuredClone(sim.roster || []),
+    runSeed: sim.state.runSeed || sim.state.seed,
+    cols: sim.state.grid.cols,
+    rows: sim.state.grid.rows,
+    modeEndless: !!sim.state.modeEndless,
+    campaignLevelId: sim.state.campaignLevelId | 0,
+    wavesToWin: sim.state.wavesToWin | 0,
+    actionLog: structuredClone(sim.state.actionLog || []),
+    roster: structuredClone(sim.state.roster || []),
   };
 }
 

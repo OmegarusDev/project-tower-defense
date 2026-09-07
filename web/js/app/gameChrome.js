@@ -2,48 +2,19 @@
 import { makeSlot, ownsPart, MAX_ROSTER_SLOTS } from "../data/parts.js";
 
 import { renderTowerNext } from "../view/renderTower.js";
-import { chromeState } from "../ui/stateOf.js";
-import { chromeHtml, composeSheetHtml, syncHud } from "../ui/chrome.js";
+import { persistMeta, syncSimFromMeta } from "./metaSync.js";
+import { applyPitch } from "./pauseSettings.js";
+import { bindCallButton } from "./fastForward.js";
+import { waveBusy } from "./waveBusy.js";
+import { chromeHtml, composeSheetHtml, syncHud, pauseSheetHtml } from "../ui/chrome.js";
+import { chromeState, pauseState } from "../ui/stateOf.js";
 import { rosterSlotButtonsHtml } from "../ui/screens.js";
 import { applyBtnTextures, swapWithExitAnim } from "../ui/registry.js";
 
-/** Live place quote for a roster index (game only). */
-export function gameSlotQuote(app, i) {
-  const s = app.sim?.roster?.[i];
-  if (!s?.complete) {
-    return {
-      complete: false,
-      btnLabel: `S${i + 1} · —`,
-      costLabel: "—",
-      tip: "incomplete — set in Forge",
-      total: 0,
-      surcharge: 0,
-      base: 0,
-      loadout: s || null,
-    };
-  }
-  const q = app.sim.economy.quoteTowerPlace(s.placeCost, app.sim.towers.length);
-  return {
-    complete: true,
-    btnLabel: `S${i + 1} · ${q.total}`,
-    costLabel: `${q.total}`,
-    tip: `${s.base}/${s.barrel}/${s.payload}${q.surcharge ? ` (+${q.surcharge} tax)` : ""}`,
-    total: q.total,
-    surcharge: q.surcharge,
-    base: q.base,
-    loadout: s,
-  };
-  
-}
+export { waveBusy };
 
 export function rosterSlotButtons(app, mode) {
   return rosterSlotButtonsHtml(chromeState(app), mode);
-}
-
-export function waveBusy(app) {
-  if (!app.sim) return false;
-  return !!(app.sim.waves.waveActive || app.sim.enemies.length);
-  
 }
 
 export function renderGameChrome(app) {
@@ -60,29 +31,40 @@ function _applyChrome(app, animate) {
   if (!animate) app.ui.firstElementChild?.classList.remove("meta-enter");
   applyBtnTextures(app.ui);
   app.bindUi();
-  app._bindCallButton(app.ui.querySelector("#callBtn"));
+  bindCallButton(app, app.ui.querySelector("#callBtn"));
   app.ui.querySelector("#pitchLive")?.addEventListener("input", (e) => {
-    app.applyPitch(+e.target.value);
+  applyPitch(app, +e.target.value);
+    paintSlotPreviews(app, true);
   });
   refreshHud(app);
   paintSlotPreviews(app);
-  if (app.paused) app._renderPauseSheet();
+  if (app.paused) attachPauseSheet(app);
+}
+
+function attachPauseSheet(app) {
+  if (!app.sim || app.screen !== "game") return;
+  app.ui.querySelector("#pauseSheet")?.remove();
+  const sheet = document.createElement("div");
+  sheet.id = "pauseSheet";
+  sheet.className = "pause-sheet";
+  sheet.innerHTML = pauseSheetHtml(pauseState(app));
+  app.ui.appendChild(sheet);
 }
 
 export function toggleLiveCompose(app) {
-  if (!app.sim?.modeEndless) return;
+  if (!app.sim?.state?.modeEndless) return;
   app.interaction.liveCompose = !app.interaction.liveCompose;
   renderGameChrome(app);
   
 }
 export function applyLiveComposePart(app, kind, id) {
-  if (!app.sim?.modeEndless) return;
+  if (!app.sim?.state?.modeEndless) return;
   if (!ownsPart(app.meta.owned, kind, id)) return;
   const s = app.meta.roster[app.interaction.slot] || makeSlot("", "", "", app.meta.levelCap);
   s[kind] = id;
   app.meta.roster[app.interaction.slot] = makeSlot(s.base, s.barrel, s.payload, app.meta.levelCap);
-  app.persistMeta();
-  app._syncSimFromMeta(app.sim);
+  persistMeta(app);
+  syncSimFromMeta(app, app.sim);
   app.synth.play("ui", 1, 0.4);
   renderGameChrome(app);
   
@@ -108,7 +90,7 @@ export function paintSlotPreviews(app, force = false) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, css, css);
 
-    const slot = app.sim.roster?.[i];
+    const slot = app.sim.state.roster?.[i];
     if (!slot?.complete) {
       ctx.fillStyle = "rgba(120,130,145,0.35)";
       ctx.beginPath();

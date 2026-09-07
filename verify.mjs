@@ -4,7 +4,9 @@
  *   1. ESM parse-check every js/mjs file with node --check --input-type=module.
  *      (Plain `node --check` on .js silently accepts broken ESM — a stray
  *      brace once shipped and grey-screened the whole game in browsers.)
- *   2. Run every test file.
+ *   2. Resolve relative `from`/`import` specifiers against the filesystem
+ *      (parse-green + missing file used to boot-black).
+ *   3. Run every test file.
  * Usage: node verify.mjs   (from repo root; web/ is the app root)
  */
 import { spawnSync } from "node:child_process";
@@ -42,6 +44,28 @@ if (failed) {
   process.exit(1);
 }
 console.log("all modules parse OK");
+
+// Resolve relative imports so a wrong path cannot parse-green and boot-black.
+const IMPORT_RE = /(?:from|import)\s+['"](\.[^'"]+)['"]/g;
+let missing = 0;
+for (const f of files) {
+  const src = readFileSync(f, "utf8");
+  const dir = f.slice(0, f.lastIndexOf("/"));
+  for (const m of src.matchAll(IMPORT_RE)) {
+    const spec = m[1];
+    try {
+      statSync(join(dir, spec));
+    } catch {
+      missing++;
+      console.log(`IMPORT FAIL: ${relative(process.cwd(), f)} → ${spec}`);
+    }
+  }
+}
+if (missing) {
+  console.error(`${missing} relative import(s) do not resolve — aborting.`);
+  process.exit(1);
+}
+console.log("all relative imports resolve");
 
 const tests = readdirSync(join(WEB, "js", "tests"))
   .filter((f) => f.endsWith(".test.mjs"))

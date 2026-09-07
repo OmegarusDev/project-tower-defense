@@ -18,6 +18,22 @@ assert(launcher.doctrine === "strongest", "spire doctrine");
 const aerie = buildAttackPlan("aerie", "single", "kinetic", 1);
 assert(aerie.airCapable, "aerie grants air");
 assert(aerie.doctrine === "flying", "aerie doctrine");
+assert(aerie.airDamageMult === 1.25, "aerie bonus air damage");
+
+{
+  const starter = buildAttackPlan("sentry", "single", "kinetic", 1);
+  assert(starter.airCapable, "sentry chips air");
+  assert(starter.airDamageMult === 0.5, "sentry half damage vs air");
+  const bulwark = buildAttackPlan("bulwark", "single", "kinetic", 1);
+  assert(!bulwark.airCapable, "bulwark needs an air barrel");
+  const sentryRail = buildAttackPlan("sentry", "rail", "kinetic", 1);
+  assert(sentryRail.airCapable, "rail keeps air");
+  assert(sentryRail.airDamageMult === 1, "rail ignores sentry air penalty");
+  const sentryFlak = buildAttackPlan("sentry", "flak", "kinetic", 1);
+  assert(Math.abs(sentryFlak.airDamageMult - 1.35) < 1e-9, "flak air bonus, no sentry penalty");
+  const aerieFlak = buildAttackPlan("aerie", "flak", "kinetic", 1);
+  assert(Math.abs(aerieFlak.airDamageMult - 1.25 * 1.35) < 1e-9, "aerie × flak stack");
+}
 
 const shock = buildAttackPlan("warden", "twin", "shock", 1);
 assert(shock.chainJumps === 1, "shock chain nerfed to 1");
@@ -43,6 +59,9 @@ assert(doctrineLabel("flying") === "Air → First", "label");
   assert(Math.abs(ratio - 1.75) < 1e-6, `twin ROF ≈ 1.75× single (got ${ratio})`);
   assert(PARTS.barrels.twin.rofMult === 1.75, "twin data rofMult 1.75");
   assert(twin.rangeCells < single.rangeCells, "twin reduced range vs single");
+  assert(twin.alternating, "twin takes turns");
+  assert(twin.projectileCount === 1, "twin one pellet per shot");
+  assert(twin.muzzleOffset > 0, "twin muzzles sit off center");
 }
 
 {

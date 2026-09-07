@@ -5,7 +5,7 @@
  */
 import { ENDLESS_GRID } from "../../data/endlessGrid.js";
 import { composeEndlessWave, resolveCampaignWave } from "../../data/waveScripts.js";
-import { enemyDef, resolveEnemyKind } from "../../data/enemies.js";
+import { enemyDef, resolveEnemyKind, forgeDropSpec } from "../../data/enemies.js";
 import { mulberry32 } from "../rng.js";
 import { INF } from "../boardGrid.js";
 import { allocId, emit } from "../state.js";
@@ -178,6 +178,8 @@ export function makeEnemy(state, kind, wave, opts = {}) {
     flying: !!def.flying,
     leakDamage: def.leakDamage ?? 1,
     battleDrop: def.battleDrop ?? 2,
+    forgeChance: forgeDropSpec(id).chance,
+    forgeParts: forgeDropSpec(id).parts,
     armorFlat: def.armorFlat || 0,
     armorKind: def.armorKind || "none",
     energyBlock: !!def.energyBlock,

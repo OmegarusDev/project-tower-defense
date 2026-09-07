@@ -20,40 +20,40 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
 // Waves 1-5: portal stays at centre (no shift)
 {
   const w = newWorld(9, 8, 7, true);
-  const center = w.grid.spawn.x;
+  const center = w.state.grid.spawn.x;
   for (let wave = 1; wave <= 5; wave++) {
     w.startWave();
-    assert(w.portal.x === center, `wave ${wave} portal stays at centre`);
-    w._s.waves.queue = Array(20).fill("mite");
-    w._s.waves.toSpawn = 20;
-    delete w._s.waves.clumpState;
+    assert(w.state.portal.x === center, `wave ${wave} portal stays at centre`);
+    w.state.waves.queue = Array(20).fill("mite");
+    w.state.waves.toSpawn = 20;
+    delete w.state.waves.clumpState;
     w.setStartLives(5000, { resetCurrent: true });
     for (let i = 0; i < 2000; i++) w.tick();
-    assert(w.portal.x === center, `wave ${wave} portal still at centre after clear`);
+    assert(w.state.portal.x === center, `wave ${wave} portal still at centre after clear`);
   }
 }
 
 // Waves 6-7: no shift budget yet — portal must not move and never warn.
 {
   const w = newWorld(9, 8, 7, true);
-  const s = w._s;
+  const s = w.state;
   let unstable = 0;
   s._listeners.set("portal_unstable", [() => { unstable++; }]);
   for (let wave = 1; wave <= 7; wave++) {
     w.startWave();
     assert(!unstable, `no portal_unstable during wave ${wave} (budget starts w8)`);
-    const before = w.portal.x;
+    const before = w.state.portal.x;
     s.waves.queue = Array(60).fill("mite");
     s.waves.toSpawn = 60;
     delete s.waves.clumpState;
     w.setStartLives(5000, { resetCurrent: true });
     let moved = 0;
-    let prev = w.portal.x;
+    let prev = w.state.portal.x;
     for (let t = 0; t < 20000 && s.waves.active; t++) {
       w.tick();
-      if (w.portal.x !== prev) { prev = w.portal.x; moved++; }
+      if (w.state.portal.x !== prev) { prev = w.state.portal.x; moved++; }
     }
-    assert(moved === 0 && w.portal.x === before, `wave ${wave} portal pinned (shifts start w8)`);
+    assert(moved === 0 && w.state.portal.x === before, `wave ${wave} portal pinned (shifts start w8)`);
   }
 }
 
@@ -61,7 +61,7 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
 // move lands after PORTAL_WARN_TIME (not instantly).
 {
   const w = newWorld(9, 8, 7, true);
-  const s = w._s;
+  const s = w.state;
   const events = [];
   s._listeners.set("portal_unstable", [(e) => events.push({ kind: "unstable", tick: e.tick, toX: e.toX })]);
   s._listeners.set("portal_moved", [(e) => events.push({ kind: "moved", tick: e.tick, x: e.x })]);
@@ -80,11 +80,11 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
   s.waves.toSpawn = 120;
   delete s.waves.clumpState;
   w.setStartLives(5000, { resetCurrent: true });
-  let prev = w.portal.x;
+  let prev = w.state.portal.x;
   let moved = 0;
   for (let t = 0; t < 60000 && s.waves.active; t++) {
     w.tick();
-    if (w.portal.x !== prev) { prev = w.portal.x; moved++; }
+    if (w.state.portal.x !== prev) { prev = w.state.portal.x; moved++; }
   }
   const u = events.find((e) => e.kind === "unstable");
   const m = events.find((e) => e.kind === "moved");
@@ -104,11 +104,11 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
     const out = [];
     for (let wave = 0; wave < 6; wave++) {
       w.startWave();
-      w._s.waves.queue = Array(40).fill("mite");
-      w._s.waves.toSpawn = 40;
-      delete w._s.waves.clumpState;
+      w.state.waves.queue = Array(40).fill("mite");
+      w.state.waves.toSpawn = 40;
+      delete w.state.waves.clumpState;
       for (let i = 0; i < 1200; i++) w.tick();
-      out.push({ x: w.portal.x, idx: w._s.waves.portalIdx });
+      out.push({ x: w.state.portal.x, idx: w.state.waves.portalIdx });
     }
     return out;
   };
@@ -124,79 +124,79 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
 // Spawn fallback: sealed portal column spawns from nearest reachable back cell
 {
   const w = newWorld(9, 8, 3, true);
-  w.portal = { x: 4, y: 0 };
-  w._s.grid.setBlocked(4, 0, true);
-  w._s.grid.recompute();
-  const pos = spawnPos(w._s, "mite");
+  w.state.portal = { x: 4, y: 0 };
+  w.state.grid.setBlocked(4, 0, true);
+  w.state.grid.recompute();
+  const pos = spawnPos(w.state, "mite");
   assert(pos.x !== 4.5, "spawn dodges the sealed column");
   const cellX = Math.round(pos.x - 0.5);
-  assert(w._s.grid.groundDist[w._s.grid.idx(cellX, 0)] < 1e9, "fallback cell is reachable");
+  assert(w.state.grid.groundDist[w.state.grid.idx(cellX, 0)] < 1e9, "fallback cell is reachable");
 }
 
 // Seam row is buildable except the spawn cell
 {
   const w = newWorld(9, 8, 1, true);
   for (let x = 0; x < 9; x++) {
-    const expected = x !== w.grid.spawn.x;
-    assert(w.grid.isBuildable(x, 0) === expected, `seam (${x},0) buildable=${expected}`);
+    const expected = x !== w.state.grid.spawn.x;
+    assert(w.state.grid.isBuildable(x, 0) === expected, `seam (${x},0) buildable=${expected}`);
   }
-  assert(w.grid.isBuildable(4, 1), "row 1 still buildable");
+  assert(w.state.grid.isBuildable(4, 1), "row 1 still buildable");
   const c = newWorld(8, 8, 1, false);
-  assert(c.grid.isBuildable(2, 0), "campaign back line buildable too");
+  assert(c.state.grid.isBuildable(2, 0), "campaign back line buildable too");
 }
 
 // Portal avoids occupied seam columns at wave start
 {
   const w = newWorld(9, 8, 7, true);
-  const s = w._s;
+  const s = w.state;
   for (let x = 0; x < 9; x++) {
     if (x === 2) continue;
     s.grid.setBlocked(x, 0, true);
   }
   s.grid.recompute();
   w.startWave();
-  assert(w.portal.x === 2, "wave-1 portal dodges occupied seam columns");
+  assert(w.state.portal.x === 2, "wave-1 portal dodges occupied seam columns");
 }
 
 // All seams blocked → least-occupied column fallback
 {
   const w = newWorld(9, 8, 9, true);
-  const s = w._s;
+  const s = w.state;
   for (let x = 0; x < 9; x++) s.grid.setBlocked(x, 0, true);
   s.grid.setBlocked(4, 3, true);
   s.grid.recompute();
   w.startWave();
-  assert(w.portal.x !== 4, "least-occupied fallback avoids the heavier column");
+  assert(w.state.portal.x !== 4, "least-occupied fallback avoids the heavier column");
 }
 
 // Every column fully walled → force the center column (never a softlock)
 {
   const w = newWorld(9, 8, 11, true);
-  const s = w._s;
+  const s = w.state;
   for (let x = 0; x < 9; x++) {
     for (let y = 0; y < 8; y++) s.grid.setBlocked(x, y, true);
   }
   s.grid.recompute();
   w.startWave();
-  assert(w.portal.x === w.grid.spawn.x, "fully-walled board forces the center column");
+  assert(w.state.portal.x === w.state.grid.spawn.x, "fully-walled board forces the center column");
 }
 
 // Occupied-column avoidance is seed-deterministic
 {
   const seq = (seed) => {
     const w = newWorld(9, 8, seed, true);
-    const s = w._s;
+    const s = w.state;
     for (let x = 0; x < 9; x++) {
       if (x % 2 === 0) s.grid.setBlocked(x, 0, true);
     }
     s.grid.recompute();
     w.startWave(); // wave 1 (static)
-    const out = [w.portal.x];
+    const out = [w.state.portal.x];
     s.waves.queue = Array(40).fill("mite");
     s.waves.toSpawn = 40;
     delete s.waves.clumpState;
     for (let i = 0; i < 1200; i++) w.tick();
-    out.push(w.portal.x);
+    out.push(w.state.portal.x);
     return out;
   };
   const a = seq(42);
@@ -220,12 +220,12 @@ function newWorld(cols = 9, rows = 8, seed = 7, endless = true) {
 // Campaign sim: portal stays pinned across waves
 {
   const w = newWorld(9, 9, 55, false);
-  w.portal = { x: 2, y: 0 };
+  w.state.portal = { x: 2, y: 0 };
   w.startWave();
-  const pinned = w.portal.x;
+  const pinned = w.state.portal.x;
   for (let i = 0; i < 400; i++) w.tick();
-  assert(w.portal.x === pinned, "campaign portal never moves");
-  const pos = spawnPos(w._s, "mite");
+  assert(w.state.portal.x === pinned, "campaign portal never moves");
+  const pos = spawnPos(w.state, "mite");
   assert(pos.x === 2.5, "campaign enemies spawn from the pinned cell");
 }
 

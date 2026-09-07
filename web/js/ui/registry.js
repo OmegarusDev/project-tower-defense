@@ -14,6 +14,7 @@ import {
   renderTech,
   renderEditor,
 } from "./screens.js";
+import { mulberry32 } from "../sim/rng.js";
 
 export const SCREENS = {
   splash: renderSplash,
@@ -31,17 +32,6 @@ export function screenHtml(id, state) {
   const fn = SCREENS[id];
   if (!fn) return "";
   return fn(state);
-}
-
-/* Mulberry32 — fast seeded PRNG, returns [0,1) */
-function _prng(seed) {
-  let s = seed | 0;
-  return () => {
-    s = (s + 0x6D2B79F5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 /* djb2 string hash — stable per-element seed so textures don't scramble on re-render */
@@ -130,7 +120,7 @@ export function applyBtnTextures(root) {
     const key = el.getAttribute("data-act") || el.id || el.textContent.trim().slice(0, 24);
     const seed = _hashStr(key);
     const idx = seed & 15;
-    const rand = _prng(seed + 0xA5B9C3);
+    const rand = mulberry32(seed + 0xA5B9C3);
     const large = LARGE_RE.test(el.className);
 
     el.setAttribute("data-idx", idx);

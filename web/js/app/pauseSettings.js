@@ -5,6 +5,8 @@ import { confirmSheet } from "../ui/modal.js";
 import { pauseSheetHtml as renderPauseSheetHtml } from "../ui/chrome.js";
 import { pauseState } from "../ui/stateOf.js";
 import * as ends from "../ui/endScreens.js";
+import { endFastForward } from "./fastForward.js";
+import { clearUndoStack, clearPlaceConfirm } from "./placeUndo.js";
 
 /** Persist camera pitch from Settings or the in-game slider. */
 export function applyPitch(app, deg, { save = true } = {}) {
@@ -16,7 +18,6 @@ export function applyPitch(app, deg, { save = true } = {}) {
   if (live && +live.value !== Math.round(v)) live.value = String(Math.round(v));
   const label = app.ui?.querySelector("#pitchLabel");
   if (label) label.textContent = `${Math.round(v)}°`;
-  if (app.paintSlotPreviews) app.paintSlotPreviews(true);
   if (save) {
     clearTimeout(app._pitchSaveT);
     app._pitchSaveT = setTimeout(() => saveMeta(app.meta), 200);
@@ -26,10 +27,10 @@ export function applyPitch(app, deg, { save = true } = {}) {
 
 export function openPause(app) {
   if (app.screen !== "game" || !app.sim) return;
-  app._endFastForward();
+  endFastForward(app);
   app.paused = true;
   app.score.setPaused(true);
-  app.clearPlaceConfirm();
+  clearPlaceConfirm(app);
   renderPauseSheet(app);
   
 }
@@ -45,7 +46,7 @@ export function resumeGame(app) {
 export function quitToMenu(app) {
   if (!app.sim) return;
   const fromEditor = !!app.playtestFromEditor;
-  const campaign = !app.sim.modeEndless;
+  const campaign = !app.sim.state.modeEndless;
   const note = fromEditor
     ? "End the playtest and return to the Editor?"
     : campaign
@@ -66,17 +67,18 @@ export function quitToMenu(app) {
 function finishQuit(app, fromEditor, campaign) {
   // Between waves: persist post-clear board so Continue keeps towers/Coin.
   // Mid-wave: leave the wave-start checkpoint (GDD Continue = start of last wave).
-  if (app.sim.modeEndless && !fromEditor) {
-    if (!app.waveBusy()) {
-      app.sim.checkpointPhase = "betweenWaves";
+  if (app.sim.state.modeEndless && !fromEditor) {
+    const s = app.sim.state;
+    if (!(s.waves.active || s.enemies.length)) {
+      app.sim.state.checkpointPhase = "betweenWaves";
       saveEndless(app.sim.checkpoint());
     }
   }
-  app._endFastForward();
+  endFastForward(app);
   app.paused = false;
   app.interaction.selectedTowerId = -1;
   app.interaction.selectedWallId = -1;
-  app.clearUndoStack();
+  clearUndoStack(app);
   app.score.fadeStop(1);
   app.sim = null;
   app.playtestFromEditor = false;

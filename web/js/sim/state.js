@@ -19,6 +19,8 @@ export function createState(opts = {}) {
     runSeed,
     modeEndless: opts.endless !== false,
     campaignLevelId: 0,
+    campaignAct: null,
+    campaignPortalBehavior: "static",
     wavesToWin: 0,
     campaignWaves: null,
 
@@ -94,6 +96,14 @@ export function createState(opts = {}) {
 export function on(state, type, fn) {
   if (!state._listeners.has(type)) state._listeners.set(type, []);
   state._listeners.get(type).push(fn);
+}
+
+export function off(state, type, fn) {
+  const list = state._listeners.get(type);
+  if (!list) return;
+  const i = list.indexOf(fn);
+  if (i >= 0) list.splice(i, 1);
+  if (!list.length) state._listeners.delete(type);
 }
 
 export function emit(state, type, data = {}) {

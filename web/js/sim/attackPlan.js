@@ -20,12 +20,13 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
     projectileCount: barrel.count ?? 1,
     spreadDeg: barrel.spreadDeg ?? 0,
     alternating: !!barrel.alternating,
+    muzzleOffset: barrel.muzzleOffset ?? 0,
     pierce: barrel.pierce ?? 0,
     pulseRadius: barrel.pulseRadius ?? 0,
     rangeCells: (base.range ?? 3) * (base.rangeMult ?? 1),
     fireInterval: (base.fireInterval ?? 1) / Math.max(0.05, base.rofMult ?? 1),
     projectileSpeed: barrel.speed ?? 8,
-    airCapable: !!barrel.airCapable,
+    airCapable: false,
     damage: payload.damage ?? 10,
     damageType: payload.damageType ?? "kinetic",
     // Blast radius comes from delivery (Launcher), not payload
@@ -39,7 +40,7 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
     doctrine: base.doctrine ?? "first",
     pointBlankMult: base.pointBlankMult ?? 1,
     pointBlankRange: base.pointBlankRange ?? 0,
-    airDamageMult: (base.airDamageMult ?? 1) * (barrel.airDamageMult ?? 1),
+    airDamageMult: 1,
     armorPierce: payload.armorPierce ?? 0,
     emp: !!payload.emp,
     executeMult: base.executeMult ?? 1,
@@ -51,8 +52,19 @@ export function buildAttackPlan(baseId, barrelId, payloadId, level = 1, opts = {
   plan.fireInterval /= Math.max(0.05, barrel.rofMult ?? 1);
   if (payload.speed != null) plan.projectileSpeed = payload.speed;
   if (barrel.damageMult != null) plan.damage *= barrel.damageMult;
-  // Aerie can engage the air layer with any delivery
-  if (baseId === "aerie") plan.airCapable = true;
+  // Air: specialist barrels / Aerie deal full (or bonus) air damage.
+  // Sentry can chip flyers at its own penalty, but that penalty does not
+  // apply on top of Rail/Flak — those barrels are the dedicated AA.
+  const barrelAir = !!barrel.airCapable;
+  const aerie = baseId === "aerie";
+  const baseAir = !!base.airCapable || aerie;
+  plan.airCapable = barrelAir || baseAir;
+  if (barrelAir || aerie) {
+    plan.airDamageMult =
+      (aerie ? (base.airDamageMult ?? 1) : 1) * (barrel.airDamageMult ?? 1);
+  } else if (baseAir) {
+    plan.airDamageMult = base.airDamageMult ?? 1;
+  }
 
   const barrelPattern = barrel.pattern ?? "projectile";
   if (barrelPattern === "pulse") {

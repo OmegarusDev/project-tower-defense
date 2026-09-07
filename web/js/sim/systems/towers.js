@@ -69,7 +69,7 @@ export function tryPlaceTower(state, x, y, slotIndex) {
   const loadout = state.roster[slotIndex];
   if (!loadout?.complete) return { ok: false, reason: "incomplete_triad" };
   if (!state.grid.isBuildable(x, y)) return { ok: false, reason: "blocked" };
-  const quote = quoteTowerPlace(state.economy, loadout.placeCost, state.towers.length);
+  const quote = quoteTowerPlace(state.economy, loadout, state.towers);
   const cost = quote.total;
   const surcharge = quote.surcharge;
   if (state.economy.battle < cost) return { ok: false, reason: "need_battle", need: cost };

@@ -2,6 +2,8 @@
 <body>
 <script type="module">
   import { runAction } from "/js/ui/actions.js";
+  import { ProcPalette } from "/js/view/palette.js";
+  import { defaultSlots, defaultOwned } from "/js/data/parts.js";
 
   const W = window;
 
@@ -11,6 +13,7 @@
     const app = {
       calls,
       ...initial,
+      ui: document.createElement("div"),
     };
     const record = (name, args) => calls.push([name, args]);
     const handler = {
@@ -27,9 +30,29 @@
     return new Proxy(app, handler);
   }
 
+  function bag(extra = {}) {
+    return new Proxy(extra, {
+      get(t, p) {
+        if (p in t) return t[p];
+        return () => {};
+      },
+    });
+  }
+
   const BASE = {
     screen: "main",
-    meta: { slotCount: 3 },
+    meta: {
+      slotCount: 3,
+      roster: defaultSlots(3, 1),
+      aether: 0,
+      forge: 0,
+      bestWave: 0,
+      levelCap: 1,
+      startLives: 3,
+      owned: defaultOwned(),
+      settings: {},
+      campaign: { cleared: [] },
+    },
     sim: null,
     prepLevelId: 1,
     prepSlot: 0,
@@ -41,7 +64,23 @@
     liveCompose: false,
     selectedTowerId: -1,
     selectedWallId: -1,
-    ui: { querySelector: () => null },
+    interaction: {
+      tool: "tower",
+      slot: 0,
+      liveCompose: false,
+      selectedTowerId: -1,
+      selectedWallId: -1,
+      placeConfirm: null,
+    },
+    fx: bag(),
+    synth: bag(),
+    score: bag(),
+    board: bag({ cell: 40, cellScreenCenter() { return { x: 0, y: 0 }; } }),
+    palette: new ProcPalette(),
+    toast() {},
+    unlockAudio() { return Promise.resolve(); },
+    wireSim() {},
+    bindUi() {},
     editor: {
       resize() {},
       randomize() {},
@@ -58,9 +97,9 @@
     window.confirm = () => false;
     const variants = {
       v1: { ...BASE, screen: "main" },
-      v2: { ...BASE, screen: "forge", meta: { slotCount: 6 } },
+      v2: { ...BASE, screen: "forge", meta: { ...BASE.meta, slotCount: 6 } },
       v3: { ...BASE, screen: "prep", prepLevelId: 2 },
-      v4: { ...BASE, screen: "hub", meta: { slotCount: 6 }, sim: { roster: [] } },
+      v4: { ...BASE, screen: "hub", meta: { ...BASE.meta, slotCount: 6 }, sim: { state: { roster: [] } } },
       v5: { ...BASE, screen: "campaign", forgeReturn: "campaign" },
     };
     const app1 = mkSpy(variants[variantName]);

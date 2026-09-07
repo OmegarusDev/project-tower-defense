@@ -2,11 +2,12 @@
  * App orchestrator — thin, explicit.
  * using explicit app.interaction.* instead of proxy getters (app.tool) because direct field is searchable and obvious
  * Dispatch via `ui/actions.js` calls screens/logic directly; App owns navigation + tick + wiring.
- * Legacy `app.*` delegates remain as deprecated compat shims so old callers keep working; new code calls `chrome.*(app)` etc. directly.
+ * Screen/run logic lives in `app/*` and `ui/*`; App owns navigation, tick, and sim wiring.
  */
 
 import { buildAttackPlan, planOptsFromParts } from "./sim/attackPlan.js";
 import { TICK_HZ } from "./sim/sim.js";
+import { wallCost } from "./sim/systems/economy.js";
 import { BoardView } from "./view/boardView.js";
 import { PortalAnimator } from "./view/boardScene.js";
 import { ProcPalette } from "./view/palette.js";
@@ -28,20 +29,18 @@ import { getCampaignLevel } from "./data/campaign.js";
 import { wireSettings, paintCampaignThumbs } from "./ui/menuScreens.js";
 import { LevelEditor, loadEditorLevels } from "./ui/levelEditor.js";
 import { mountScreen } from "./ui/registry.js";
-import { screenState, chromeState } from "./ui/stateOf.js";
-import { syncTowerOverlay, syncWaveAndStatus } from "./ui/chrome.js";
+import { screenState } from "./ui/stateOf.js";
 import { paintLevelThumb } from "./ui/metaUi.js";
 import { runAction } from "./ui/actions.js";
 import * as forge from "./ui/forgeScreen.js";
-import * as tech from "./ui/techScreen.js";
-import * as ends from "./ui/endScreens.js";
-import * as metaSync from "./app/metaSync.js";
-import * as life from "./app/runLifecycle.js";
 import * as bridge from "./app/simBridge.js";
 import * as chrome from "./app/gameChrome.js";
+import { setCallEarly } from "./app/fastForward.js";
 import * as place from "./app/placeUndo.js";
 import * as input from "./app/input.js";
 import * as pause from "./app/pauseSettings.js";
+
+setCallEarly(bridge.callEarly);
 
 export class App {
   constructor() {
@@ -144,7 +143,7 @@ export class App {
     if (this.screen === "editor") return;
     if (this.screen === "game" && this.sim) {
       if (this._ghost) bridge.tickGhost(this, dt);
-      if (!this.paused && this.sim.running) {
+      if (!this.paused && this.sim.state.running) {
         this.accum += dt * this.speed;
         const step = 1 / TICK_HZ;
         let guard = 0;
@@ -154,7 +153,7 @@ export class App {
         }
       }
       if (!this.paused) this.fx.tick(dt * this.speed);
-      this.score.setPhase(this.sim.checkpointPhase || "betweenWaves");
+      this.score.setPhase(this.sim.state.checkpointPhase || "betweenWaves");
       this.board.tool = this.interaction.tool;
       this.board.selectedTowerId = this.interaction.selectedTowerId;
       this._syncGhostPlan();
@@ -173,7 +172,7 @@ export class App {
 
   _updateHandGhost() {
     if (this.interaction._handSlot != null && this.board && this.sim) {
-      const loadout = this.sim.roster?.[this.interaction._handSlot];
+      const loadout = this.sim.state.roster?.[this.interaction._handSlot];
       if (loadout?.complete) {
         const hover = this.board.hover;
         if (hover) {
@@ -191,10 +190,10 @@ export class App {
   _updateWallPreview() {
     if (this.interaction.tool === "wall" && this.board && this.sim) {
       const hover = this.board.hover;
-      if (hover && this.sim.grid.inBounds(hover.x, hover.y) && this.sim.grid.isBuildable(hover.x, hover.y)) {
-        const wallCost = this.sim.economy.wallCost(this.sim.playerWallCount());
-        const canAfford = this.sim.economy.battle >= wallCost;
-        this.board.setWallPreview(hover, wallCost, canAfford);
+      if (hover && this.sim.state.grid.inBounds(hover.x, hover.y) && this.sim.state.grid.isBuildable(hover.x, hover.y)) {
+        const cost = wallCost(this.sim.state.economy, this.sim.playerWallCount());
+        const canAfford = this.sim.state.economy.battle >= cost;
+        this.board.setWallPreview(hover, cost, canAfford);
         return;
       }
     }
@@ -211,12 +210,12 @@ export class App {
       return;
     }
     if (this.interaction.selectedTowerId >= 0) {
-      const t = this.sim.towers.find((x) => x.id === this.interaction.selectedTowerId);
+      const t = this.sim.state.towers.find((x) => x.id === this.interaction.selectedTowerId);
       if (t) {
         const cell = t.cell;
         const slot = t;
-        const up = this.sim.partUpgrades || {};
-        const g = this.sim.globalMods || {};
+        const up = this.sim.state.partUpgrades || {};
+        const g = this.sim.state.globalMods || {};
         const plan = buildAttackPlan(
           slot.base,
           slot.barrel,
@@ -260,18 +259,37 @@ export class App {
     this.synth.play("ui", 1, 0.4);
   }
 
+  _unwireSim(sim) {
+    if (!sim) return;
+    sim.off("*", this._onSimStar);
+    sim.off("portal_clump_start", this._onPortalClumpStart);
+    sim.off("portal_clump_end", this._onPortalClumpEnd);
+    sim.off("portal_move", this._onPortalMove);
+    sim.off("portal_unstable", this._onPortalUnstable);
+    this._simWired = null;
+  }
+
   wireSim() {
-    this.sim.on("*", (e) => bridge.onSimEvent(this, e));
-    this.board.setSim(this.sim);
-    this.sim.on("portal_clump_start", (e) => this.portalAnimator.onClumpStart(e));
-    this.sim.on("portal_clump_end", (e) => this.portalAnimator.onClumpEnd(e));
-    this.sim.on("portal_move", (e) => this.portalAnimator.onMove(e));
-    this.sim.on("portal_unstable", (e) => {
+    if (!this.sim) return;
+    if (this._simWired === this.sim) return;
+    if (this._simWired) this._unwireSim(this._simWired);
+    this._onSimStar = (e) => bridge.onSimEvent(this, e);
+    this._onPortalClumpStart = (e) => this.portalAnimator.onClumpStart(e);
+    this._onPortalClumpEnd = (e) => this.portalAnimator.onClumpEnd(e);
+    this._onPortalMove = (e) => this.portalAnimator.onMove(e);
+    this._onPortalUnstable = (e) => {
       this.portalAnimator.onUnstable(e);
       if (!this._ghost && Number.isInteger(e.toX)) {
         this.toast(`Seam unstable — migrating to column ${e.toX + 1}`);
       }
-    });
+    };
+    this.sim.on("*", this._onSimStar);
+    this.sim.on("portal_clump_start", this._onPortalClumpStart);
+    this.sim.on("portal_clump_end", this._onPortalClumpEnd);
+    this.sim.on("portal_move", this._onPortalMove);
+    this.sim.on("portal_unstable", this._onPortalUnstable);
+    this.board.setSim(this.sim);
+    this._simWired = this.sim;
   }
 
   bindUi() {
@@ -300,7 +318,7 @@ export class App {
     this.interaction.selectedTowerId = -1;
     this.interaction.selectedWallId = -1;
     this.screen = "campaign";
-    this.score?.toMenu();
+    this.score?.toMenu?.();
     mountScreen(this.ui, "campaign", screenState(this));
     this.bindUi();
     paintCampaignThumbs(this);
@@ -319,7 +337,7 @@ export class App {
   showEditor() {
     if (!this.editor) this.editor = new LevelEditor();
     this.screen = "editor";
-    this.score?.toMenu();
+    this.score?.toMenu?.();
     mountScreen(this.ui, "editor", {
       ...screenState(this),
       editor: this.editor,
@@ -350,72 +368,4 @@ export class App {
     const x = this.ui.querySelector(".x-close");
     if (x) runAction(this, x.getAttribute("data-act"));
   }
-
-  // using compat shims instead of deleting because existing callers still use app.* — new code calls modules directly, full deletion waits for one big re-capture
-  showEndlessHub() { return ends.showEndlessHub(this); }
-  showVictory(o) { return ends.showVictory(this, o); }
-  showGameOver() { return ends.showGameOver(this); }
-  _applyEndlessBestBonus(p) { return ends.applyEndlessBestBonus(this, p); }
-  showForge(r) { return forge.showForge(this, r); }
-  _refreshForgeUi(o) { return forge.refreshForgeUi(this, o); }
-  paintForgePreview() { return forge.paintForgePreview(this); }
-  applyForgePart(k, id) { return forge.applyForgePart(this, k, id); }
-  clearForgeSlot() { return forge.clearForgeSlot(this); }
-  toggleDevMode() { return forge.toggleDevMode(this); }
-  unlockForgeSlot(i) { return forge.unlockForgeSlot(this, i); }
-  buyPart(k, id, e) { return forge.buyPart(this, k, id, e); }
-  showUpgrade(r) { return tech.showUpgrade(this, r); }
-  setTechTreeTab(id) { return tech.setTechTreeTab(this, id); }
-  selectTechNode(id) { return tech.selectTechNode(this, id); }
-  closeTechOverlay() { return tech.closeTechOverlay(this); }
-  buyTechNode(id) { return tech.buyTechNode(this, id); }
-  unlockPartFromTech(k, id) { return tech.unlockPartFromTech(this, k, id); }
-  persistMeta() { return metaSync.persistMeta(this); }
-  _applyRunTech(sim, o) { return metaSync.applyRunTech(this, sim, o); }
-  _syncSimFromMeta(sim, o) { return metaSync.syncSimFromMeta(this, sim, o); }
-  syncMetaProgress() { return metaSync.syncMetaProgress(this); }
-  newRun(seed, o) { return life.newRun(this, seed, o); }
-  continueRun() { return life.continueRun(this); }
-  startCampaignLevel(id) { return life.startCampaignLevel(this, id); }
-  playtestEditorLevel(lv) { return life.playtestEditorLevel(this, lv); }
-  enterGame() { return life.enterGame(this); }
-  onSimEvent(e) { return bridge.onSimEvent(this, e); }
-  onCampaignVictory() { return bridge.onCampaignVictory(this); }
-  callEarly() { return bridge.callEarly(this); }
-  startGhostReplay() { return bridge.startGhostReplay(this); }
-  ghostSetSpeed(n) { return bridge.ghostSetSpeed(this, n); }
-  ghostSkip() { return bridge.ghostSkip(this); }
-  _tickGhost(dt) { return bridge.tickGhost(this, dt); }
-  waveBusy() { return chrome.waveBusy(this); }
-  renderGameChrome() { return chrome.renderGameChrome(this); }
-  toggleLiveCompose() { return chrome.toggleLiveCompose(this); }
-  applyLiveComposePart(k, id) { return chrome.applyLiveComposePart(this, k, id); }
-  paintSlotPreviews(force = false) { return chrome.paintSlotPreviews(this, force); }
-  refreshHud() { return chrome.refreshHud(this); }
-  _refreshThemeChip(t, e) { return syncWaveAndStatus(this.ui, chromeState(this)); }
-  syncTowerOverlay() { return syncTowerOverlay(this.ui, chromeState(this)); }
-  clearUndoStack() { return place.clearUndoStack(this); }
-  pushUndo(e) { return place.pushUndo(this, e); }
-  undoLast() { return place.undoLast(this); }
-  spendLevelPointSelected() { return place.chooseLevelBranchSelected(this, "damage"); }
-  chooseLevelBranchSelected(b) { return place.chooseLevelBranchSelected(this, b); }
-  onCellTap(c) { return place.onCellTap(this, c); }
-  beginPlaceConfirm(x, y) { return place.beginPlaceConfirm(this, x, y); }
-  clearPlaceConfirm() { return place.clearPlaceConfirm(this); }
-  cancelPlaceConfirm() { return place.cancelPlaceConfirm(this); }
-  confirmPlaceTower() { return place.confirmPlaceTower(this); }
-  handlePlace(r, l) { return place.handlePlace(this, r, l); }
-  sellSelected() { return place.sellSelected(this); }
-  onKeyDown(e) { return input.onKeyDown(this, e); }
-  onKeyUp(e) { return input.onKeyUp(this, e); }
-  setSpeed(n) { return input.setSpeed(this, n); }
-  selectBuildSlot(i) { return input.selectBuildSlot(this, i); }
-  _beginFastForward() { return input.beginFastForward(this); }
-  _endFastForward() { return input.endFastForward(this); }
-  _bindCallButton(btn) { return input.bindCallButton(this, btn); }
-  applyPitch(d, o) { return pause.applyPitch(this, d, o); }
-  openPause() { return pause.openPause(this); }
-  resumeGame() { return pause.resumeGame(this); }
-  quitToMenu() { return pause.quitToMenu(this); }
-  _renderPauseSheet() { return pause.renderPauseSheet(this); }
 }

@@ -15,6 +15,8 @@
   import { BoardView } from "/js/view/boardView.js";
   import { Sim } from "/js/sim/sim.js";
   import { ENDLESS_GRID } from "/js/data/endlessGrid.js";
+  import { MAX_ROSTER_SLOTS } from "/js/data/parts.js";
+  import { quoteTowerPlace } from "/js/sim/systems/economy.js";
   import { loadMeta } from "/js/saveStore.js";
   import * as N from "/js/ui/chrome.js";
 
@@ -24,30 +26,30 @@
   function buildSim() {
     const sim = new Sim();
     sim.setup(ENDLESS_GRID.cols, ENDLESS_GRID.rows, SEED, true);
-    sim.runSeed = SEED;
-    sim.modeEndless = true;
-    sim.roster = [
+    sim.state.runSeed = SEED;
+    sim.state.modeEndless = true;
+    sim.state.roster = [
       { base: "sentry", barrel: "single", payload: "kinetic", placeCost: 6, complete: true },
       { base: "bulwark", barrel: "scatter", payload: "fire", placeCost: 14, complete: true },
       { base: "spire", barrel: "pulse", payload: "frost", placeCost: 22, complete: true },
     ];
-    sim.lives = 19;
-    sim.economy.battle = 42;
-    sim.economy.forge = 7;
-    sim.economy.aether = 3;
-    sim.waveIndex = 2;
-    sim.towers.push({
+    sim.state.lives = 19;
+    sim.state.economy.battle = 42;
+    sim.state.economy.forge = 7;
+    sim.state.economy.aether = 3;
+    sim.state.waves.index = 2;
+    sim.state.towers.push({
       id: 1, cell: { x: 3, y: 4 }, base: "sentry", barrel: "single", payload: "kinetic",
       paid: 6, level: 2, xp: 35, xpToPoint: 100, pendingPicks: 1, levelCap: 5, aimAngle: -Math.PI / 2,
     });
-    sim.towers.push({
+    sim.state.towers.push({
       id: 2, cell: { x: 6, y: 5 }, base: "bulwark", barrel: "scatter", payload: "fire",
       paid: 14, level: 1, xp: 0, xpToPoint: 100, pendingPicks: 0, levelCap: 5, aimAngle: 0,
     });
-    sim.walls.push({ id: 5, cell: { x: 2, y: 3 }, paid: 12 });
-    sim.enemies.push({ id: 9, pos: { x: 4, y: 0.6 }, hp: 40, maxHp: 40, kind: "mite" });
-    sim.enemies.push({ id: 10, pos: { x: 4.3, y: 1.2 }, hp: 90, maxHp: 90, kind: "hauler" });
-    sim.sellRefundMult = 0.5;
+    sim.state.walls.push({ id: 5, cell: { x: 2, y: 3 }, paid: 12 });
+    sim.state.enemies.push({ id: 9, pos: { x: 4, y: 0.6 }, hp: 40, maxHp: 40, kind: "mite" });
+    sim.state.enemies.push({ id: 10, pos: { x: 4.3, y: 1.2 }, hp: 90, maxHp: 90, kind: "hauler" });
+    sim.state.sellRefundMult = 0.5;
     return sim;
   }
 
@@ -85,7 +87,6 @@
       playtestFromEditor: false,
       synth: { play() {}, setVolume() {} },
       score: { setPaused() {} },
-      waveBusy: () => chrome.waveBusy(app),
       bindUi() {},
       _bindCallButton() {},
       _endFastForward() { app._ffHeld = false; },
@@ -98,38 +99,59 @@
     return app;
   }
 
-  function quoteProvider(sim) {
-    return (i) => {
-      const s = sim.roster?.[i];
-      if (!s?.complete) {
-        return {
-          complete: false,
-          costLabel: "—",
-          tip: "incomplete — set in Forge",
-          total: 0,
-          surcharge: 0,
-          loadout: s || null,
-        };
-      }
-      const q = sim.economy.quoteTowerPlace(s.placeCost, sim.towers.length);
+  const EMPTY_QUOTE = Object.freeze({
+    complete: false,
+    btnLabel: "—",
+    costLabel: "—",
+    tip: "incomplete — set in Forge",
+    total: 0,
+    surcharge: 0,
+    base: 0,
+    loadout: null,
+  });
+
+  function slotQuote(run, i) {
+    const s = run?.roster?.[i];
+    if (!s?.complete) {
       return {
-        complete: true,
-        costLabel: `${q.total}`,
-        tip: `${s.base}/${s.barrel}/${s.payload}${q.surcharge ? ` (+${q.surcharge} tax)` : ""}`,
-        total: q.total,
-        surcharge: q.surcharge,
-        loadout: s,
+        complete: false,
+        btnLabel: `S${i + 1} · —`,
+        costLabel: "—",
+        tip: "incomplete — set in Forge",
+        total: 0,
+        surcharge: 0,
+        base: 0,
+        loadout: s || null,
       };
+    }
+    const q = quoteTowerPlace(run.economy, s.placeCost, run.towers.length);
+    return {
+      complete: true,
+      btnLabel: `S${i + 1} · ${q.total}`,
+      costLabel: `${q.total}`,
+      tip: `${s.base}/${s.barrel}/${s.payload}${q.surcharge ? ` (+${q.surcharge} tax)` : ""}`,
+      total: q.total,
+      surcharge: q.surcharge,
+      base: q.base,
+      loadout: s,
     };
   }
 
   function nextState(sim, board, opts) {
+    const run = sim.state;
+    const tid = opts.selectedTowerId ?? -1;
+    const wid = opts.selectedWallId ?? -1;
+    const t = tid >= 0 ? run.towers.find((x) => x.id === tid) : null;
+    const wall = wid >= 0 ? run.walls.find((w) => w.id === wid) : null;
+    const cell = t?.cell || wall?.cell;
+    const quotes = [];
+    for (let i = 0; i < MAX_ROSTER_SLOTS; i++) quotes.push(slotQuote(run, i));
     return {
       meta: loadMeta(),
-      sim,
-      board: { cell: board.cell, cellScreenCenter: (x, y) => board.cellScreenCenter(x, y) },
-      roster: sim.roster,
-      quote: quoteProvider(sim),
+      sim: run,
+      roster: run.roster,
+      quotes,
+      emptyQuote: EMPTY_QUOTE,
       tool: opts.tool || "tower",
       slot: 0,
       status: opts.status || "",
@@ -138,10 +160,12 @@
       paused: !!opts.paused,
       liveCompose: !!opts.liveCompose,
       playtestFromEditor: false,
-      selectedTowerId: opts.selectedTowerId ?? -1,
-      selectedWallId: opts.selectedWallId ?? -1,
-      waveBusy: () => !!(sim.waves.waveActive || sim.enemies.length),
+      selectedTowerId: tid,
+      selectedWallId: wid,
+      waveBusy: !!(run.waves.active || run.enemies.length),
       pitchDeg: 24,
+      overlayAnchor: cell ? board.cellScreenCenter(cell.x, cell.y) : null,
+      cellSize: board.cell || 40,
       uiWidth: 960,
       uiHeight: 540,
     };
@@ -152,8 +176,8 @@
     const boardN = buildBoard();
     boardN.setSim(simN);
     boardN._fit(true);
-    if (variant === "plain") simN.waves.waveActive = false;
-    if (variant === "busy") simN.waves.waveActive = true;
+    if (variant === "plain") simN.state.waves.active = false;
+    if (variant === "busy") simN.state.waves.active = true;
     const st = nextState(simN, boardN, {
       tool: variant === "busy" ? "wall" : "tower",
       status: variant === "busy" ? "Wave 2 — hold" : "",
